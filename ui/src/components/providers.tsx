@@ -1,6 +1,6 @@
 "use client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { httpBatchLink } from "@trpc/react-query";
 import { trpc } from "@/server/client";
 import { getTrpcUrl } from "@/server/utils";
@@ -8,6 +8,63 @@ import { retrieveRawInitData } from "@tma.js/sdk-react";
 import superjson from "superjson";
 import posthog from "posthog-js";
 import { env } from "@/lib/env";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+function useAuthFromProviderTelegram() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Next.js will render this component on the server too; guard window access.
+    if (typeof window === "undefined") return;
+    setIsAuthenticated(Boolean(retrieveRawInitData()));
+  }, []);
+
+  return useMemo(() => {
+    return {
+      isLoading: false,
+      isAuthenticated,
+      fetchAccessToken: async ({
+        forceRefreshToken,
+      }: {
+        forceRefreshToken: boolean;
+      }) => {
+        if (typeof window === "undefined") {
+          return null;
+        }
+        const rawInitData = retrieveRawInitData();
+        if (!rawInitData) return null;
+
+        const res = await fetch("/api/convex/token", {
+          method: "GET",
+          headers: { Authorization: rawInitData },
+          cache: forceRefreshToken ? "no-store" : "default",
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as { token?: string };
+        return data.token ?? null;
+      },
+    };
+  }, [isAuthenticated]);
+  // const params = new URLSearchParams(rawInitData);
+  // const userJson = params.get("user");
+  // if (typeof userJson === "string") {
+  //   const user = JSON.parse(userJson);
+  //   return user;
+  // }
+  // return useMemo(
+  //   () => ({
+  //     // Whether the auth provider is in a loading state
+  //     isLoading: isLoading,
+  //     // Whether the auth provider has the user signed in
+  //     isAuthenticated: isAuthenticated ?? false,
+  //     // The async function to fetch the ID token
+  //     fetchAccessToken,
+  //   }),
+  //   [isLoading, isAuthenticated, fetchAccessToken],
+  // );
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -75,7 +132,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         
       </SessionProvider> */}
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <ConvexProviderWithAuth
+        client={convex}
+        useAuth={useAuthFromProviderTelegram}
+      >
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </ConvexProviderWithAuth>
     </trpc.Provider>
   );
 }
