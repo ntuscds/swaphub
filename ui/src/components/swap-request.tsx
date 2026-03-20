@@ -1,13 +1,5 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -22,7 +14,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "./ui/command";
-import { ChevronsUpDown, Plus, Send } from "lucide-react";
+import { ChevronsUpDown, Send } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -31,12 +23,15 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldLabel } from "./ui/field";
 import { Badge } from "@/components/ui/badge";
-import { trpc } from "@/server/client";
+import { useMutation, useQuery } from "convex/react";
+import { api as convexApi } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { useConvexMutationState } from "./use-convex-mutation-state";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Skeleton } from "./ui/skeleton";
 
-type CourseIndex = {
-  id: number;
+export type CourseIndex = {
+  id: string;
   index: string;
   haveCount: number;
   wantCount: number;
@@ -124,7 +119,7 @@ function SelectCourseIndexCommand({
             return (
               <CommandItemBase
                 key={courseIndex.id}
-                value={courseIndex.id.toString()}
+                value={courseIndex.id}
                 onSelect={() => {
                   if (limit === 1) {
                     if (isSelected) {
@@ -154,12 +149,17 @@ function SelectCourseIndexCommand({
                   <span className="text-sm">{courseIndex.index}</span>
 
                   <div className="flex flex-row gap-2">
-                    <Badge variant="secondary">
-                      {courseIndex.wantCount} want
-                    </Badge>
-                    <Badge variant="default">
-                      {courseIndex.haveCount} have
-                    </Badge>
+                    {courseIndex.wantCount > 0 && (
+                      <Badge variant="secondary">
+                        {courseIndex.wantCount} want
+                      </Badge>
+                    )}
+
+                    {courseIndex.haveCount > 0 && (
+                      <Badge variant="default">
+                        {courseIndex.haveCount} have
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CommandItemBase>
@@ -257,55 +257,75 @@ export function SelectCourseIndexCombobox({
   );
 }
 
-const UNSET_INDEX_ID = -1;
-
 const SwapRequestFormSchema = z.object({
-  // -1 is unset
-  haveIndexId: z.number().refine((val) => val !== UNSET_INDEX_ID, {
+  haveIndexId: z.string().min(1, {
     message: "Please select a course index you have.",
   }),
-  wantIndexIds: z
-    .array(z.number())
-    // .min(1, {
-    //   message: "Please select at least one course index you want.",
-    // })
-    .max(16),
+  wantIndexIds: z.array(z.string()).max(16),
 });
 
-export function SwapRequestForm({
-  courseIndexes,
+export function SwapRequestFormWithPrefill({
   courseId,
+  courseIndexes,
 }: {
+  courseId: Id<"courses">;
   courseIndexes: CourseIndex[];
-  courseId: number;
 }) {
-  const api = trpc.useUtils();
-  const router = useRouter();
-  const form = useForm<z.infer<typeof SwapRequestFormSchema>>({
-    resolver: zodResolver(SwapRequestFormSchema),
-    defaultValues: async () => {
-      const request = await api.swaps.getRequestForCourse.fetch({
-        courseId,
-      });
+  const request = useQuery(convexApi.tasks.getRequestForCourse, { courseId });
+  if (request === undefined) {
+    return <Skeleton className="h-48 w-full" />;
+  }
+  const defaultHave = request.haveIndex
+    ? (courseIndexes.find((c) => c.index === request.haveIndex)?.id ?? "")
+    : "";
+  const defaultWants = request.wantIndexes
+    .map((idx) => courseIndexes.find((c) => c.index === idx)?.id)
+    .filter((id): id is string => Boolean(id));
 
-      return {
-        haveIndexId: request.have?.indexId ?? UNSET_INDEX_ID,
-        wantIndexIds: request.want.map((w) => w.indexId),
-      };
+  return (
+    <SwapRequestForm
+      key={`${defaultHave}:${[...defaultWants].sort().join(",")}`}
+      courseId={courseId}
+      courseIndexes={courseIndexes}
+      defaultHaveIndexId={defaultHave}
+      defaultWantIndexIds={defaultWants}
+    />
+  );
+}
+
+export function SwapRequestForm({
+  courseId,
+  courseIndexes,
+  defaultHaveIndexId = "",
+  defaultWantIndexIds = [],
+}: {
+  courseId: Id<"courses">;
+  courseIndexes: CourseIndex[];
+  defaultHaveIndexId?: string;
+  defaultWantIndexIds?: string[];
+}) {
+  const router = useRouter();
+  const setRequestMutation = useMutation(convexApi.tasks.setRequest);
+  const {
+    handle: setRequest,
+    error,
+    isSuccess,
+    isPending,
+  } = useConvexMutationState(setRequestMutation, {
+    onSuccess: (data: { success: true; courseCode: string }) => {
+      router.push(`/swap/${data.courseCode}`);
     },
   });
-
-  const setRequestMut = trpc.swaps.setRequest.useMutation({
-    onSuccess: (data) => {
-      api.swaps.getCourseRequestAndMatches.invalidate({ courseId });
-      api.swaps.getRequestForCourse.invalidate({ courseId });
-      api.swaps.getAllRequests.invalidate();
-      router.push(`/app/swap/${data.courseCode}`);
+  const form = useForm<z.infer<typeof SwapRequestFormSchema>>({
+    resolver: zodResolver(SwapRequestFormSchema),
+    defaultValues: {
+      haveIndexId: defaultHaveIndexId,
+      wantIndexIds: defaultWantIndexIds,
     },
   });
 
   function onSubmit(data: z.infer<typeof SwapRequestFormSchema>) {
-    setRequestMut.mutate({
+    void setRequest({
       courseId,
       haveIndex:
         courseIndexes.find((index) => index.id === data.haveIndexId)?.index ??
@@ -314,10 +334,6 @@ export function SwapRequestForm({
         .filter((index) => data.wantIndexIds.includes(index.id))
         .map((index) => index.index),
     });
-  }
-
-  if (form.formState.isLoading) {
-    return <Skeleton className="h-48 w-full" />;
   }
 
   return (
@@ -340,7 +356,7 @@ export function SwapRequestForm({
               <SelectCourseIndexCombobox
                 value={haveIndex ? [haveIndex] : []}
                 onChange={(value) => {
-                  field.onChange(value[0]?.id ?? UNSET_INDEX_ID);
+                  field.onChange(value[0]?.id ?? "");
                 }}
                 courseIndexes={courseIndexes}
                 limit={1}
@@ -375,14 +391,14 @@ export function SwapRequestForm({
       />
 
       <div className="flex flex-col gap-2">
-        {setRequestMut.error && (
+        {error && (
           <Alert variant="destructive">
             <AlertTitle>Error!</AlertTitle>
-            <AlertDescription>{setRequestMut.error.message}</AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        {setRequestMut.isSuccess && (
+        {isSuccess && (
           <Alert variant="success">
             <AlertTitle>Success!</AlertTitle>
           </Alert>
@@ -391,11 +407,7 @@ export function SwapRequestForm({
         <div className="w-full flex justify-end">
           <Button
             type="submit"
-            disabled={
-              form.formState.isSubmitting ||
-              form.formState.isLoading ||
-              setRequestMut.isPending
-            }
+            disabled={form.formState.isSubmitting || isPending}
           >
             <Send className="size-4" /> Request
           </Button>

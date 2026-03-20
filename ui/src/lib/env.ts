@@ -3,7 +3,6 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
-    DATABASE_URL: z.url(),
     BOT_KEY: z.string(),
     ENCRYPTION_KEY: z.string(),
     /** Used to verify webhook POSTs are from Telegram. Set the same value in setWebhook(..., { secret_token }). */
@@ -17,7 +16,6 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_HOST: z.string(),
   },
   runtimeEnv: {
-    DATABASE_URL: process.env.DATABASE_URL,
     BOT_KEY: process.env.BOT_KEY,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,

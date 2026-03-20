@@ -26,9 +26,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
+import { Id } from "../../convex/_generated/dataModel";
 
 type Course = {
-  id: number;
+  id: Id<"courses">;
   code: string;
   name: string;
 };
@@ -243,7 +244,7 @@ export function SwapRequestModal({ courses }: { courses: Course[] }) {
               course_code: course.code,
               source: "modal",
             });
-            router.push(`/app/swap/${course.code}/edit`);
+            router.push(`/swap/${course.code}/edit`);
           }}
           courses={courses}
         />

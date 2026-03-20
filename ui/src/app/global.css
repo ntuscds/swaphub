@@ -123,3 +123,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes auth-loader-fade {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.auth-loader-bar {
+  animation: auth-loader-fade 500ms linear infinite;
+}

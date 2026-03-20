@@ -1,3 +1,5 @@
+"use node";
+
 import { env } from "@/lib/env";
 import TelegramBot from "node-telegram-bot-api";
 
