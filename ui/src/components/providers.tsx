@@ -1,6 +1,13 @@
 "use client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { httpBatchLink } from "@trpc/react-query";
 import { trpc } from "@/server/client";
 import { getTrpcUrl } from "@/server/utils";
@@ -9,8 +16,29 @@ import superjson from "superjson";
 import posthog from "posthog-js";
 import { env } from "@/lib/env";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+import { useStableQuery } from "./use-stable-query";
+import { api } from "../../convex/_generated/api";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+const SelfContext = createContext<{
+  self: Awaited<
+    ReturnType<typeof useStableQuery<typeof api.tasks.getSelf>>
+  > | null;
+}>({
+  self: null,
+});
+
+export function useSelf() {
+  return useContext(SelfContext);
+}
+
+export function SelfProvider({ children }: { children: React.ReactNode }) {
+  const self = useStableQuery(api.tasks.getSelf);
+  return (
+    <SelfContext.Provider value={{ self }}>{children}</SelfContext.Provider>
+  );
+}
 
 function useAuthFromProviderTelegram() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -137,7 +165,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         useAuth={useAuthFromProviderTelegram}
       >
         <QueryClientProvider client={queryClient}>
-          {children}
+          <SelfProvider>{children}</SelfProvider>
         </QueryClientProvider>
       </ConvexProviderWithAuth>
     </trpc.Provider>

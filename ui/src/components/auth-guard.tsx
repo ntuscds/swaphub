@@ -4,12 +4,15 @@ import { api } from "../../convex/_generated/api";
 import { useConvexAuth, useQuery } from "convex/react";
 import { ScrollArea } from "./ui/scroll-area";
 import { OnboardForm } from "./onboard-form";
+import { useStableQuery } from "./use-stable-query";
+import { useSelf } from "./providers";
 
 export function AuthGuard({ children }: { children?: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useConvexAuth();
-  const self = useQuery(api.tasks.getSelf);
 
-  if (isLoading || self === undefined) {
+  const { self } = useSelf();
+
+  if (self === undefined) {
     return (
       <div className="flex items-center justify-center h-screen p-4">
         <div className="w-full max-w-xs rounded-2xl border border-border bg-card/70 p-6 shadow-lg">
@@ -36,7 +39,7 @@ export function AuthGuard({ children }: { children?: React.ReactNode }) {
             />
           </div>
           <p className="mt-4 text-center text-sm font-medium text-foreground">
-            Setting things up...
+            Setting things up... {self ? "true" : "false"}
           </p>
           <p className="mt-1 text-center text-xs text-muted-foreground">
             Checking your account
