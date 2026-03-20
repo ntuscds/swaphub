@@ -13,10 +13,13 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Button } from "./ui/button";
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useConvexMutationState } from "./use-convex-mutation-state";
+import { trpc } from "@/server/client";
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { useRouter } from "next/navigation";
 
 const FormSchema = z.object({
@@ -28,9 +31,15 @@ const FormSchema = z.object({
 });
 
 export function OnboardForm() {
-  const onboard = useMutation(api.tasks.onboard);
-  const { handle, error, isSuccess, isPending } =
-    useConvexMutationState(onboard);
+  const router = useRouter();
+  const api = trpc.useUtils();
+  const onboardMut = trpc.onboard.onboard.useMutation({
+    onSuccess: (data) => {
+      api.user.verifySelf.setData(undefined, data.user);
+      router.push("/app");
+    },
+    onError: (error) => {},
+  });
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -40,7 +49,8 @@ export function OnboardForm() {
   });
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
-    void handle({ school: data.school });
+    // Do something with the form values.
+    onboardMut.mutate(data);
   }
 
   return (
@@ -81,14 +91,14 @@ export function OnboardForm() {
         )}
       />
       <div className="flex flex-col gap-2">
-        {error && (
+        {onboardMut.error && (
           <Alert variant="destructive">
             <AlertTitle>Error!</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{onboardMut.error.message}</AlertDescription>
           </Alert>
         )}
 
-        {isSuccess && (
+        {onboardMut.isSuccess && (
           <Alert variant="default">
             <AlertTitle>Success!</AlertTitle>
             <AlertDescription>
@@ -101,7 +111,7 @@ export function OnboardForm() {
           <Button
             type="submit"
             className="h-10 w-fit"
-            disabled={isPending || isSuccess}
+            disabled={onboardMut.isPending || onboardMut.isSuccess}
           >
             Done
           </Button>

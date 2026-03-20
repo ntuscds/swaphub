@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "FIndex",
-  description: "Swap NTU course indexes without the chaos",
+  title: "Your Application Title Goes Here",
+  description: "Your application description goes here",
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {

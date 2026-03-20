@@ -31,8 +31,6 @@
     "client-only": "^0.0.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "convex": "^1.33.1",
-    "convex-helpers": "^0.1.114",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "eruda": "^3.4.3",
