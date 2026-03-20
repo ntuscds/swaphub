@@ -244,7 +244,7 @@ export function SwapRequestModal({ courses }: { courses: Course[] }) {
               course_code: course.code,
               source: "modal",
             });
-            router.push(`/app/swap/${course.code}/edit`);
+            router.push(`/swap/${course.code}/edit`);
           }}
           courses={courses}
         />

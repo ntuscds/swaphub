@@ -1,19 +1,68 @@
-import { SwapRequestForm } from "@/components/swap-request";
+import { SwapRequestFormWithPrefill } from "@/components/swap-request";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { db } from "@/db";
-import {
-  courseIndexTable,
-  coursesTable,
-  swapperTable,
-  swapperWantTable,
-} from "@/db/schema";
-import { CurrentAcadYear } from "@/lib/acad";
-import { and, count, eq } from "drizzle-orm";
+import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "../../../../../convex/_generated/api";
+import { fetchQuery } from "convex/nextjs";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache, Suspense } from "react";
+
+const loadCourseHeader = cache((courseCode: string) =>
+  fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode })
+);
+
+async function EditCourseHeader({ courseCode }: { courseCode: string }) {
+  const data = await loadCourseHeader(courseCode);
+  if (!data) {
+    notFound();
+  }
+  let swappersText: string | null = null;
+  if (data.swappersCount === 1) {
+    swappersText = "1 swapper";
+  } else if (data.swappersCount > 0) {
+    swappersText = `${data.swappersCount} swappers`;
+  }
+  return (
+    <>
+      <p className="text-xl font-bold">
+        {data.code} {data.name}
+      </p>
+      {swappersText && <Badge variant="secondary">{swappersText}</Badge>}
+    </>
+  );
+}
+
+function EditCourseHeaderFallback() {
+  return (
+    <div className="flex flex-col gap-2">
+      <Skeleton className="h-7 w-3/4 max-w-md" />
+      <Skeleton className="h-6 w-24" />
+    </div>
+  );
+}
+
+async function EditCourseFormSection({ courseCode }: { courseCode: string }) {
+  const header = await loadCourseHeader(courseCode);
+  if (!header) {
+    notFound();
+  }
+  const indexes = await fetchQuery(api.tasks.getCourseIndexesForEdit, {
+    courseId: header.courseId,
+  });
+  return (
+    <SwapRequestFormWithPrefill
+      courseId={header.courseId}
+      courseIndexes={indexes}
+    />
+  );
+}
+
+function EditCourseFormFallback() {
+  return <Skeleton className="h-48 w-full" />;
+}
 
 export default async function RequestPage({
   params,
@@ -28,67 +77,6 @@ export default async function RequestPage({
 }) {
   const { courseCode } = await params;
   const { backTo } = await searchParams;
-  const course = await db
-    .select()
-    .from(coursesTable)
-    .where(
-      and(
-        eq(coursesTable.code, courseCode),
-        eq(coursesTable.ay, CurrentAcadYear.ay),
-        eq(coursesTable.semester, CurrentAcadYear.semester)
-      )
-    )
-    .limit(1);
-
-  if (course.length === 0) {
-    notFound();
-  }
-  const courseId = course[0].id;
-
-  const [courseIndexes, haveCounts, wantCounts, numberOfSwappers] =
-    await Promise.all([
-      db
-        .select()
-        .from(courseIndexTable)
-        .where(eq(courseIndexTable.courseId, courseId)),
-      db
-        .select({
-          index: swapperTable.index,
-          count: count(),
-        })
-        .from(swapperTable)
-        .where(eq(swapperTable.courseId, courseId))
-        .groupBy(swapperTable.index),
-      db
-        .select({
-          index: swapperWantTable.wantIndex,
-          count: count(),
-        })
-        .from(swapperWantTable)
-        .where(eq(swapperWantTable.courseId, courseId))
-        .groupBy(swapperWantTable.wantIndex),
-      db
-        .select({
-          count: count(),
-        })
-        .from(swapperTable)
-        .where(eq(swapperTable.courseId, courseId)),
-    ]);
-
-  const haveCountsMap = new Map<string, number>(
-    haveCounts.map((count) => [count.index, count.count])
-  );
-
-  const wantCountsMap = new Map<string, number>(
-    wantCounts.map((count) => [count.index, count.count])
-  );
-
-  let swappersText = null;
-  if (numberOfSwappers[0].count === 1) {
-    swappersText = "1 swapper";
-  } else if (numberOfSwappers[0].count > 0) {
-    swappersText = `${numberOfSwappers[0].count} swappers`;
-  }
 
   return (
     <main>
@@ -99,28 +87,19 @@ export default async function RequestPage({
               <div className="flex flex-col gap-2">
                 <Button variant="link" className="w-fit px-0">
                   <Link
-                    href={backTo ?? "/app"}
+                    href={backTo ?? "/"}
                     className="flex items-center gap-0.5"
                   >
                     <ArrowLeft className="size-4" /> Back
                   </Link>
                 </Button>
-                <p className="text-xl font-bold">
-                  {course[0].code} {course[0].name}
-                </p>
-                {swappersText && (
-                  <Badge variant="secondary">{swappersText}</Badge>
-                )}
+                <Suspense fallback={<EditCourseHeaderFallback />}>
+                  <EditCourseHeader courseCode={courseCode} />
+                </Suspense>
               </div>
-              <SwapRequestForm
-                courseIndexes={courseIndexes.map((index) => ({
-                  id: index.id,
-                  index: index.index,
-                  haveCount: haveCountsMap.get(index.index) ?? 0,
-                  wantCount: wantCountsMap.get(index.index) ?? 0,
-                }))}
-                courseId={courseId}
-              />
+              <Suspense fallback={<EditCourseFormFallback />}>
+                <EditCourseFormSection courseCode={courseCode} />
+              </Suspense>
             </div>
           </div>
         </div>

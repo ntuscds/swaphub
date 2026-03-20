@@ -34,7 +34,9 @@ export default defineSchema({
   course_index: defineTable({
     index: v.string(),
     courseId: v.id("courses"),
-  }).index("by_index_courseId", ["index", "courseId"]),
+  })
+    .index("by_index_courseId", ["index", "courseId"])
+    .index("by_courseId", ["courseId"]),
 
   course_index_sources: defineTable({
     indexId: v.id("course_index"),

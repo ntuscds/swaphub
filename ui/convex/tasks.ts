@@ -166,6 +166,193 @@ export const getAllRequests = query({
   },
 });
 
+/** Course header for edit page (route still uses URL course code once). */
+export const getCourseHeaderByCode = query({
+  args: {
+    courseCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const course = await ctx.db
+      .query("courses")
+      .withIndex("by_code_ay_semester", (q) =>
+        q
+          .eq("code", args.courseCode)
+          .eq("ay", CurrentAcadYear.ay)
+          .eq("semester", CurrentAcadYear.semester)
+      )
+      .unique();
+
+    if (!course) {
+      return null;
+    }
+
+    const swappers = await ctx.db
+      .query("swapper")
+      .withIndex("by_courseId_index", (q) => q.eq("courseId", course._id))
+      .collect();
+
+    return {
+      courseId: course._id,
+      code: course.code,
+      name: course.name,
+      swappersCount: swappers.length,
+    };
+  },
+});
+
+/** Indexes for a course with aggregate have/want counts (edit form). */
+export const getCourseIndexesForEdit = query({
+  args: {
+    courseId: v.id("courses"),
+  },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("course_index")
+      .withIndex("by_courseId", (q) => q.eq("courseId", args.courseId))
+      .collect();
+
+    const swappers = await ctx.db
+      .query("swapper")
+      .withIndex("by_courseId_index", (q) => q.eq("courseId", args.courseId))
+      .collect();
+
+    const wants = await ctx.db
+      .query("swapper_wants")
+      .withIndex("by_courseId_wantIndex", (q) => q.eq("courseId", args.courseId))
+      .collect();
+
+    const haveCountByIndex = new Map<string, number>();
+    for (const s of swappers) {
+      haveCountByIndex.set(s.index, (haveCountByIndex.get(s.index) ?? 0) + 1);
+    }
+    const wantCountByIndex = new Map<string, number>();
+    for (const w of wants) {
+      wantCountByIndex.set(
+        w.wantIndex,
+        (wantCountByIndex.get(w.wantIndex) ?? 0) + 1
+      );
+    }
+
+    return rows.map((r) => ({
+      id: r._id,
+      index: r.index,
+      haveCount: haveCountByIndex.get(r.index) ?? 0,
+      wantCount: wantCountByIndex.get(r.index) ?? 0,
+    }));
+  },
+});
+
+/**
+ * Current user's swap request for a course (Convex course document id).
+ */
+export const getRequestForCourse = query({
+  args: {
+    courseId: v.id("courses"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+
+    const me = BigInt(identity.subject);
+    const courseId = args.courseId;
+
+    const mySwappers = await ctx.db
+      .query("swapper")
+      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .collect();
+    const swapper = mySwappers.find((s) => s.courseId === courseId);
+
+    const myWants = await ctx.db
+      .query("swapper_wants")
+      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .collect();
+    const wantsForCourse = myWants.filter((w) => w.courseId === courseId);
+
+    return {
+      haveIndex: swapper?.index ?? null,
+      wantIndexes: wantsForCourse.map((w) => w.wantIndex),
+    };
+  },
+});
+
+/**
+ * Upsert swapper + sync swapper_wants for the current user and course.
+ */
+export const setRequest = mutation({
+  args: {
+    courseId: v.id("courses"),
+    haveIndex: v.string(),
+    wantIndexes: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+
+    if (args.wantIndexes.length > 16) {
+      throw new ConvexError("At most 16 wanted indexes are allowed.");
+    }
+
+    const me = BigInt(identity.subject);
+
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new ConvexError("Course not found.");
+    }
+
+    const courseId = course._id;
+
+    const mySwappers = await ctx.db
+      .query("swapper")
+      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .collect();
+    const existingSwapper = mySwappers.find((s) => s.courseId === courseId);
+
+    if (existingSwapper) {
+      await ctx.db.patch(existingSwapper._id, { index: args.haveIndex });
+    } else {
+      await ctx.db.insert("swapper", {
+        telegramUserId: me,
+        courseId,
+        index: args.haveIndex,
+        hasSwapped: false,
+      });
+    }
+
+    const myWants = await ctx.db
+      .query("swapper_wants")
+      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .collect();
+    const wantsForCourse = myWants.filter((w) => w.courseId === courseId);
+
+    const wantSet = new Set(args.wantIndexes);
+    const toRemove = wantsForCourse.filter((w) => !wantSet.has(w.wantIndex));
+    const currentWantStrings = new Set(wantsForCourse.map((w) => w.wantIndex));
+    const toAdd = args.wantIndexes.filter((idx) => !currentWantStrings.has(idx));
+
+    const now = Date.now();
+    for (const row of toRemove) {
+      await ctx.db.delete(row._id);
+    }
+    for (const wantIndex of toAdd) {
+      await ctx.db.insert("swapper_wants", {
+        telegramUserId: me,
+        courseId,
+        wantIndex,
+        requestedAt: now,
+      });
+    }
+
+    return {
+      success: true as const,
+      courseCode: course.code,
+    };
+  },
+});
+
 export const onboard = mutation({
   args: {
     school: schoolValidator,

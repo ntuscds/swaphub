@@ -1,5 +1,4 @@
 import { CourseSwapMatches } from "@/components/course-swaps";
-import { SwapRequestForm } from "@/components/swap-request";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";

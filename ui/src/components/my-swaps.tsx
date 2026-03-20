@@ -53,10 +53,7 @@ export function MySwaps() {
             );
           }
           return (
-            <Link
-              href={`/app/swap/${request.course.code}`}
-              key={request.course.id}
-            >
+            <Link href={`/swap/${request.course.code}`} key={request.course.id}>
               <div
                 className={cn(
                   "flex flex-row gap-2 items-center justify-between px-2.5 py-2",
