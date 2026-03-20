@@ -12,7 +12,15 @@ export function MySwaps() {
   const data = useQuery(api.tasks.getAllRequests);
 
   if (data === undefined) {
-    return <Skeleton className="h-48 w-full" />;
+    return (
+      <div className="w-full flex flex-col gap-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
   }
   return (
     <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">

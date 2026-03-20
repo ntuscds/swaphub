@@ -2,18 +2,46 @@
 
 import { api } from "../../convex/_generated/api";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Skeleton } from "./ui/skeleton";
 import { ScrollArea } from "./ui/scroll-area";
 import { OnboardForm } from "./onboard-form";
 
-export function Guard({ children }: { children?: React.ReactNode }) {
+export function AuthGuard({ children }: { children?: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const self = useQuery(api.tasks.getSelf);
 
   if (isLoading || self === undefined) {
     return (
       <div className="flex items-center justify-center h-screen p-4">
-        <Skeleton className="w-full h-full" />
+        <div className="w-full max-w-xs rounded-2xl border border-border bg-card/70 p-6 shadow-lg">
+          <div className="flex items-center justify-center gap-1.5 h-8">
+            <div
+              className="auth-loader-bar w-1.5 h-3 rounded-full bg-primary/70"
+              style={{ animationDelay: "0ms" }}
+            />
+            <div
+              className="auth-loader-bar w-1.5 h-5 rounded-full bg-primary/80"
+              style={{ animationDelay: "100ms" }}
+            />
+            <div
+              className="auth-loader-bar w-1.5 h-7 rounded-full bg-primary"
+              style={{ animationDelay: "200ms" }}
+            />
+            <div
+              className="auth-loader-bar w-1.5 h-5 rounded-full bg-primary/80"
+              style={{ animationDelay: "300ms" }}
+            />
+            <div
+              className="auth-loader-bar w-1.5 h-3 rounded-full bg-primary/70"
+              style={{ animationDelay: "400ms" }}
+            />
+          </div>
+          <p className="mt-4 text-center text-sm font-medium text-foreground">
+            Setting things up...
+          </p>
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            Checking your account
+          </p>
+        </div>
       </div>
     );
   }
