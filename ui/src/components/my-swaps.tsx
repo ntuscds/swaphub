@@ -1,6 +1,7 @@
 "use client";
 
-import { trpc } from "@/server/client";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { Skeleton } from "./ui/skeleton";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,15 +9,11 @@ import Link from "next/link";
 import { Badge } from "./ui/badge";
 
 export function MySwaps() {
-  const requestsQuery = trpc.swaps.getAllRequests.useQuery(undefined, {
-    refetchInterval: 60_000,
-  });
+  const data = useQuery(api.tasks.getAllRequests);
 
-  if (requestsQuery.isLoading) {
+  if (data === undefined) {
     return <Skeleton className="h-48 w-full" />;
   }
-
-  const data = requestsQuery.data ?? [];
   return (
     <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
       {data.length > 0 ? (

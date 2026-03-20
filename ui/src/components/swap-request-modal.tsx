@@ -26,9 +26,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
+import { Id } from "../../convex/_generated/dataModel";
 
 type Course = {
-  id: number;
+  id: Id<"courses">;
   code: string;
   name: string;
 };

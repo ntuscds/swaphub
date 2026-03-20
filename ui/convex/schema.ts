@@ -97,10 +97,10 @@ export default defineSchema({
 
   // FIndex swap / matching tables
   users: defineTable({
-    userId: v.optional(v.number()),
+    userId: v.int64(),
     handle: v.string(),
     school: v.string(),
-    joinDate: v.optional(v.number()), // ms since epoch
+    // joinDate: v.optional(v.number()), // ms since epoch
   })
     .index("by_handle", ["handle"])
     .index("by_userId", ["userId"]),
@@ -111,14 +111,18 @@ export default defineSchema({
     courseId: v.id("courses"),
     index: v.string(),
     hasSwapped: v.boolean(),
-  }).index("by_courseId_index", ["courseId", "index"]),
+  })
+    .index("by_courseId_index", ["courseId", "index"])
+    .index("by_telegramUserId", ["telegramUserId"]),
 
   swapper_wants: defineTable({
     telegramUserId: v.int64(),
     wantIndex: v.string(),
     courseId: v.id("courses"),
     requestedAt: v.optional(v.number()), // ms since epoch
-  }).index("by_courseId_wantIndex", ["courseId", "wantIndex"]),
+  })
+    .index("by_courseId_wantIndex", ["courseId", "wantIndex"])
+    .index("by_telegramUserId", ["telegramUserId"]),
 
   swap_requests: defineTable({
     courseId: v.id("courses"),
@@ -126,5 +130,7 @@ export default defineSchema({
     swapper2: v.id("swapper"),
     initiator: v.number(),
     requestedAt: v.optional(v.number()), // ms since epoch
-  }).index("by_course_swapper_pair", ["courseId", "swapper1", "swapper2"]),
+  })
+    .index("by_course_swapper_pair", ["courseId", "swapper1", "swapper2"])
+    .index("by_initiator", ["initiator"]),
 });

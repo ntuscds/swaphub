@@ -3,6 +3,7 @@ import { schools } from "@/lib/types";
 import z from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { Field, FieldError, FieldLabel } from "./ui/field";
 import {
   Combobox,
@@ -13,13 +14,9 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Button } from "./ui/button";
-import { trpc } from "@/server/client";
-import {
-  Alert,
-  AlertAction,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useRouter } from "next/navigation";
 
 const FormSchema = z.object({
@@ -30,16 +27,32 @@ const FormSchema = z.object({
   // }),
 });
 
+export function Test() {
+  return (
+    <main className="bg-background text-foreground h-screen p-4">
+      <Combobox items={["EEE"]}>
+        <ComboboxInput placeholder="Select a framework" />
+        <ComboboxContent>
+          <ComboboxEmpty>No items found.</ComboboxEmpty>
+          <ComboboxList>
+            {(item) => (
+              <ComboboxItem key={item} value={item}>
+                {item}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </main>
+  );
+}
+
 export function OnboardForm() {
   const router = useRouter();
-  const api = trpc.useUtils();
-  const onboardMut = trpc.onboard.onboard.useMutation({
-    onSuccess: (data) => {
-      api.user.verifySelf.setData(undefined, data.user);
-      router.push("/app");
-    },
-    onError: (error) => {},
-  });
+  const onboard = useMutation(api.tasks.onboard);
+  const [error, setError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -48,9 +61,18 @@ export function OnboardForm() {
     },
   });
 
-  function onSubmit(data: z.infer<typeof FormSchema>) {
-    // Do something with the form values.
-    onboardMut.mutate(data);
+  async function onSubmit(data: z.infer<typeof FormSchema>) {
+    setError(null);
+    setIsPending(true);
+    try {
+      await onboard({ school: data.school });
+      setIsSuccess(true);
+      router.push("/app");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to onboard");
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
@@ -91,14 +113,14 @@ export function OnboardForm() {
         )}
       />
       <div className="flex flex-col gap-2">
-        {onboardMut.error && (
+        {error && (
           <Alert variant="destructive">
             <AlertTitle>Error!</AlertTitle>
-            <AlertDescription>{onboardMut.error.message}</AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        {onboardMut.isSuccess && (
+        {isSuccess && (
           <Alert variant="default">
             <AlertTitle>Success!</AlertTitle>
             <AlertDescription>
@@ -111,7 +133,7 @@ export function OnboardForm() {
           <Button
             type="submit"
             className="h-10 w-fit"
-            disabled={onboardMut.isPending || onboardMut.isSuccess}
+            disabled={isPending || isSuccess}
           >
             Done
           </Button>

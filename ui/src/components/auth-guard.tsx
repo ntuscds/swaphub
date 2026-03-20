@@ -1,52 +1,19 @@
 "use client";
 
-import { trpc } from "@/server/client";
+import { api } from "../../convex/_generated/api";
+import { useConvexAuth, useQuery } from "convex/react";
 import { Skeleton } from "./ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import {
-  retrieveRawInitData,
-  retrieveRawInitDataFp,
-  useRawInitData,
-} from "@tma.js/sdk-react";
+import { useRawInitData } from "@tma.js/sdk-react";
+import { ScrollArea } from "./ui/scroll-area";
+import { OnboardForm } from "./onboard-form";
 
-/**
- * Annoyingly, TMA user info is only accessible in the client side.
- * So we need to check if the user is authenticated in the client side.
- */
-export function AuthGuard({
-  children,
-  verified = true,
-}: {
-  children: React.ReactNode;
-  verified?: boolean;
-}) {
-  const rawInitData = useRawInitData();
-  const user = trpc.user.verifySelf.useQuery();
-  const router = useRouter();
+export function Guard({ children }: { children?: React.ReactNode }) {
+  const { isLoading, isAuthenticated } = useConvexAuth();
+  const self = useQuery(api.tasks.getSelf);
 
-  useEffect(() => {
-    if (user.isLoading) {
-      return;
-    }
-    // User did not load the app in Telegram.
-    if (!rawInitData) {
-      router.push("/");
-      return;
-    }
-    // User has yet to onboard.
-    if (user.isError || !user.data) {
-      router.push("/onboard");
-      return;
-    }
-    // Onboarded, but not verified.
-    // if (verified && !user.data?.verifiedAt) {
-    //   router.push("/onboard/verify");
-    //   return;
-    // }
-  }, [rawInitData, user.isLoading, user.isError, router, user.data, verified]);
-
-  if (user.isLoading) {
+  if (isLoading || self === undefined) {
     return (
       <div className="flex items-center justify-center h-screen p-4">
         <Skeleton className="w-full h-full" />
@@ -54,38 +21,25 @@ export function AuthGuard({
     );
   }
 
-  return children;
-}
-
-export function Redirector({ children }: { children?: React.ReactNode }) {
-  const user = trpc.user.verifySelf.useQuery();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (user.isLoading) {
-      return;
-    }
-    // User has yet to onboard.
-    if (user.isError || !user.data) {
-      router.push("/onboard");
-      return;
-    }
-    // Onboarded, but not verified.
-    // if (!user.data?.verifiedAt) {
-    //   router.push("/onboard/verify");
-    //   return;
-    // }
-
-    // Otherwise, we will redirect to the app page.
-    router.push("/app");
-  }, [user.isLoading, user.isError, router, user.data]);
-
-  // If the user is on telegram, we will use a loader.
-  if (user.isLoading) {
+  if (!isAuthenticated || self === null) {
     return (
-      <div className="flex items-center justify-center h-screen p-4">
-        <Skeleton className="w-full h-full" />
-      </div>
+      <main>
+        <ScrollArea className="bg-background text-foreground h-screen p-4">
+          <div className="flex flex-col items-center">
+            <div className="flex flex-col gap-12 py-12 max-w-4xl w-full">
+              <div className="flex flex-col gap-2">
+                <h1 className="text-2xl font-bold">Hey! 👋</h1>
+                <p className="text-sm text-muted-foreground">
+                  Let's get you onboarded!!!{" "}
+                  {isAuthenticated ? "Authenticated" : "Not authenticated"}
+                </p>
+              </div>
+
+              <OnboardForm />
+            </div>
+          </div>
+        </ScrollArea>
+      </main>
     );
   }
 
