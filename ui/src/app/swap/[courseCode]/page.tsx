@@ -66,7 +66,7 @@ export default async function RequestPage({
             <div className="flex flex-col gap-8">
               <div className="flex flex-col gap-2">
                 <Button variant="link" className="w-fit px-0">
-                  <Link href="/app" className="flex items-center gap-0.5">
+                  <Link href="/" className="flex items-center gap-0.5">
                     <ArrowLeft className="size-4" /> Back
                   </Link>
                 </Button>

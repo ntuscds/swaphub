@@ -55,8 +55,7 @@ export function AuthGuard({ children }: { children?: React.ReactNode }) {
               <div className="flex flex-col gap-2">
                 <h1 className="text-2xl font-bold">Hey! 👋</h1>
                 <p className="text-sm text-muted-foreground">
-                  Let's get you onboarded!!!{" "}
-                  {isAuthenticated ? "Authenticated" : "Not authenticated"}
+                  Let's get you onboarded!!!
                 </p>
               </div>
 

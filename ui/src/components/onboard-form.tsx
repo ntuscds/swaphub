@@ -3,7 +3,6 @@ import { schools } from "@/lib/types";
 import z from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
 import { Field, FieldError, FieldLabel } from "./ui/field";
 import {
   Combobox,
@@ -17,6 +16,7 @@ import { Button } from "./ui/button";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useConvexMutationState } from "./use-convex-mutation-state";
 import { useRouter } from "next/navigation";
 
 const FormSchema = z.object({
@@ -27,32 +27,10 @@ const FormSchema = z.object({
   // }),
 });
 
-export function Test() {
-  return (
-    <main className="bg-background text-foreground h-screen p-4">
-      <Combobox items={["EEE"]}>
-        <ComboboxInput placeholder="Select a framework" />
-        <ComboboxContent>
-          <ComboboxEmpty>No items found.</ComboboxEmpty>
-          <ComboboxList>
-            {(item) => (
-              <ComboboxItem key={item} value={item}>
-                {item}
-              </ComboboxItem>
-            )}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
-    </main>
-  );
-}
-
 export function OnboardForm() {
-  const router = useRouter();
   const onboard = useMutation(api.tasks.onboard);
-  const [error, setError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [isPending, setIsPending] = useState(false);
+  const { handle, error, isSuccess, isPending } =
+    useConvexMutationState(onboard);
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -61,18 +39,8 @@ export function OnboardForm() {
     },
   });
 
-  async function onSubmit(data: z.infer<typeof FormSchema>) {
-    setError(null);
-    setIsPending(true);
-    try {
-      await onboard({ school: data.school });
-      setIsSuccess(true);
-      router.push("/app");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to onboard");
-    } finally {
-      setIsPending(false);
-    }
+  function onSubmit(data: z.infer<typeof FormSchema>) {
+    void handle({ school: data.school });
   }
 
   return (
