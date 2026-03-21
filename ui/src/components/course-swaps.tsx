@@ -5,7 +5,7 @@ import { ArrowRight, BadgeCheck, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -48,8 +48,8 @@ export function SwapItemMatchBottomSheetHint({
   courseId: Id<"courses">;
   match: SwapCourseRequestMatch;
 }) {
-  const handleSwapRequestCallbackMut = useMutation(
-    api.tasks.handleSwapRequestCallback
+  const handleSwapRequestCallbackMut = useAction(
+    api.actions.telegramSwap.sendSwapRequest
   );
   const { handle, error, isPending } = useConvexMutationState(
     handleSwapRequestCallbackMut,
@@ -498,7 +498,7 @@ export function CourseSwapMatches({
               <TableCell className="font-medium text-muted-foreground">
                 Want Index
               </TableCell>
-              <TableCell className="text-foreground text-right">
+              <TableCell className="text-foreground text-right text-wrap whitespace-normal max-w-sm">
                 {requestsQuery.wantIndexes.length > 0 ? (
                   requestsQuery.wantIndexes.join(", ")
                 ) : (
@@ -557,16 +557,16 @@ export function CourseSwapMatches({
           )}
         </div>
         {requestsQuery !== undefined && requestsQuery.course.hasSwapped && (
-            <div className="text-sm text-muted-foreground border border-border rounded-md p-2 bg-card">
-              <h2 className="text-foreground">
-                You already found a swap for this course.
-              </h2>
-              <p className="text-muted-foreground">
-                Keep this disabled if you{"'"}ve already found a match to avoid
-                receiving swap requests.
-              </p>
-            </div>
-          )}
+          <div className="text-sm text-muted-foreground border border-border rounded-md p-2 bg-card">
+            <h2 className="text-foreground">
+              You already found a swap for this course.
+            </h2>
+            <p className="text-muted-foreground">
+              Keep this disabled if you{"'"}ve already found a match to avoid
+              receiving swap requests.
+            </p>
+          </div>
+        )}
         {matchesElement}
       </div>
       <Sheet

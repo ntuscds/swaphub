@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
+    "@convex-dev/aggregate": "^0.2.1",
     "@getbrevo/brevo": "^3.0.1",
     "@hookform/resolvers": "^5.2.2",
     "@t3-oss/env-core": "^0.13.10",

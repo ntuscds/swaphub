@@ -36,43 +36,6 @@ export const getSelf = query({
   },
 });
 
-// export const loadSelf = mutation({
-//   args: {},
-//   handler: async (ctx) => {
-//     const identity = await ctx.auth.getUserIdentity();
-//     if (!identity) {
-//       throw new ConvexError("Unauthorized");
-//     }
-
-//     const telegramUserId = Number(identity.subject);
-//     if (!Number.isFinite(telegramUserId)) {
-//       throw new ConvexError("Invalid auth subject");
-//     }
-
-//     const handle = identity.nickname ?? identity.name ?? "unknown";
-
-//     const existing = await ctx.db
-//       .query("users")
-//       .withIndex("by_userId", (q) => q.eq("userId", BigInt(telegramUserId)))
-//       .unique();
-
-//     if (existing) {
-//       await ctx.db.patch(existing._id, {
-//         handle,
-//         school: "abc",
-//         // joinDate: existing.joinDate ?? Date.now(),
-//       });
-//       return existing._id;
-//     }
-
-//     return await ctx.db.insert("users", {
-//       userId: BigInt(telegramUserId),
-//       handle,
-//       school: "abc",
-//     });
-//   },
-// });
-
 export const getCourses = query({
   args: {
     acadYear: v.optional(acadYearValidator),
@@ -101,68 +64,104 @@ export const getAllRequests = query({
 
     const me = BigInt(identity.subject);
 
-    const requests = await ctx.db
+    const allMySwappers = await ctx.db
       .query("swapper")
       .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
       .collect();
 
-    const myWants = await ctx.db
-      .query("swapper_wants")
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
-      .collect();
-
-    const allSwapRequests = await ctx.db.query("swap_requests").collect();
-
-    const matchCountsByCourse = new Map<string, number>();
-    for (const want of myWants) {
-      const possibleMatches = await ctx.db
-        .query("swapper")
-        .withIndex("by_courseId_index", (q) =>
-          q.eq("courseId", want.courseId).eq("index", want.wantIndex)
-        )
-        .collect();
-
-      let count = 0;
-      for (const candidate of possibleMatches) {
-        if (candidate.hasSwapped) continue;
-        if (candidate.telegramUserId === me) continue;
-
-        // Keep parity with old SQL join on users table.
-        const user = await ctx.db
-          .query("users")
-          .withIndex("by_userId", (q) =>
-            q.eq("userId", candidate.telegramUserId)
-          )
-          .unique();
-        if (!user) continue;
-
-        count += 1;
-      }
-
-      const key = want.courseId;
-      matchCountsByCourse.set(key, (matchCountsByCourse.get(key) ?? 0) + count);
-    }
-
-    const pendingCountsByCourse = new Map<string, number>();
-    for (const request of allSwapRequests) {
-      const swapper1 = await ctx.db.get(request.swapper1);
-      const swapper2 = await ctx.db.get(request.swapper2);
-      if (!swapper1 || !swapper2) continue;
-
-      const involvesMe =
-        swapper1.telegramUserId === me || swapper2.telegramUserId === me;
-      if (!involvesMe) continue;
-      if (swapper1.hasSwapped || swapper2.hasSwapped) continue;
-
-      const key = request.courseId;
-      pendingCountsByCourse.set(key, (pendingCountsByCourse.get(key) ?? 0) + 1);
-    }
-
-    return await Promise.all(
-      requests.map(async (request) => {
+    return Promise.all(
+      allMySwappers.map(async (request) => {
         const course = await ctx.db.get(request.courseId);
         if (!course) {
           throw new ConvexError("Course not found for swapper record");
+        }
+        if (request.hasSwapped) {
+          return {
+            course: {
+              id: request.courseId,
+              code: course.code,
+              name: course.name,
+            },
+            // hasSwapped: request.hasSwapped,
+            type: "swapped" as const,
+            // matchCount: 0,
+            // pendingRequestCount: 0,
+          };
+        }
+
+        const [myWants, allSwappersInCourse, allMySwapRequests] =
+          await Promise.all([
+            ctx.db
+              .query("swapper_wants")
+              .withIndex("by_swapperId", (q) => q.eq("swapperId", request._id))
+              .collect(),
+            ctx.db
+              .query("swapper")
+              .withIndex("by_courseId", (q) =>
+                q.eq("courseId", request.courseId)
+              )
+              .collect(),
+            ctx.db
+              .query("swap_requests")
+              .withIndex("by_courseId", (q) =>
+                q.eq("courseId", request.courseId)
+              )
+              .filter((q) => {
+                // Either swapper1 or swapper2 is me.
+                return q.or(
+                  q.eq(q.field("swapper1"), request._id),
+                  q.eq(q.field("swapper2"), request._id)
+                );
+              })
+              .collect(),
+          ]);
+
+        // Collate swappers.
+        const swapperMap = new Map<
+          string,
+          (typeof allSwappersInCourse)[number]
+        >(allSwappersInCourse.map((s) => [s._id, s]));
+
+        // Deduce which requests are pending.
+        let pendingRequests: typeof allMySwapRequests = [];
+        for (const request of allMySwapRequests) {
+          const swapper1 = swapperMap.get(request.swapper1);
+          const swapper2 = swapperMap.get(request.swapper2);
+          if (!swapper1 || !swapper2) continue;
+
+          if (swapper1.hasSwapped || swapper2.hasSwapped) continue;
+
+          // This request is pending.
+          pendingRequests.push(request);
+        }
+
+        if (pendingRequests.length > 0) {
+          return {
+            course: {
+              id: request.courseId,
+              code: course.code,
+              name: course.name,
+            },
+            type: "pending" as const,
+            pendingRequests,
+          };
+        }
+
+        // Deduce number of matches. A valid match is where:
+        // The other swapper has the index I want and I have the index they want.
+        let matchCount = 0;
+        const myWantsAsSet = new Set(myWants.map((w) => w.wantIndex));
+        for (const otherSwapper of allSwappersInCourse) {
+          if (otherSwapper.hasSwapped) continue;
+          if (otherSwapper.telegramUserId === me) continue;
+          // The other swapper has the index I want and I have the index they want.
+          if (
+            !myWantsAsSet.has(otherSwapper.index) ||
+            otherSwapper.index !== request.index
+          )
+            continue;
+
+          matchCount += 1;
         }
 
         return {
@@ -171,9 +170,8 @@ export const getAllRequests = query({
             code: course.code,
             name: course.name,
           },
-          hasSwapped: request.hasSwapped,
-          matchCount: matchCountsByCourse.get(request.courseId) ?? 0,
-          pendingRequestCount: pendingCountsByCourse.get(request.courseId) ?? 0,
+          type: "matches" as const,
+          matchCount,
         };
       })
     );
@@ -222,36 +220,57 @@ export const getCourseIndexesForEdit = query({
     courseId: v.id("courses"),
   },
   handler: async (ctx, args) => {
-    const rows = await ctx.db
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+
+    const me = BigInt(identity.subject);
+    const courseId = args.courseId;
+
+    const courseIndexes = await ctx.db
       .query("course_index")
       .withIndex("by_courseId", (q) => q.eq("courseId", args.courseId))
       .collect();
 
-    const swappers = await ctx.db
+    // const meSwapper = await ctx.db
+    //   .query("swapper")
+    //   .withIndex("by_telegramUserId_courseId", (q) =>
+    //     q.eq("telegramUserId", me).eq("courseId", courseId)
+    //   )
+    //   .unique();
+    const allSwappers = await ctx.db
       .query("swapper")
-      .withIndex("by_courseId_index", (q) => q.eq("courseId", args.courseId))
+      .withIndex("by_courseId", (q) => q.eq("courseId", courseId))
       .collect();
-
-    const wants = await ctx.db
+    const allWants = await ctx.db
       .query("swapper_wants")
-      .withIndex("by_courseId_wantIndex", (q) =>
-        q.eq("courseId", args.courseId)
+      .filter((q) =>
+        q.or(...allSwappers.map((s) => q.eq(q.field("swapperId"), s._id)))
       )
       .collect();
 
+    // const meSwapper = allSwappers.find((s) => s.telegramUserId === me);
+
+    // const myWants = meSwapper === undefined ? [] : await ctx.db
+    //   .query("swapper_wants")
+    //   // .filter((q) => q.eq(q.field("swapperId"), meSwapper._id))
+    //   .withIndex("by_swapperId", (q) => q.eq("swapperId", meSwapper._id))
+    //   .collect();
+
     const haveCountByIndex = new Map<string, number>();
-    for (const s of swappers) {
+    for (const s of allSwappers) {
       haveCountByIndex.set(s.index, (haveCountByIndex.get(s.index) ?? 0) + 1);
     }
     const wantCountByIndex = new Map<string, number>();
-    for (const w of wants) {
+    for (const w of allWants) {
       wantCountByIndex.set(
         w.wantIndex,
         (wantCountByIndex.get(w.wantIndex) ?? 0) + 1
       );
     }
 
-    return rows.map((r) => ({
+    return courseIndexes.map((r) => ({
       id: r._id,
       index: r.index,
       haveCount: haveCountByIndex.get(r.index) ?? 0,
@@ -276,21 +295,24 @@ export const getRequestForCourse = query({
     const me = BigInt(identity.subject);
     const courseId = args.courseId;
 
-    const mySwappers = await ctx.db
+    const meSwapper = await ctx.db
       .query("swapper")
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
-      .collect();
-    const swapper = mySwappers.find((s) => s.courseId === courseId);
+      .withIndex("by_telegramUserId_courseId", (q) =>
+        q.eq("telegramUserId", me).eq("courseId", courseId)
+      )
+      .unique();
+    if (!meSwapper) {
+      throw new ConvexError("Swapper not found.");
+    }
 
     const myWants = await ctx.db
       .query("swapper_wants")
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .withIndex("by_swapperId", (q) => q.eq("swapperId", meSwapper._id))
       .collect();
-    const wantsForCourse = myWants.filter((w) => w.courseId === courseId);
 
     return {
-      haveIndex: swapper?.index ?? null,
-      wantIndexes: wantsForCourse.map((w) => w.wantIndex),
+      haveIndex: meSwapper.index,
+      wantIndexes: myWants.map((w) => w.wantIndex),
     };
   },
 });
@@ -372,23 +394,6 @@ export const setRequest = mutation({
     };
   },
 });
-
-function escapeMarkdown(text: string): string {
-  return text.replace(/([_*`[\]()~])/g, "\\$1");
-}
-
-function buildFStarsUrl(
-  courseCode: string,
-  index: string,
-  ay: string,
-  semester: string
-) {
-  return `https://fstars.benapps.dev/preview?ay=${encodeURIComponent(
-    ay
-  )}&s=${encodeURIComponent(semester)}&c=${encodeURIComponent(
-    courseCode
-  )}:${encodeURIComponent(index)}`;
-}
 
 export const getCourseRequestAndMatches = query({
   args: {
@@ -504,7 +509,6 @@ export const getCourseRequestAndMatches = query({
 
     for (const req of courseSwapRequests) {
       const initiatorBig = BigInt(req.initiator);
-
       const s1 = await getSwapper(req.swapper1);
       const s2 = await getSwapper(req.swapper2);
       if (!s1 || !s2) continue;
@@ -663,11 +667,7 @@ export const requestSwap = internalMutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
-    const me = BigInt(identity.subject);
-    const meNumber = Number(me);
-    if (!Number.isFinite(meNumber)) {
-      throw new ConvexError("Invalid auth subject");
-    }
+    const meId = BigInt(identity.subject);
 
     const course = await ctx.db.get(args.courseId);
     if (!course) {
@@ -678,28 +678,47 @@ export const requestSwap = internalMutation({
     if (!otherSwapper || otherSwapper.courseId !== args.courseId) {
       throw new ConvexError("Swap request not found.");
     }
-    if (otherSwapper.telegramUserId === me) {
+    if (otherSwapper.telegramUserId === meId) {
       throw new ConvexError("Cannot request a swap with yourself.");
     }
     if (otherSwapper.hasSwapped) {
       throw new ConvexError("The swapper is no longer looking to swap.");
     }
 
-    const mySwapper = await ctx.db
+    const otherUser = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) =>
+        q.eq("userId", otherSwapper.telegramUserId)
+      )
+      .unique();
+    if (!otherUser) {
+      throw new ConvexError("User not found.");
+    }
+
+    const meUser = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", meId))
+      .unique();
+    if (!meUser) {
+      throw new ConvexError("User not found.");
+    }
+
+    const meSwapper = await ctx.db
       .query("swapper")
-      .filter((q) => q.eq(q.field("courseId"), args.courseId))
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
-      .first();
-    if (!mySwapper) {
+      .withIndex("by_telegramUserId_courseId", (q) =>
+        q.eq("telegramUserId", meId).eq("courseId", args.courseId)
+      )
+      .unique();
+    if (!meSwapper) {
       throw new ConvexError(
         "You have not set your index, please set one under your Telegram settings."
       );
     }
 
     const swapper1 =
-      me > otherSwapper.telegramUserId ? mySwapper._id : otherSwapper._id;
+      meId > otherSwapper.telegramUserId ? meSwapper._id : otherSwapper._id;
     const swapper2 =
-      me > otherSwapper.telegramUserId ? otherSwapper._id : mySwapper._id;
+      meId > otherSwapper.telegramUserId ? otherSwapper._id : meSwapper._id;
 
     const existing = await ctx.db
       .query("swap_requests")
@@ -721,14 +740,24 @@ export const requestSwap = internalMutation({
       courseId: args.courseId,
       swapper1,
       swapper2,
-      initiator: meNumber,
+      initiator: meSwapper._id,
       requestedAt: Date.now(),
     });
 
     return {
       course,
-      mySwapper,
-      otherSwapper,
+      me: {
+        id: meSwapper._id,
+        telegramUserId: meId,
+        handle: meUser.handle,
+        index: meSwapper.index,
+      },
+      other: {
+        id: otherSwapper._id,
+        telegramUserId: otherSwapper.telegramUserId,
+        handle: otherUser.handle,
+        index: otherSwapper.index,
+      },
     };
   },
 });

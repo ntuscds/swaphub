@@ -11,6 +11,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.1.0
         version: 1.1.0(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@convex-dev/aggregate':
+        specifier: ^0.2.1
+        version: 0.2.1(convex@1.33.1(react@19.2.0))
       '@getbrevo/brevo':
         specifier: ^3.0.1
         version: 3.0.1
@@ -394,6 +397,11 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@convex-dev/aggregate@0.2.1':
+    resolution: {integrity: sha512-z8GeUC+cIZEgtMXecX6WTBQHNW4E2ioRsc5IkO8BWnCjgDOru/Mw8zXe9JPe35JkqDjlSVKuwxiQHKs/jaYAyA==}
+    peerDependencies:
+      convex: ^1.24.8
 
   '@cypress/request-promise@5.0.0':
     resolution: {integrity: sha512-eKdYVpa9cBEw2kTBlHeu1PP16Blwtum6QHg/u9s/MoHkZfuo1pRGka1VlUHXF5kdew82BvOJVVGk0x8X0nbp+w==}
@@ -5679,6 +5687,10 @@ snapshots:
       use-sync-external-store: 1.6.0(react@19.2.0)
     optionalDependencies:
       '@types/react': 19.2.7
+
+  '@convex-dev/aggregate@0.2.1(convex@1.33.1(react@19.2.0))':
+    dependencies:
+      convex: 1.33.1(react@19.2.0)
 
   '@cypress/request-promise@5.0.0(@cypress/request@3.0.10)(request@2.88.2)':
     dependencies:
