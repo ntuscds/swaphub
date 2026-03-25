@@ -9,10 +9,7 @@ import { env } from "@/lib/env";
 import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
-import {
-  serializeAccept,
-  serializeAlreadySwapped,
-} from "@/telegram/callbacks";
+import { serializeAccept, serializeAlreadySwapped } from "@/telegram/callbacks";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
@@ -151,7 +148,7 @@ export const processTelegramWebhookCallback = internalAction({
             .sendMessage(
               mutationResult.thisTelegramUserId,
               `*Successfully sent swap request*\nPlease message @${escapeMarkdown(
-                args.fromUsername
+                mutationResult.otherUsername
               )} to proceed with the swap. We have reminded them to open their DMs.\n \nThis request is now marked as "Swapped". If this falls through, you may re-enable this request *My Swaps > ${escapeMarkdown(courseLabel)} > Uncheck "Have Swapped"*.`,
               { parse_mode: "Markdown" }
             )

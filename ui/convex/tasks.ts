@@ -291,7 +291,11 @@ export const getRequestForCourse = query({
       )
       .unique();
     if (!meSwapper) {
-      throw new ConvexError("Swapper not found.");
+      return {
+        haveIndex: undefined,
+        wantIndexes: [],
+      };
+      // throw new ConvexError("Swapper not found.");
     }
 
     const myWants = await ctx.db
@@ -444,13 +448,6 @@ export const getCourseRequestAndMatches = query({
       )
       .collect();
 
-    console.log("allMyRequests", allMyRequests);
-    console.log("allSwappers", allSwappers);
-    console.log("allSwapperWants", allSwapperWants);
-    console.log("wantIndexesSet", wantIndexesSet);
-    console.log("haveIndex", haveIndex);
-    console.log("mySwapper", mySwapper);
-
     const matches: ({
       otherSwapperId: Id<"swapper">;
       isPerfectMatch: boolean;
@@ -483,13 +480,11 @@ export const getCourseRequestAndMatches = query({
       const isPotentialMatch = wantIndexesSet.has(otherSwapper.index);
       // If not a potential match, continue.
       if (!isPotentialMatch) {
-        console.log("A");
         continue;
       }
 
       // Check if this is a perfect match. A perfect match is one where the other swapper's index is in my want indexes and my index is in their want indexes.
       let isPerfectMatchWithOther = false;
-      console.log("B");
       if (isPotentialMatch) {
         const otherWants = allSwapperWants.filter(
           (w) => w.swapperId === otherSwapper._id
@@ -507,15 +502,12 @@ export const getCourseRequestAndMatches = query({
       );
       // We show IF there was previously a request for this match, but not if the match is available.
       if (!isAvailable && myMatchRequestWithOther === undefined) {
-        console.log("C");
         continue;
       }
-      console.log("D");
 
       // Finally, we deducce the status of the match.
       const isSelfInitiated =
         myMatchRequestWithOther?.initiator === mySwapper._id;
-      console.log("E");
       if (isAvailable) {
         if (myMatchRequestWithOther) {
           matches.push({
@@ -868,6 +860,14 @@ export const handleSwapRequestWebhookCallback = internalMutation({
       ? swapper2.telegramUserId
       : swapper1.telegramUserId;
 
+    const otherUser = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", otherTelegramUserId))
+      .unique();
+    if (!otherUser) {
+      throw new ConvexError("User not found.");
+    }
+
     const canonicalSwapper1 =
       swapper1.telegramUserId > swapper2.telegramUserId
         ? swapper1._id
@@ -923,6 +923,7 @@ export const handleSwapRequestWebhookCallback = internalMutation({
       courseName: course.name,
       thisTelegramUserId: Number(thisSwapper.telegramUserId),
       otherTelegramUserId: Number(otherSwapper.telegramUserId),
+      otherUsername: otherUser.handle,
     };
   },
 });
