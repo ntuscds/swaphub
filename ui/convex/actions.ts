@@ -9,7 +9,6 @@ import { env } from "@/lib/env";
 import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
-import { serializeAccept, serializeAlreadySwapped } from "@/telegram/callbacks";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
@@ -58,28 +57,35 @@ export const sendSwapRequest = action({
       course.semester
     );
 
-    await bot.sendMessage(
-      Number(other.telegramUserId),
-      `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
+    await bot
+      .sendMessage(
+        Number(other.telegramUserId),
+        `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
 @${escapeMarkdown(username)} wants to swap with you!
 They have: [${escapeMarkdown(me.index)}](${myIndexUrl})
 You have: [${escapeMarkdown(other.index)}](${otherIndexUrl}).`,
-      {
-        parse_mode: "Markdown",
-        disable_web_page_preview: true,
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "Accept", callback_data: webhook.accept },
-              {
-                text: "Already Swapped",
-                callback_data: webhook.already_swapped,
-              },
+        {
+          parse_mode: "Markdown",
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "Accept", callback_data: webhook.accept },
+                {
+                  text: "Already Swapped",
+                  callback_data: webhook.already_swapped,
+                },
+              ],
             ],
-          ],
-        },
-      }
-    );
+          },
+        }
+      )
+      .catch((error) => {
+        console.error(
+          `Error sending message to ${other.telegramUserId}:`,
+          error
+        );
+      });
   },
 });
 
@@ -143,7 +149,12 @@ export const processTelegramWebhookCallback = internalAction({
               )} has accepted your swap request, they may get in touch with you, please make sure your DMs are open.\n \nThis request is now marked as "Swapped". If this falls through, you may re-enable this request *My Swaps > ${escapeMarkdown(courseLabel)} > Uncheck "Have Swapped"*.`,
               { parse_mode: "Markdown" }
             )
-            .catch(() => {});
+            .catch((error) => {
+              console.error(
+                `Error sending message to ${mutationResult.otherTelegramUserId}:`,
+                error
+              );
+            });
           await bot
             .sendMessage(
               mutationResult.thisTelegramUserId,
@@ -152,7 +163,12 @@ export const processTelegramWebhookCallback = internalAction({
               )} to proceed with the swap. We have reminded them to open their DMs.\n \nThis request is now marked as "Swapped". If this falls through, you may re-enable this request *My Swaps > ${escapeMarkdown(courseLabel)} > Uncheck "Have Swapped"*.`,
               { parse_mode: "Markdown" }
             )
-            .catch(() => {});
+            .catch((error) => {
+              console.error(
+                `Error sending message to ${mutationResult.otherTelegramUserId}:`,
+                error
+              );
+            });
         } else {
           await bot
             .sendMessage(
@@ -160,7 +176,12 @@ export const processTelegramWebhookCallback = internalAction({
               `*Marked ${escapeMarkdown(courseLabel)} as already swapped*.\nIf you still want to swap for this course, you may re-enable this request *My Swaps > ${escapeMarkdown(courseLabel)} > Uncheck "Have Swapped"*.`,
               { parse_mode: "Markdown" }
             )
-            .catch(() => {});
+            .catch((error) => {
+              console.error(
+                `Error sending message to ${mutationResult.thisTelegramUserId}:`,
+                error
+              );
+            });
         }
 
         await bot.answerCallbackQuery(args.callbackId).catch(() => {});
