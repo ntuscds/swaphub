@@ -48,9 +48,7 @@ export function SwapItemMatchBottomSheetHint({
   courseId: Id<"courses">;
   match: SwapCourseRequestMatch;
 }) {
-  const handleSwapRequestCallbackMut = useAction(
-    api.actions.telegramSwap.sendSwapRequest
-  );
+  const handleSwapRequestCallbackMut = useAction(api.actions.sendSwapRequest);
   const { handle, error, isPending } = useConvexMutationState(
     handleSwapRequestCallbackMut,
     {

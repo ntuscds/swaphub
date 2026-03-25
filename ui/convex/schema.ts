@@ -137,4 +137,8 @@ export default defineSchema({
     .index("by_course_swapper_pair", ["courseId", "swapper1", "swapper2"])
     .index("by_courseId", ["courseId"])
     .index("by_initiator", ["initiator"]),
+
+  telegram_callback_data: defineTable({
+    callbackData: v.string(),
+  }),
 });

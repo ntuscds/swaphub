@@ -1,31 +1,27 @@
+import { Id } from "../../convex/_generated/dataModel";
+
 export const COMMAND_PREFIX = {
   ACCEPT: "a",
   ALREADY_SWAPPED: "s",
 };
 
 export function serializeAccept(
-  courseId: number,
-  swapper1: number,
-  swapper2: number
+  courseId: Id<"courses">,
+  swapper1: Id<"swapper">,
+  swapper2: Id<"swapper">
 ) {
   const id = Math.floor(Math.random() * 1000000).toString(16);
-  const courseIdHex = courseId.toString(16);
-  const swapper1Hex = swapper1.toString(16);
-  const swapper2Hex = swapper2.toString(16);
-  const data = `${COMMAND_PREFIX.ACCEPT}:${id}:${courseIdHex}:${swapper1Hex}:${swapper2Hex}`;
+  const data = `${COMMAND_PREFIX.ACCEPT}:${id}:${courseId}:${swapper1}:${swapper2}`;
   return data;
 }
 
 export function serializeAlreadySwapped(
-  courseId: number,
-  swapper1: number,
-  swapper2: number
+  courseId: Id<"courses">,
+  swapper1: Id<"swapper">,
+  swapper2: Id<"swapper">
 ) {
   const id = Math.floor(Math.random() * 1000000).toString(16);
-  const courseIdHex = courseId.toString(16);
-  const swapper1Hex = swapper1.toString(16);
-  const swapper2Hex = swapper2.toString(16);
-  const data = `${COMMAND_PREFIX.ALREADY_SWAPPED}:${id}:${courseIdHex}:${swapper1Hex}:${swapper2Hex}`;
+  const data = `${COMMAND_PREFIX.ALREADY_SWAPPED}:${id}:${courseId}:${swapper1}:${swapper2}`;
   return data;
 }
 
@@ -41,11 +37,12 @@ export function deserializeAccept(data: string) {
   if (parts.length !== 5) return null;
   const [actionChar, id, courseIdStr, swapper1Str, swapper2Str] = parts;
   if (actionChar !== "a") return null;
-  const courseId = parseInt(courseIdStr, 16);
-  const swapper1 = parseInt(swapper1Str, 16);
-  const swapper2 = parseInt(swapper2Str, 16);
-  if (isNaN(courseId) || isNaN(swapper1) || isNaN(swapper2)) return null;
-  return { id, courseId, swapper1, swapper2 };
+  return {
+    id,
+    courseId: courseIdStr as Id<"courses">,
+    swapper1: swapper1Str as Id<"swapper">,
+    swapper2: swapper2Str as Id<"swapper">,
+  };
 }
 
 export function deserializeAlreadySwapped(data: string) {
@@ -53,9 +50,10 @@ export function deserializeAlreadySwapped(data: string) {
   if (parts.length !== 5) return null;
   const [actionChar, id, courseIdStr, swapper1Str, swapper2Str] = parts;
   if (actionChar !== "s") return null;
-  const courseId = parseInt(courseIdStr, 16);
-  const swapper1 = parseInt(swapper1Str, 16);
-  const swapper2 = parseInt(swapper2Str, 16);
-  if (isNaN(courseId) || isNaN(swapper1) || isNaN(swapper2)) return null;
-  return { id, courseId, swapper1, swapper2 };
+  return {
+    id,
+    courseId: courseIdStr as Id<"courses">,
+    swapper1: swapper1Str as Id<"swapper">,
+    swapper2: swapper2Str as Id<"swapper">,
+  };
 }

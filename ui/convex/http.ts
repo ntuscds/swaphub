@@ -2,10 +2,12 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { z } from "zod";
+import { Lock } from "@upstash/lock";
+import { redis } from "@/db/upstash";
 
 const http = httpRouter();
 
-const telegramUpdateSchema = z.object({
+const TelegramUpdateSchema = z.object({
   update_id: z.number(),
   callback_query: z
     .object({
@@ -46,7 +48,7 @@ const telegramWebhook = httpAction(async (ctx, request) => {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const parsed = telegramUpdateSchema.safeParse(body);
+  const parsed = TelegramUpdateSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json({ error: "Invalid payload" }, { status: 400 });
   }
@@ -60,7 +62,7 @@ const telegramWebhook = httpAction(async (ctx, request) => {
     internal.actions.processTelegramWebhookCallback,
     {
       callbackId: callback.id,
-      callbackData: callback.data,
+      payloadId: callback.data as any,
       fromId: callback.from.id,
       fromUsername: callback.from.username ?? "???",
       messageChatId: callback.message?.chat?.id,
@@ -68,7 +70,7 @@ const telegramWebhook = httpAction(async (ctx, request) => {
     }
   );
 
-  if (!result.ok && result.error) {
+  if ("error" in result && result.error) {
     return Response.json({ ok: false, error: result.error }, { status: 400 });
   }
 

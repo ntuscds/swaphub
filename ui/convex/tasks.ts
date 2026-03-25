@@ -3,6 +3,14 @@ import { schools } from "@/lib/types";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import {
+  COMMAND_PREFIX,
+  deserializeAccept,
+  deserializeAlreadySwapped,
+  getAction,
+  serializeAccept,
+  serializeAlreadySwapped,
+} from "@/telegram/callbacks";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -712,8 +720,32 @@ export const requestSwap = internalMutation({
       requestedAt: Date.now(),
     });
 
+    const acceptPayloadId = await ctx.db.insert("telegram_callback_data", {
+      callbackData: serializeAccept(
+        course._id,
+        meSwapper._id,
+        otherSwapper._id
+      ),
+    });
+    const alreadySwappedPayloadId = await ctx.db.insert(
+      "telegram_callback_data",
+      {
+        callbackData: serializeAlreadySwapped(
+          course._id,
+          meSwapper._id,
+          otherSwapper._id
+        ),
+      }
+    );
+
     return {
-      course,
+      course: {
+        id: course._id,
+        code: course.code,
+        name: course.name,
+        ay: course.ay,
+        semester: course.semester,
+      },
       me: {
         id: meSwapper._id,
         telegramUserId: meId,
@@ -725,6 +757,10 @@ export const requestSwap = internalMutation({
         telegramUserId: otherSwapper.telegramUserId,
         handle: otherUser.handle,
         index: otherSwapper.index,
+      },
+      webhook: {
+        accept: acceptPayloadId,
+        already_swapped: alreadySwappedPayloadId,
       },
     };
   },
@@ -779,106 +815,114 @@ export const handleSwapRequestCallback = internalMutation({
 
 export const handleSwapRequestWebhookCallback = internalMutation({
   args: {
-    action: v.union(v.literal("accept"), v.literal("already_swapped")),
+    payloadId: v.id("telegram_callback_data"),
     fromTelegramUserId: v.int64(),
-    swapper1TelegramUserId: v.int64(),
-    swapper2TelegramUserId: v.int64(),
   },
   handler: async (ctx, args) => {
+    const payload = await ctx.db.get(args.payloadId);
+    if (!payload) {
+      throw new ConvexError("Callback payload not found.");
+    }
+    const actionInfo = getAction(payload.callbackData);
+    if (!actionInfo) {
+      throw new ConvexError("Invalid callback data.");
+    }
+    if (
+      actionInfo.action !== COMMAND_PREFIX.ACCEPT &&
+      actionInfo.action !== COMMAND_PREFIX.ALREADY_SWAPPED
+    ) {
+      throw new ConvexError("Invalid callback action.");
+    }
+    const parsed =
+      actionInfo.action === COMMAND_PREFIX.ACCEPT
+        ? deserializeAccept(payload.callbackData)
+        : deserializeAlreadySwapped(payload.callbackData);
+    if (!parsed) {
+      throw new ConvexError("Invalid callback payload.");
+    }
+    const parsedCourseId = parsed.courseId as Id<"courses">;
+    const parsedSwapper1Id = parsed.swapper1 as Id<"swapper">;
+    const parsedSwapper2Id = parsed.swapper2 as Id<"swapper">;
+
+    const swapper1 = await ctx.db.get(parsedSwapper1Id);
+    const swapper2 = await ctx.db.get(parsedSwapper2Id);
+    if (!swapper1 || !swapper2) {
+      throw new ConvexError("Swapper not found.");
+    }
+    if (
+      swapper1.courseId !== parsedCourseId ||
+      swapper2.courseId !== parsedCourseId
+    ) {
+      throw new ConvexError("Invalid callback payload.");
+    }
+
     const fromTelegramUserId = args.fromTelegramUserId;
-    const isFromSwapper1 = fromTelegramUserId === args.swapper1TelegramUserId;
-    const isFromSwapper2 = fromTelegramUserId === args.swapper2TelegramUserId;
+    const isFromSwapper1 = fromTelegramUserId === swapper1.telegramUserId;
+    const isFromSwapper2 = fromTelegramUserId === swapper2.telegramUserId;
     if (!isFromSwapper1 && !isFromSwapper2) {
       throw new ConvexError("Not a participant in this swap request");
     }
 
     const thisTelegramUserId = fromTelegramUserId;
     const otherTelegramUserId = isFromSwapper1
-      ? args.swapper2TelegramUserId
-      : args.swapper1TelegramUserId;
+      ? swapper2.telegramUserId
+      : swapper1.telegramUserId;
 
-    const thisSwappers = await ctx.db
-      .query("swapper")
-      .withIndex("by_telegramUserId", (q) =>
-        q.eq("telegramUserId", thisTelegramUserId)
+    const canonicalSwapper1 =
+      swapper1.telegramUserId > swapper2.telegramUserId
+        ? swapper1._id
+        : swapper2._id;
+    const canonicalSwapper2 =
+      swapper1.telegramUserId > swapper2.telegramUserId
+        ? swapper2._id
+        : swapper1._id;
+    const request = await ctx.db
+      .query("swap_requests")
+      .withIndex("by_course_swapper_pair", (q) =>
+        q
+          .eq("courseId", parsedCourseId)
+          .eq("swapper1", canonicalSwapper1)
+          .eq("swapper2", canonicalSwapper2)
       )
-      .collect();
-    const otherSwappers = await ctx.db
-      .query("swapper")
-      .withIndex("by_telegramUserId", (q) =>
-        q.eq("telegramUserId", otherTelegramUserId)
-      )
-      .collect();
-
-    let selected:
-      | {
-          thisSwapper: (typeof thisSwappers)[number];
-          otherSwapper: (typeof otherSwappers)[number];
-          courseId: Id<"courses">;
-        }
-      | null = null;
-    for (const thisSwapper of thisSwappers) {
-      const otherSwapper = otherSwappers.find(
-        (s) => s.courseId === thisSwapper.courseId
-      );
-      if (!otherSwapper) continue;
-
-      const swapper1 =
-        thisSwapper.telegramUserId > otherSwapper.telegramUserId
-          ? thisSwapper._id
-          : otherSwapper._id;
-      const swapper2 =
-        thisSwapper.telegramUserId > otherSwapper.telegramUserId
-          ? otherSwapper._id
-          : thisSwapper._id;
-      const request = await ctx.db
-        .query("swap_requests")
-        .withIndex("by_course_swapper_pair", (q) =>
-          q
-            .eq("courseId", thisSwapper.courseId)
-            .eq("swapper1", swapper1)
-            .eq("swapper2", swapper2)
-        )
-        .unique();
-      if (!request) continue;
-
-      selected = {
-        thisSwapper,
-        otherSwapper,
-        courseId: thisSwapper.courseId,
-      };
-      break;
-    }
-
-    if (!selected) {
+      .unique();
+    if (!request) {
       throw new ConvexError("Swap request not found.");
     }
 
-    const course = await ctx.db.get(selected.courseId);
+    const thisSwapper = isFromSwapper1 ? swapper1 : swapper2;
+    const otherSwapper = isFromSwapper1 ? swapper2 : swapper1;
+
+    const course = await ctx.db.get(parsedCourseId);
     if (!course) {
       throw new ConvexError("Course not found");
     }
 
-    if (args.action === "accept") {
+    const action =
+      actionInfo.action === COMMAND_PREFIX.ACCEPT
+        ? "accept"
+        : "already_swapped";
+
+    if (action === "accept") {
       await Promise.all([
-        ctx.db.patch(selected.thisSwapper._id, {
+        ctx.db.patch(thisSwapper._id, {
           hasSwapped: true,
-          previouslyMatchedWith: selected.otherSwapper._id,
+          previouslyMatchedWith: otherSwapper._id,
         }),
-        ctx.db.patch(selected.otherSwapper._id, {
+        ctx.db.patch(otherSwapper._id, {
           hasSwapped: true,
-          previouslyMatchedWith: selected.thisSwapper._id,
+          previouslyMatchedWith: thisSwapper._id,
         }),
       ]);
     } else {
-      await ctx.db.patch(selected.thisSwapper._id, { hasSwapped: true });
+      await ctx.db.patch(thisSwapper._id, { hasSwapped: true });
     }
 
     return {
+      action,
       courseCode: course.code,
       courseName: course.name,
-      thisTelegramUserId: Number(selected.thisSwapper.telegramUserId),
-      otherTelegramUserId: Number(selected.otherSwapper.telegramUserId),
+      thisTelegramUserId: Number(thisSwapper.telegramUserId),
+      otherTelegramUserId: Number(otherSwapper.telegramUserId),
     };
   },
 });

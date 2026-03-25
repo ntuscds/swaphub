@@ -10,10 +10,8 @@ import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
 import {
-  COMMAND_PREFIX,
-  deserializeAccept,
-  deserializeAlreadySwapped,
-  getAction,
+  serializeAccept,
+  serializeAlreadySwapped,
 } from "@/telegram/callbacks";
 
 function escapeMarkdown(text: string): string {
@@ -47,7 +45,7 @@ export const sendSwapRequest = action({
       otherSwapperId: args.otherSwapperId,
     });
 
-    const { course, me, other } = result;
+    const { course, me, other, webhook } = result;
     const username = me.handle;
 
     const myIndexUrl = buildFStarsUrl(
@@ -72,6 +70,17 @@ You have: [${escapeMarkdown(other.index)}](${otherIndexUrl}).`,
       {
         parse_mode: "Markdown",
         disable_web_page_preview: true,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "Accept", callback_data: webhook.accept },
+              {
+                text: "Already Swapped",
+                callback_data: webhook.already_swapped,
+              },
+            ],
+          ],
+        },
       }
     );
   },
@@ -98,63 +107,37 @@ export const verifyTelegramWebhookSecret = internalAction({
 export const processTelegramWebhookCallback = internalAction({
   args: {
     callbackId: v.string(),
-    callbackData: v.string(),
+    payloadId: v.id("telegram_callback_data"),
     fromId: v.number(),
     fromUsername: v.string(),
     messageChatId: v.optional(v.number()),
     messageId: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const action = getAction(args.callbackData);
-    if (!action) return { ok: true as const };
-
     const lock = new Lock({
-      id: `findex:tg_wh:${action.id}`,
+      id: `findex:tg_wh:${args.payloadId}`,
       lease: 5000,
       redis,
     });
 
     if (await lock.acquire()) {
       try {
-        const lockKey = `telegram:webhook:${action.id}`;
+        const lockKey = `telegram:webhook:${args.payloadId}`;
         const lockValue = await redis.get(lockKey);
         if (lockValue) {
           return { ok: true as const };
         }
 
-        if (
-          action.action !== COMMAND_PREFIX.ACCEPT &&
-          action.action !== COMMAND_PREFIX.ALREADY_SWAPPED
-        ) {
-          return { ok: false as const, error: "Invalid callback data" };
-        }
-
-        const parsed =
-          action.action === COMMAND_PREFIX.ACCEPT
-            ? deserializeAccept(args.callbackData)
-            : deserializeAlreadySwapped(args.callbackData);
-        if (!parsed) {
-          return {
-            ok: false as const,
-            error: `Invalid callback data: ${args.callbackData}`,
-          };
-        }
-
         const mutationResult = await ctx.runMutation(
           internal.tasks.handleSwapRequestWebhookCallback,
           {
-            action:
-              action.action === COMMAND_PREFIX.ACCEPT
-                ? "accept"
-                : "already_swapped",
+            payloadId: args.payloadId,
             fromTelegramUserId: BigInt(args.fromId),
-            swapper1TelegramUserId: BigInt(parsed.swapper1),
-            swapper2TelegramUserId: BigInt(parsed.swapper2),
           }
         );
 
         const courseLabel = `${mutationResult.courseCode} ${mutationResult.courseName}`;
-        if (action.action === COMMAND_PREFIX.ACCEPT) {
+        if (mutationResult.action === "accept") {
           await bot
             .sendMessage(
               mutationResult.otherTelegramUserId,
