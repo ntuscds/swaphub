@@ -975,3 +975,14 @@ export const onboard = mutation({
     };
   },
 });
+
+export const testRequest = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, error: "Unauthorized" };
+    }
+    return { success: true, identity };
+  },
+});
