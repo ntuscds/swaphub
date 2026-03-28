@@ -1,5 +1,10 @@
 import { env } from "@/lib/env";
 import { cookies } from "next/headers";
+import {
+  sign as jwtSign,
+  verify as jwtVerify,
+  type JwtPayload,
+} from "jsonwebtoken";
 
 export const MICROSOFT_AUTH_BASE_PATH = "/api/auth/microsoft";
 export const MICROSOFT_SCOPE = "openid profile email offline_access";
@@ -8,10 +13,11 @@ export const AUTH_VERIFIER_COOKIE = "microsoft_auth_verifier";
 export const AUTH_CALLBACK_COOKIE = "microsoft_auth_callback";
 export const AUTH_SESSION_COOKIE = "microsoft_auth_session";
 export const AUTH_REFRESH_COOKIE = "microsoft_auth_refresh";
-const TEN_MINUTES_IN_SECONDS = 60 * 10;
-const THIRTY_DAYS_IN_SECONDS = 60 * 60 * 24 * 30;
-const SESSION_MAX_AGE_IN_SECONDS = THIRTY_DAYS_IN_SECONDS;
-const ACCESS_TOKEN_MAX_AGE_IN_SECONDS = 60;
+// const TEN_MINUTES_IN_SECONDS = 60 * 10;
+// const THIRTY_DAYS_IN_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_MAX_AGE_IN_SECONDS = 10 * 60;
+const REFRESH_TOKEN_MAX_AGE_IN_SECONDS = 30 * 24 * 60 * 60;
+const ACCESS_TOKEN_MAX_AGE_IN_SECONDS = SESSION_MAX_AGE_IN_SECONDS;
 
 type MicrosoftUserInfo = {
   sub?: string;
@@ -115,7 +121,7 @@ export async function refreshMicrosoftAccessToken(refreshToken: string) {
       body: new URLSearchParams({
         client_id: env.AZURE_AD_CLIENT_ID,
         client_secret: env.AZURE_AD_CLIENT_SECRET,
-        // grant_type: "refresh_token",
+        grant_type: "refresh_token",
         refresh_token: refreshToken,
       }).toString(),
     }
@@ -185,21 +191,21 @@ export function setAuthFlowCookies(
     AUTH_STATE_COOKIE,
     input.state,
     request,
-    TEN_MINUTES_IN_SECONDS
+    SESSION_MAX_AGE_IN_SECONDS
   );
   appendCookie(
     headers,
     AUTH_VERIFIER_COOKIE,
     input.verifier,
     request,
-    TEN_MINUTES_IN_SECONDS
+    SESSION_MAX_AGE_IN_SECONDS
   );
   appendCookie(
     headers,
     AUTH_CALLBACK_COOKIE,
     input.callbackUrl,
     request,
-    TEN_MINUTES_IN_SECONDS
+    SESSION_MAX_AGE_IN_SECONDS
   );
 }
 
@@ -235,7 +241,7 @@ export async function setRefreshTokenCookie(
     AUTH_REFRESH_COOKIE,
     encrypted,
     request,
-    THIRTY_DAYS_IN_SECONDS
+    REFRESH_TOKEN_MAX_AGE_IN_SECONDS
   );
 }
 
@@ -258,21 +264,15 @@ export async function readSessionWithRefresh(
   request: Request
 ) {
   const authCookies = getAuthCookies(request);
-  if (!authCookies.session) {
-    return null;
-  }
 
-  const currentSession = await verifySession(authCookies.session, {
+  let currentSession = await verifySession(authCookies.session, {
     allowExpired: true,
   });
   if (currentSession && currentSession.expiresAt > Date.now()) {
     return currentSession;
   }
-  if (!currentSession) {
-    clearSessionCookie(headers, request);
-    return null;
-  }
 
+  // No refresh, cant do anything.
   if (!authCookies.refresh) {
     clearSessionCookie(headers, request);
     return null;
@@ -281,16 +281,21 @@ export async function readSessionWithRefresh(
   try {
     const refreshToken = await decryptValue(authCookies.refresh);
     const refreshed = await refreshMicrosoftAccessToken(refreshToken);
+    if (!currentSession) {
+      const profile = await fetchMicrosoftUser(refreshed.access_token);
+      currentSession = await buildSession(profile, refreshed.expires_in);
+    }
     const session = await buildSession(currentSession, refreshed.expires_in);
 
     await setSessionCookie(headers, request, session);
-    // await setRefreshTokenCookie(
-    //   headers,
-    //   request,
-    //   refreshed.refresh_token ?? refreshToken
-    // );
+    await setRefreshTokenCookie(
+      headers,
+      request,
+      refreshed.refresh_token ?? refreshToken
+    );
     return session;
-  } catch {
+  } catch (error) {
+    console.error(error);
     clearSessionCookie(headers, request);
     clearRefreshTokenCookie(headers, request);
     return null;
@@ -328,53 +333,52 @@ export async function createPkceChallenge(verifier: string) {
 }
 
 async function signSession(session: MicrosoftSession) {
-  const payload = base64UrlEncode(
-    new TextEncoder().encode(JSON.stringify(session))
-  );
-  const signature = await signValue(payload);
-  return `${payload}.${signature}`;
+  return jwtSign(session, env.ENCRYPTION_KEY, {
+    algorithm: "HS256",
+    expiresIn: ACCESS_TOKEN_MAX_AGE_IN_SECONDS,
+  });
+}
+
+function toMicrosoftSession(
+  payload: JwtPayload | string
+): MicrosoftSession | null {
+  if (!payload || typeof payload === "string") return null;
+  const sub = typeof payload.sub === "string" ? payload.sub : null;
+  const email = typeof payload.email === "string" ? payload.email : null;
+  const name = typeof payload.name === "string" ? payload.name : null;
+  const picture = typeof payload.picture === "string" ? payload.picture : null;
+  const expiresAt =
+    typeof payload.expiresAt === "number" ? payload.expiresAt : null;
+  if (!sub || expiresAt === null) return null;
+  return {
+    sub,
+    email,
+    name,
+    picture,
+    expiresAt,
+  };
 }
 
 export async function verifySession(
   raw: string,
   options?: { allowExpired?: boolean }
 ) {
-  const [payload, signature] = raw.split(".");
-  if (!payload || !signature) return null;
-
-  const expected = await signValue(payload);
-  if (expected !== signature) return null;
-
   try {
-    const parsed = JSON.parse(
-      base64UrlDecodeToString(payload)
-    ) as MicrosoftSession;
-    if (!options?.allowExpired && parsed.expiresAt <= Date.now()) {
+    const payload = jwtVerify(raw, env.ENCRYPTION_KEY, {
+      algorithms: ["HS256"],
+      ignoreExpiration: Boolean(options?.allowExpired),
+    });
+    const session = toMicrosoftSession(payload);
+    if (!session) {
       return null;
     }
-    return parsed;
+    if (!options?.allowExpired && session.expiresAt <= Date.now()) {
+      return null;
+    }
+    return session;
   } catch {
     return null;
   }
-}
-
-async function signValue(value: string) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(env.ENCRYPTION_KEY),
-    {
-      name: "HMAC",
-      hash: "SHA-256",
-    },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(value)
-  );
-  return base64UrlEncode(new Uint8Array(signature));
 }
 
 function parseCookies(cookieHeader: string | null) {
@@ -428,10 +432,6 @@ function base64UrlEncode(input: Uint8Array) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
-}
-
-function base64UrlDecodeToString(input: string) {
-  return Buffer.from(base64UrlDecodeToBytes(input)).toString("utf8");
 }
 
 function base64UrlDecodeToBytes(input: string) {

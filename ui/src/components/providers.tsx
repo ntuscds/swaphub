@@ -16,7 +16,6 @@ import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { useStableQuery } from "./use-stable-query";
 import { api } from "../../convex/_generated/api";
 
-const queryClient = new QueryClient();
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 const SelfContext = createContext<{
@@ -31,13 +30,6 @@ export function useSelf() {
   return useContext(SelfContext);
 }
 
-// export function SelfProvider({ children }: { children: React.ReactNode }) {
-//   const self = useStableQuery(api.tasks.getSelf);
-//   return (
-//     <SelfContext.Provider value={{ self }}>{children}</SelfContext.Provider>
-//   );
-// }
-
 function useAuthFromProviderMicrosoft() {
   const refreshTokenQuery = useQuery({
     queryKey: ["refreshToken"],
@@ -50,7 +42,7 @@ function useAuthFromProviderMicrosoft() {
       const data = (await res.json()) as { token?: string };
       return data.token ?? null;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes. Buffer 5mins to avoid race conditions.
     refetchOnWindowFocus: false,
   });
 
@@ -58,29 +50,9 @@ function useAuthFromProviderMicrosoft() {
     async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
       const result = await refreshTokenQuery.refetch({});
       return result.data ?? null;
-      // if (typeof window === "undefined") {
-      //   return null;
-      // }
-
-      // try {
-      //   const res = await fetch("/api/convex/token", {
-      //     method: "GET",
-      //     cache: forceRefreshToken ? "no-store" : "default",
-      //   });
-      //   if (!res.ok) return null;
-      //   const data = (await res.json()) as { token?: string };
-      //   return data.token ?? null;
-      // } catch {
-      //   return null;
-      // }
     },
     []
   );
-
-  // useEffect(() => {
-  //   console.log("refetchAccessToken");
-  //   // void refetchAccessToken({ forceRefreshToken: false });
-  // }, [refetchAccessToken]);
 
   return {
     isLoading: refreshTokenQuery.isLoading,
@@ -95,7 +67,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
+            staleTime: 10 * 60 * 1000, // 1 minute
             refetchOnWindowFocus: false,
           },
         },
