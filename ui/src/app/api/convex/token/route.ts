@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isValid, parse } from "@tma.js/init-data-node";
 import crypto from "node:crypto";
 import { env } from "@/lib/env";
-import { readSession } from "@/lib/microsoft-auth";
+import { readSessionWithRefresh } from "@/lib/microsoft-auth";
 
 function base64Url(input: Buffer | string) {
   const buf = typeof input === "string" ? Buffer.from(input) : input;
@@ -58,9 +58,13 @@ function signJwtRS256({
 }
 
 export async function GET(request: Request) {
-  const session = await readSession(request);
+  const headers = new Headers();
+  const session = await readSessionWithRefresh(headers, request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers }
+    );
   }
 
   const issuer = env.CONVEX_JWT_ISSUER;
@@ -68,7 +72,10 @@ export async function GET(request: Request) {
   const kid = env.CONVEX_JWT_KID;
   const privateKeyPem = env.CONVEX_JWT_PRIVATE_KEY;
   if (!session.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers }
+    );
   }
 
   const token = signJwtRS256({
@@ -77,8 +84,8 @@ export async function GET(request: Request) {
     subject: session.email,
     kid,
     privateKeyPem,
-    expiresInSeconds: 60 * 60,
+    expiresInSeconds: 60,
   });
 
-  return NextResponse.json({ token });
+  return NextResponse.json({ token }, { headers });
 }

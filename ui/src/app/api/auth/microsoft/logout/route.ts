@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   clearAuthFlowCookies,
+  clearRefreshTokenCookie,
   clearSessionCookie,
   getBaseUrl,
   getSafeCallbackUrl,
@@ -12,6 +13,7 @@ function createLogoutResponse(request: Request) {
   const response = NextResponse.redirect(new URL(callbackUrl, getBaseUrl(request)));
   clearAuthFlowCookies(response.headers, request);
   clearSessionCookie(response.headers, request);
+  clearRefreshTokenCookie(response.headers, request);
   return response;
 }
 

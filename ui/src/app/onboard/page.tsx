@@ -1,5 +1,10 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { verifySession } from "@/lib/microsoft-auth";
+import {
+  AUTH_REFRESH_COOKIE,
+  AUTH_SESSION_COOKIE,
+  refreshMicrosoftAccessToken,
+  verifySession,
+} from "@/lib/microsoft-auth";
 import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -60,8 +65,8 @@ function SignInToMicrosoft({ errorMessages }: { errorMessages: string[] }) {
 
           {errorMessages.length > 0 && (
             <div className="flex flex-col gap-2">
-              {errorMessages.map((error) => (
-                <Alert variant="destructive">
+              {errorMessages.map((error, index) => (
+                <Alert variant="destructive" key={index}>
                   <AlertTitle>{error}</AlertTitle>
                 </Alert>
               ))}
@@ -109,37 +114,46 @@ function VerifyTelegram() {
 
 export default async function Page() {
   const _cookies = await cookies();
-  const sessionInCookie = _cookies.get("microsoft_auth_session");
+  const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
+  const refreshTokenInCookie = _cookies.get(AUTH_REFRESH_COOKIE);
   let errorMessages = [];
+
+  let sessionEmail = null;
   if (sessionInCookie) {
-    try {
-      const verifiedSession = await verifySession(sessionInCookie.value);
-      console.log(verifiedSession);
-      const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
-        verifiedSession?.email?.endsWith(domain)
-      );
-      if (!isAllowedDomain) {
-        errorMessages.push(
-          "Oh no! Please sign in with your @e.ntu.edu.sg account."
-        );
-      }
-    } catch (error) {
-      console.error(error);
-      errorMessages.push("Oh no! Failed to verify session");
+    const verifiedSession = await verifySession(sessionInCookie.value);
+    if (verifiedSession) {
+      sessionEmail = verifiedSession.email;
     }
   } else {
-    console.log("No session in cookie");
+    if (refreshTokenInCookie) {
+      const refreshed = await refreshMicrosoftAccessToken(
+        refreshTokenInCookie.value
+      );
+      if (refreshed) {
+        const verifiedSession = await verifySession(refreshed.access_token);
+        if (verifiedSession) {
+          sessionEmail = verifiedSession.email;
+        }
+      }
+    }
   }
 
-  // if (!isAllowedDomain) {
-  //   return <div>You are not allowed to access this page.</div>;
-  // }
+  if (sessionEmail) {
+    const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
+      sessionEmail.endsWith(domain)
+    );
+    if (!isAllowedDomain) {
+      errorMessages.push(
+        "Oh no! Please sign in with your @e.ntu.edu.sg account."
+      );
+    }
+  }
 
   return (
     <main>
       <ScrollArea className="bg-background text-foreground h-screen p-4">
-        {/* <SignInToMicrosoft errorMessages={errorMessages} /> */}
-        <VerifyTelegram />
+        <SignInToMicrosoft errorMessages={errorMessages} />
+        {/* <VerifyTelegram /> */}
       </ScrollArea>
     </main>
   );

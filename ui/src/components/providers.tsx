@@ -1,10 +1,22 @@
 "use client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { useStableQuery } from "./use-stable-query";
 import { api } from "../../convex/_generated/api";
 
+const queryClient = new QueryClient();
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 const SelfContext = createContext<{
@@ -27,64 +39,54 @@ export function useSelf() {
 // }
 
 function useAuthFromProviderMicrosoft() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const refreshTokenQuery = useQuery({
+    queryKey: ["refreshToken"],
+    queryFn: async () => {
+      const res = await fetch("/api/convex/token", {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { token?: string };
+      return data.token ?? null;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const refetchAccessToken = useCallback(
+    async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
+      const result = await refreshTokenQuery.refetch({});
+      return result.data ?? null;
+      // if (typeof window === "undefined") {
+      //   return null;
+      // }
 
-    let cancelled = false;
+      // try {
+      //   const res = await fetch("/api/convex/token", {
+      //     method: "GET",
+      //     cache: forceRefreshToken ? "no-store" : "default",
+      //   });
+      //   if (!res.ok) return null;
+      //   const data = (await res.json()) as { token?: string };
+      //   return data.token ?? null;
+      // } catch {
+      //   return null;
+      // }
+    },
+    []
+  );
 
-    async function loadSession() {
-      try {
-        const res = await fetch("/api/auth/microsoft/session", {
-          method: "GET",
-          cache: "no-store",
-        });
-        if (!cancelled) {
-          const data = (await res.json()) as { authenticated?: boolean };
-          setIsAuthenticated(Boolean(res.ok && data.authenticated));
-        }
-      } catch {
-        if (!cancelled) {
-          setIsAuthenticated(false);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
+  // useEffect(() => {
+  //   console.log("refetchAccessToken");
+  //   // void refetchAccessToken({ forceRefreshToken: false });
+  // }, [refetchAccessToken]);
 
-    void loadSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return useMemo(() => {
-    return {
-      isLoading,
-      isAuthenticated,
-      fetchAccessToken: async ({
-        forceRefreshToken,
-      }: {
-        forceRefreshToken: boolean;
-      }) => {
-        if (typeof window === "undefined") {
-          return null;
-        }
-        const res = await fetch("/api/convex/token", {
-          method: "GET",
-          cache: forceRefreshToken ? "no-store" : "default",
-        });
-        if (!res.ok) return null;
-        const data = (await res.json()) as { token?: string };
-        return data.token ?? null;
-      },
-    };
-  }, [isAuthenticated, isLoading]);
+  return {
+    isLoading: refreshTokenQuery.isLoading,
+    isAuthenticated: refreshTokenQuery.data !== null,
+    fetchAccessToken: refetchAccessToken,
+  };
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -101,14 +103,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ConvexProviderWithAuth
-      client={convex}
-      useAuth={useAuthFromProviderMicrosoft}
-    >
-      <QueryClientProvider client={queryClient}>
-        {/* <SelfProvider>{children}</SelfProvider> */}
-        {children}
-      </QueryClientProvider>
-    </ConvexProviderWithAuth>
+    <QueryClientProvider client={queryClient}>
+      <ConvexProviderWithAuth
+        client={convex}
+        useAuth={useAuthFromProviderMicrosoft}
+      >
+        <QueryClientProvider client={queryClient}>
+          {/* <SelfProvider>{children}</SelfProvider> */}
+          {children}
+        </QueryClientProvider>
+      </ConvexProviderWithAuth>
+    </QueryClientProvider>
   );
 }

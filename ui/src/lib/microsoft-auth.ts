@@ -1,14 +1,17 @@
 import { env } from "@/lib/env";
 import { cookies } from "next/headers";
 
-const MICROSOFT_AUTH_BASE_PATH = "/api/auth/microsoft";
-const MICROSOFT_SCOPE = "openid profile email";
-const AUTH_STATE_COOKIE = "microsoft_auth_state";
-const AUTH_VERIFIER_COOKIE = "microsoft_auth_verifier";
-const AUTH_CALLBACK_COOKIE = "microsoft_auth_callback";
-const AUTH_SESSION_COOKIE = "microsoft_auth_session";
+export const MICROSOFT_AUTH_BASE_PATH = "/api/auth/microsoft";
+export const MICROSOFT_SCOPE = "openid profile email offline_access";
+export const AUTH_STATE_COOKIE = "microsoft_auth_state";
+export const AUTH_VERIFIER_COOKIE = "microsoft_auth_verifier";
+export const AUTH_CALLBACK_COOKIE = "microsoft_auth_callback";
+export const AUTH_SESSION_COOKIE = "microsoft_auth_session";
+export const AUTH_REFRESH_COOKIE = "microsoft_auth_refresh";
 const TEN_MINUTES_IN_SECONDS = 60 * 10;
-const SESSION_MAX_AGE_IN_SECONDS = 60 * 60 * 24 * 7;
+const THIRTY_DAYS_IN_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_MAX_AGE_IN_SECONDS = THIRTY_DAYS_IN_SECONDS;
+const ACCESS_TOKEN_MAX_AGE_IN_SECONDS = 60;
 
 type MicrosoftUserInfo = {
   sub?: string;
@@ -16,6 +19,14 @@ type MicrosoftUserInfo = {
   preferred_username?: string;
   name?: string;
   picture?: string;
+};
+
+type MicrosoftSessionSeed = {
+  sub?: string;
+  email?: string | null;
+  preferred_username?: string | null;
+  name?: string | null;
+  picture?: string | null;
 };
 
 export type MicrosoftSession = {
@@ -89,6 +100,35 @@ export async function exchangeMicrosoftCode(
   return (await response.json()) as {
     access_token: string;
     expires_in: number;
+    refresh_token?: string;
+  };
+}
+
+export async function refreshMicrosoftAccessToken(refreshToken: string) {
+  const response = await fetch(
+    `https://login.microsoftonline.com/${env.AZURE_AD_TENANT_ID}/oauth2/v2.0/token`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: env.AZURE_AD_CLIENT_ID,
+        client_secret: env.AZURE_AD_CLIENT_SECRET,
+        // grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }).toString(),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to refresh Microsoft access token");
+  }
+
+  return (await response.json()) as {
+    access_token: string;
+    expires_in: number;
+    refresh_token?: string;
   };
 }
 
@@ -131,12 +171,9 @@ export function getAuthCookies(request: Request) {
     verifier: cookies[AUTH_VERIFIER_COOKIE] ?? null,
     callback: cookies[AUTH_CALLBACK_COOKIE] ?? null,
     session: cookies[AUTH_SESSION_COOKIE] ?? null,
+    refresh: cookies[AUTH_REFRESH_COOKIE] ?? null,
   };
 }
-
-export function getAuthCookiesFromCookies(
-  _cookies: Awaited<ReturnType<typeof cookies>>
-) {}
 
 export function setAuthFlowCookies(
   headers: Headers,
@@ -187,8 +224,27 @@ export async function setSessionCookie(
   );
 }
 
+export async function setRefreshTokenCookie(
+  headers: Headers,
+  request: Request,
+  refreshToken: string
+) {
+  const encrypted = await encryptValue(refreshToken);
+  appendCookie(
+    headers,
+    AUTH_REFRESH_COOKIE,
+    encrypted,
+    request,
+    THIRTY_DAYS_IN_SECONDS
+  );
+}
+
 export function clearSessionCookie(headers: Headers, request: Request) {
   appendCookie(headers, AUTH_SESSION_COOKIE, "", request, 0);
+}
+
+export function clearRefreshTokenCookie(headers: Headers, request: Request) {
+  appendCookie(headers, AUTH_REFRESH_COOKIE, "", request, 0);
 }
 
 export async function readSession(request: Request) {
@@ -197,8 +253,52 @@ export async function readSession(request: Request) {
   return await verifySession(raw);
 }
 
+export async function readSessionWithRefresh(
+  headers: Headers,
+  request: Request
+) {
+  const authCookies = getAuthCookies(request);
+  if (!authCookies.session) {
+    return null;
+  }
+
+  const currentSession = await verifySession(authCookies.session, {
+    allowExpired: true,
+  });
+  if (currentSession && currentSession.expiresAt > Date.now()) {
+    return currentSession;
+  }
+  if (!currentSession) {
+    clearSessionCookie(headers, request);
+    return null;
+  }
+
+  if (!authCookies.refresh) {
+    clearSessionCookie(headers, request);
+    return null;
+  }
+
+  try {
+    const refreshToken = await decryptValue(authCookies.refresh);
+    const refreshed = await refreshMicrosoftAccessToken(refreshToken);
+    const session = await buildSession(currentSession, refreshed.expires_in);
+
+    await setSessionCookie(headers, request, session);
+    // await setRefreshTokenCookie(
+    //   headers,
+    //   request,
+    //   refreshed.refresh_token ?? refreshToken
+    // );
+    return session;
+  } catch {
+    clearSessionCookie(headers, request);
+    clearRefreshTokenCookie(headers, request);
+    return null;
+  }
+}
+
 export async function buildSession(
-  profile: MicrosoftUserInfo,
+  profile: MicrosoftSessionSeed,
   expiresIn: number
 ) {
   return {
@@ -206,7 +306,8 @@ export async function buildSession(
     email: profile.email ?? profile.preferred_username ?? null,
     name: profile.name ?? null,
     picture: profile.picture ?? null,
-    expiresAt: Date.now() + expiresIn * 1000,
+    expiresAt:
+      Date.now() + Math.min(expiresIn, ACCESS_TOKEN_MAX_AGE_IN_SECONDS) * 1000,
   } satisfies MicrosoftSession;
 }
 
@@ -234,7 +335,10 @@ async function signSession(session: MicrosoftSession) {
   return `${payload}.${signature}`;
 }
 
-export async function verifySession(raw: string) {
+export async function verifySession(
+  raw: string,
+  options?: { allowExpired?: boolean }
+) {
   const [payload, signature] = raw.split(".");
   if (!payload || !signature) return null;
 
@@ -245,7 +349,7 @@ export async function verifySession(raw: string) {
     const parsed = JSON.parse(
       base64UrlDecodeToString(payload)
     ) as MicrosoftSession;
-    if (parsed.expiresAt <= Date.now()) {
+    if (!options?.allowExpired && parsed.expiresAt <= Date.now()) {
       return null;
     }
     return parsed;
@@ -327,9 +431,52 @@ function base64UrlEncode(input: Uint8Array) {
 }
 
 function base64UrlDecodeToString(input: string) {
+  return Buffer.from(base64UrlDecodeToBytes(input)).toString("utf8");
+}
+
+function base64UrlDecodeToBytes(input: string) {
   const padded = input.replace(/-/g, "+").replace(/_/g, "/");
   const remainder = padded.length % 4;
   const withPadding =
     remainder === 0 ? padded : padded + "=".repeat(4 - remainder);
-  return Buffer.from(withPadding, "base64").toString("utf8");
+  return new Uint8Array(Buffer.from(withPadding, "base64"));
+}
+
+async function getAesKey() {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(env.ENCRYPTION_KEY)
+  );
+  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, [
+    "encrypt",
+    "decrypt",
+  ]);
+}
+
+async function encryptValue(value: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await getAesKey();
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(value)
+  );
+  return `${base64UrlEncode(iv)}.${base64UrlEncode(new Uint8Array(encrypted))}`;
+}
+
+async function decryptValue(input: string) {
+  const [rawIv, rawCiphertext] = input.split(".");
+  if (!rawIv || !rawCiphertext) {
+    throw new Error("Invalid encrypted value format");
+  }
+
+  const iv = base64UrlDecodeToBytes(rawIv);
+  const ciphertext = base64UrlDecodeToBytes(rawCiphertext);
+  const key = await getAesKey();
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    ciphertext
+  );
+  return new TextDecoder().decode(decrypted);
 }
