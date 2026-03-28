@@ -1,7 +1,8 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AUTH_REFRESH_COOKIE,
+  AUTH_REFRESH_COOKIE as AUTH_ENCRYPTED_REFRESH_COOKIE,
   AUTH_SESSION_COOKIE,
+  decryptValue,
   refreshMicrosoftAccessToken,
   verifySession,
 } from "@/lib/microsoft-auth";
@@ -12,7 +13,12 @@ import { SignInButton } from "@/components/sign-in-button";
 import { cn } from "@/lib/utils";
 import { OTPInput } from "input-otp";
 import { Input } from "@/components/ui/input";
-import { VerifyTelegramForm } from "@/components/onboard-form";
+import {
+  OnboardingForm,
+  SelectSchoolForm,
+  VerifyTelegramForm,
+} from "@/components/onboard-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
 
@@ -112,6 +118,48 @@ function VerifyTelegram() {
   );
 }
 
+function SelectSchool() {
+  return (
+    <div className="flex flex-col items-center">
+      <div className="flex flex-col gap-12 py-12 max-w-2xl w-full">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
+            Lastly, select your school.
+          </h1>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4">
+            <SelectSchoolForm />
+          </div>
+        </div>
+
+        <div className="flex flex-row items-center justify-center pt-10">
+          <PaginationSteps selectedIndex={2} steps={3} />
+        </div>
+
+        {/* <OnboardForm /> */}
+      </div>
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="relative flex flex-col items-center">
+      <div className="flex flex-col gap-12 py-12 max-w-2xl w-full">
+        {/* <div className="flex flex-col gap-2">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
+            Please wait...
+          </h1>
+        </div> */}
+        {/* <div className="absolute inset-0 bg-background/50 backdrop-blur-xs" /> */}
+        <Skeleton className="h-full w-full" />
+      </div>
+    </div>
+  );
+}
+
 export default async function Page({
   searchParams,
 }: {
@@ -121,7 +169,7 @@ export default async function Page({
 }) {
   const _cookies = await cookies();
   const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
-  const refreshTokenInCookie = _cookies.get(AUTH_REFRESH_COOKIE);
+  const refreshTokenInCookie = _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE);
   let errorMessages = [];
   const { error } = await searchParams;
   if (error) {
@@ -136,8 +184,11 @@ export default async function Page({
     }
   } else {
     if (refreshTokenInCookie) {
-      const refreshed = await refreshMicrosoftAccessToken(
+      const decryptedRefreshToken = await decryptValue(
         refreshTokenInCookie.value
+      );
+      const refreshed = await refreshMicrosoftAccessToken(
+        decryptedRefreshToken
       );
       if (refreshed) {
         const verifiedSession = await verifySession(refreshed.access_token);
@@ -162,8 +213,15 @@ export default async function Page({
   return (
     <main>
       <ScrollArea className="bg-background text-foreground h-screen p-4">
-        {/* <SignInToMicrosoft errorMessages={errorMessages} /> */}
-        <VerifyTelegram />
+        {sessionEmail ? (
+          <OnboardingForm
+            loadingNode={<Loading />}
+            verifyTelegramNode={<VerifyTelegram />}
+            selectSchoolNode={<SelectSchool />}
+          />
+        ) : (
+          <SignInToMicrosoft errorMessages={errorMessages} />
+        )}
       </ScrollArea>
     </main>
   );

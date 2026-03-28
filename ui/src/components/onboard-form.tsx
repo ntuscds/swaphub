@@ -13,25 +13,25 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Button } from "./ui/button";
-import { useAction, useMutation } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   useConvexActionState,
   useConvexMutationState,
 } from "./use-convex-mutation-state";
-import { retrieveLaunchParams, retrieveRawInitData } from "@tma.js/sdk-react";
-import { useState } from "react";
+import { retrieveRawInitData } from "@tma.js/sdk-react";
+import { useStableQuery } from "./use-stable-query";
+import { Skeleton } from "./ui/skeleton";
 
 const FormSchema = z.object({
   school: z.enum(schools, { message: "School is required" }),
 });
 
 export function SelectSchoolForm() {
-  const onboard = useMutation(api.tasks.onboard);
+  const selectSchool = useMutation(api.tasks.selectSchool);
   const { handle, error, isSuccess, isPending } =
-    useConvexMutationState(onboard);
+    useConvexMutationState(selectSchool);
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -97,10 +97,10 @@ export function SelectSchoolForm() {
           </Alert>
         )}
 
-        <div className="w-full flex justify-end">
+        <div className="w-full flex">
           <Button
             type="submit"
-            className="h-10 w-fit"
+            className="h-10 w-fit px-4"
             disabled={isPending || isSuccess}
           >
             Done
@@ -225,4 +225,26 @@ export function VerifyTelegramForm() {
       )}
     </div>
   );
+}
+
+export function OnboardingForm({
+  verifyTelegramNode,
+  selectSchoolNode,
+  loadingNode,
+}: {
+  verifyTelegramNode: React.ReactNode;
+  selectSchoolNode: React.ReactNode;
+  loadingNode: React.ReactNode;
+}) {
+  const getSelfQuery = useStableQuery(api.tasks.getSelf);
+
+  if (getSelfQuery === undefined) {
+    return loadingNode;
+  }
+
+  if (getSelfQuery === null) {
+    return verifyTelegramNode;
+  }
+
+  return selectSchoolNode;
 }

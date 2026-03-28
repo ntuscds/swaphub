@@ -35,14 +35,11 @@ export const getSelf = query({
       throw new ConvexError("Unauthorized");
     }
 
-    const telegramUserId = BigInt(identity.subject);
-    // if (!Number.isFinite(telegramUserId)) {
-    //   throw new ConvexError("Invalid auth subject");
-    // }
+    const email = identity.email ?? identity.subject;
 
     return await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", telegramUserId))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
   },
 });
@@ -932,7 +929,7 @@ export const handleSwapRequestWebhookCallback = internalMutation({
   },
 });
 
-export const onboard = mutation({
+export const selectSchool = mutation({
   args: {
     school: schoolValidator,
   },
@@ -942,40 +939,23 @@ export const onboard = mutation({
       throw new ConvexError("Unauthorized");
     }
 
-    const username = identity.nickname;
-    if (!username) {
-      throw new ConvexError("Your telegram username is not set.");
-    }
-
-    const telegramUserId = BigInt(identity.subject);
+    // const telegramUserId = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
 
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", telegramUserId))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
-    if (existing) {
-      return {
-        success: true,
-        user: existing,
-      };
+    if (!existing) {
+      throw new ConvexError("User not found.");
     }
 
-    const userId = await ctx.db.insert("users", {
-      userId: telegramUserId,
-      telegramUserId,
-      handle: username,
-      email: identity.email ?? "",
+    await ctx.db.patch("users", existing._id, {
       school: args.school,
     });
 
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new ConvexError("Failed to onboard user.");
-    }
-
     return {
       success: true,
-      user,
     };
   },
 });

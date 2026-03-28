@@ -123,11 +123,13 @@ export async function refreshMicrosoftAccessToken(refreshToken: string) {
         client_secret: env.AZURE_AD_CLIENT_SECRET,
         grant_type: "refresh_token",
         refresh_token: refreshToken,
+        scope: "openid profile offline_access User.Read",
       }).toString(),
     }
   );
 
   if (!response.ok) {
+    console.error(await response.text());
     throw new Error("Failed to refresh Microsoft access token");
   }
 
@@ -265,7 +267,6 @@ export async function readSessionWithRefresh(
 ) {
   const authCookies = getAuthCookies(request);
 
-  console.log(authCookies);
   let currentSession = await verifySession(authCookies.session, {
     allowExpired: true,
   });
@@ -465,7 +466,7 @@ async function encryptValue(value: string) {
   return `${base64UrlEncode(iv)}.${base64UrlEncode(new Uint8Array(encrypted))}`;
 }
 
-async function decryptValue(input: string) {
+export async function decryptValue(input: string) {
   const [rawIv, rawCiphertext] = input.split(".");
   if (!rawIv || !rawCiphertext) {
     throw new Error("Invalid encrypted value format");
