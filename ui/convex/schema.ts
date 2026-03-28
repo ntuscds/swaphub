@@ -106,7 +106,8 @@ export default defineSchema({
     school: v.string(),
   })
     .index("by_handle", ["handle"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_email", ["email"]),
 
   // Telegram user verification
   telegram_user_verification: defineTable({

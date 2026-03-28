@@ -13,19 +13,19 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Button } from "./ui/button";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useConvexMutationState } from "./use-convex-mutation-state";
-import { useRouter } from "next/navigation";
+import {
+  useConvexActionState,
+  useConvexMutationState,
+} from "./use-convex-mutation-state";
+import { retrieveLaunchParams, retrieveRawInitData } from "@tma.js/sdk-react";
+import { useState } from "react";
 
 const FormSchema = z.object({
   school: z.enum(schools, { message: "School is required" }),
-  // Email must end in @e.ntu.edu.sg
-  // email: z.email().refine((email) => email.endsWith("@e.ntu.edu.sg"), {
-  //   message: "Email must end in @e.ntu.edu.sg",
-  // }),
 });
 
 export function SelectSchoolForm() {
@@ -36,7 +36,6 @@ export function SelectSchoolForm() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       school: schools[0],
-      // email: "",
     },
   });
 
@@ -113,13 +112,23 @@ export function SelectSchoolForm() {
 }
 
 export function VerifyTelegramForm() {
-  const requestLinkTelegramAccount = useMutation(
-    api.tasks.requestLinkTelegramAccount
+  const requestLinkTelegramAccount = useAction(
+    api.actions.requestLinkTelegramAccount
   );
-  const { handle, error, isSuccess, isPending } = useConvexMutationState<
-    FunctionReturnType<typeof api.tasks.requestLinkTelegramAccount>,
+  const { handle, error, data, isPending } = useConvexActionState<
+    {
+      success: boolean;
+      email: string;
+      code: string;
+    },
     typeof requestLinkTelegramAccount
   >(requestLinkTelegramAccount);
+
+  let url: string | undefined;
+  if (data) {
+    const command = `/link ${data.email} ${data.code}`;
+    url = `https://t.me/Findex_ntu_bot?text=${encodeURIComponent(command)}`;
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -138,8 +147,18 @@ export function VerifyTelegramForm() {
         className="w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-200 dark:bg-background-800"
         disabled={isPending}
         onClick={async () => {
-          const result = await handle();
+          let rawInitData = undefined;
+          try {
+            rawInitData = retrieveRawInitData() as string;
+          } catch (error) {
+            // Ignore error
+          }
+
+          const result = await handle({ telegramRawInitData: rawInitData });
           if (!result) {
+            return;
+          }
+          if (rawInitData) {
             return;
           }
           const command = `/link ${result.email} ${result.code}`;
@@ -177,6 +196,33 @@ export function VerifyTelegramForm() {
         </svg>
         Link Telegram
       </Button>
+
+      {data && data.code !== "" && (
+        <>
+          <Alert>
+            <AlertTitle>
+              1. Go to Telegram and search for{" "}
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-500 no-underline"
+              >
+                @Findex_ntu_bot
+              </a>
+            </AlertTitle>
+          </Alert>
+          <Alert>
+            <AlertTitle className="max-w-xl">
+              2. Run the command{" "}
+              <span className="text-primary-500">
+                /link <code>{data?.email}</code> <code>{data?.code}</code>
+              </span>
+              . Will expire in 10 minutes.
+            </AlertTitle>
+          </Alert>
+        </>
+      )}
     </div>
   );
 }

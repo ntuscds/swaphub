@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
+import { isValid, parse } from "@tma.js/init-data-node";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
@@ -288,6 +289,64 @@ export const handleTelegramWebhookCommand = internalAction({
         .catch(() => {});
       return { ok: true as const };
     }
+  },
+});
+
+export const requestLinkTelegramAccount = action({
+  args: {
+    telegramRawInitData: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ success: boolean; email: string; code: string }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+    const email = identity.email ?? identity.subject;
+    if (!email) {
+      throw new ConvexError("Email not found");
+    }
+
+    if (args.telegramRawInitData) {
+      if (!isValid(args.telegramRawInitData, env.BOT_KEY)) {
+        throw new ConvexError("Invalid Telegram init data");
+      }
+      const initData = parse(args.telegramRawInitData);
+      if (!initData.user) {
+        throw new ConvexError("Invalid Telegram init data");
+      }
+      const telegramUserId = BigInt(initData.user.id);
+
+      const username = initData.user.username;
+      if (!username) {
+        throw new ConvexError("Invalid Telegram username");
+      }
+
+      // If valid, then do the link process
+      const result = await ctx.runMutation(
+        internal.tasks.verifyTelegramAccount,
+        {
+          email,
+          code: "",
+          telegramUserId,
+          username,
+          bypassCodeCheck: true,
+        }
+      );
+      if (!result.success) {
+        throw new ConvexError("Failed to link Telegram account");
+      }
+
+      return {
+        success: true,
+        email,
+        code: "",
+      };
+    }
+
+    return await ctx.runMutation(internal.tasks.requestLinkTelegramAccount, {});
   },
 });
 

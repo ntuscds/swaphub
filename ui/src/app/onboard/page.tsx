@@ -112,11 +112,21 @@ function VerifyTelegram() {
   );
 }
 
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    error?: string;
+  }>;
+}) {
   const _cookies = await cookies();
   const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
   const refreshTokenInCookie = _cookies.get(AUTH_REFRESH_COOKIE);
   let errorMessages = [];
+  const { error } = await searchParams;
+  if (error) {
+    errorMessages.push(error);
+  }
 
   let sessionEmail = null;
   if (sessionInCookie) {

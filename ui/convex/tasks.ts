@@ -11,6 +11,8 @@ import {
   serializeAccept,
   serializeAlreadySwapped,
 } from "@/telegram/callbacks";
+import { isValid, parse } from "@tma.js/init-data-node";
+import { env } from "@/lib/env";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -988,8 +990,7 @@ function generateCode() {
 }
 const VERIFICATION_CODE_EXPIRATION_TIME_MS = 10 * 60 * 1000;
 
-export const requestLinkTelegramAccount = mutation({
-  args: {},
+export const requestLinkTelegramAccount = internalMutation({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -1030,8 +1031,33 @@ export const verifyTelegramAccount = internalMutation({
     code: v.string(),
     telegramUserId: v.int64(),
     username: v.string(),
+    bypassCodeCheck: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    if (args.bypassCodeCheck) {
+      const existingUser = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+
+      if (existingUser) {
+        await ctx.db.patch(existingUser._id, {
+          userId: args.telegramUserId,
+          telegramUserId: args.telegramUserId,
+          handle: args.username,
+          email: args.email,
+        });
+      } else {
+        await ctx.db.insert("users", {
+          userId: args.telegramUserId,
+          telegramUserId: args.telegramUserId,
+          handle: args.username,
+          email: args.email,
+          school: "",
+        });
+      }
+      return { success: true };
+    }
     const existing = await ctx.db
       .query("telegram_user_verification")
       .withIndex("by_email", (q) => q.eq("email", args.email))
@@ -1044,8 +1070,8 @@ export const verifyTelegramAccount = internalMutation({
     await ctx.db.delete(existing._id);
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", args.telegramUserId))
-      .unique();
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
 
     if (existingUser) {
       await ctx.db.patch(existingUser._id, {

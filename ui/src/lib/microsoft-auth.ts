@@ -265,6 +265,7 @@ export async function readSessionWithRefresh(
 ) {
   const authCookies = getAuthCookies(request);
 
+  console.log(authCookies);
   let currentSession = await verifySession(authCookies.session, {
     allowExpired: true,
   });
