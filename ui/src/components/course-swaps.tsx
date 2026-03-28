@@ -18,7 +18,7 @@ import {
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import { Alert, AlertTitle } from "./ui/alert";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Checkbox } from "./ui/checkbox";
 import { toast } from "sonner";
 import { useConvexMutationState } from "./use-convex-mutation-state";
@@ -473,6 +473,18 @@ export function CourseSwapMatches({
     };
   }, [bottomSheetMatchItem?.id, requestsQuery, code, name, normalizeMatch]);
 
+  // const editUrl = useMemo(() => {
+  //   if (typeof window === "undefined") return `/swap/${code}/edit`;
+  //   return `/swap/${code}/edit?backTo=${encodeURIComponent(window.location.href)}`;
+  // }, [code]);
+  const [editUrl, setEditUrl] = useState<string>("/swap");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setEditUrl(
+      `/swap/${code}/edit?backTo=${encodeURIComponent(window.location.href)}`
+    );
+  }, [code]);
+
   let matchesElement = null;
   if (requestsQuery === undefined) {
     matchesElement = <Skeleton className="h-48 w-full" />;
@@ -563,9 +575,7 @@ export function CourseSwapMatches({
       <div className="flex flex-col gap-2">
         <div className="flex flex-row gap-2 items-center justify-between">
           <h2 className="text-base font-bold">Your Request</h2>
-          <Link
-            href={`/swap/${code}/edit?backTo=${encodeURIComponent(window.location.href)}`}
-          >
+          <Link href={editUrl}>
             <Button variant="outline">
               <Pencil className="size-3.5" />
               Edit

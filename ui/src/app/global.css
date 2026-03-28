@@ -187,6 +187,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  --max-width-ui: 1920px;
 }
 
 @layer base {

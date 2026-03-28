@@ -218,7 +218,13 @@ export function SelectCourseCombobox({
   );
 }
 
-export function SwapRequestModal({ courses }: { courses: Course[] }) {
+export function SwapRequestModal({
+  label = "New Swap",
+  courses,
+}: {
+  label?: string;
+  courses: Course[];
+}) {
   const [open, setOpen] = useState(false);
   const [course, setCourse] = useState<Course | null>(null);
   const router = useRouter();
@@ -232,7 +238,7 @@ export function SwapRequestModal({ courses }: { courses: Course[] }) {
           setOpen(true);
         }}
       >
-        <Plus className="size-4" /> New Swap
+        <Plus className="size-4" /> {label}
       </Button>
       <DialogContent className="p-0 bg-transparent border-none">
         <SelectCourseCommand

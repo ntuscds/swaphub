@@ -9,12 +9,12 @@ import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { useStableQuery } from "./use-stable-query";
 
-export function MySwaps() {
+export function MySwaps({ className }: { className?: string }) {
   const data = useStableQuery(api.tasks.getAllRequests);
 
   if (data === undefined) {
     return (
-      <div className="w-full flex flex-col gap-2">
+      <div className={cn("w-full flex flex-col gap-2", className)}>
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
@@ -24,7 +24,12 @@ export function MySwaps() {
     );
   }
   return (
-    <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
+    <div
+      className={cn(
+        "w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm",
+        className
+      )}
+    >
       {data.length > 0 ? (
         data.map((request, index) => {
           let tag = null;
@@ -47,11 +52,16 @@ export function MySwaps() {
               </Badge>
             );
           } else if (request.type === "matches") {
-            tag = (
-              <Badge variant="outline" className="bg-primary/15 text-primary">
-                {request.matchCount} matches
-              </Badge>
-            );
+            if (request.matchCount > 0) {
+              tag = (
+                <Badge
+                  variant="outline"
+                  className="bg-primary/15 text-primary-500"
+                >
+                  {request.matchCount} matches
+                </Badge>
+              );
+            }
           }
           return (
             <Link href={`/swap/${request.course.code}`} key={request.course.id}>
@@ -67,18 +77,18 @@ export function MySwaps() {
                   {request.course.code} {request.course.name}
                 </span>
                 {tag}
-                <ArrowRight className="size-4 text-primary" />
+                <ArrowRight className="size-4 text-primary-500" />
               </div>
             </Link>
           );
         })
       ) : (
-        <div className="text-center text-sm text-muted-foreground p-4">
+        <div className="text-center text-sm lg:text-base xl:text-lg text-muted-foreground p-4">
           No requests yet! Click{" "}
           <span className="text-primary-800 dark:text-primary-400">
             New Swap
           </span>{" "}
-          below to request a swap.
+          to request a swap.
         </div>
       )}
     </div>
