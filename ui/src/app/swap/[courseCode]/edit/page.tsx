@@ -7,8 +7,9 @@ import { api } from "../../../../../convex/_generated/api";
 import { fetchQuery } from "convex/nextjs";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache, Suspense } from "react";
+import { getAuth } from "@/lib/microsoft-auth";
 
 const loadCourseHeader = cache((courseCode: string) =>
   fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode })
@@ -77,6 +78,11 @@ export default async function RequestPage({
 }) {
   const { courseCode } = await params;
   const { backTo } = await searchParams;
+
+  const auth = await getAuth();
+  if (!auth?.email) {
+    redirect("/onboard");
+  }
 
   return (
     <main>

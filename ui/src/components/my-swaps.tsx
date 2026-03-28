@@ -74,7 +74,10 @@ export function MySwaps() {
         })
       ) : (
         <div className="text-center text-sm text-muted-foreground p-4">
-          No requests yet! Click <span className="text-primary">New Swap</span>{" "}
+          No requests yet! Click{" "}
+          <span className="text-primary-800 dark:text-primary-400">
+            New Swap
+          </span>{" "}
           below to request a swap.
         </div>
       )}

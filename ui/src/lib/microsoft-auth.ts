@@ -12,11 +12,11 @@ export const AUTH_STATE_COOKIE = "microsoft_auth_state";
 export const AUTH_VERIFIER_COOKIE = "microsoft_auth_verifier";
 export const AUTH_CALLBACK_COOKIE = "microsoft_auth_callback";
 export const AUTH_SESSION_COOKIE = "microsoft_auth_session";
-export const AUTH_REFRESH_COOKIE = "microsoft_auth_refresh";
+export const AUTH_ENCRYPTED_REFRESH_COOKIE = "microsoft_auth_refresh";
 // const TEN_MINUTES_IN_SECONDS = 60 * 10;
 // const THIRTY_DAYS_IN_SECONDS = 60 * 60 * 24 * 30;
 const SESSION_MAX_AGE_IN_SECONDS = 10 * 60;
-const REFRESH_TOKEN_MAX_AGE_IN_SECONDS = 30 * 24 * 60 * 60;
+const REFRESH_TOKEN_MAX_AGE_IN_SECONDS = 60 * 24 * 60 * 60;
 const ACCESS_TOKEN_MAX_AGE_IN_SECONDS = SESSION_MAX_AGE_IN_SECONDS;
 
 type MicrosoftUserInfo = {
@@ -179,7 +179,7 @@ export function getAuthCookies(request: Request) {
     verifier: cookies[AUTH_VERIFIER_COOKIE] ?? null,
     callback: cookies[AUTH_CALLBACK_COOKIE] ?? null,
     session: cookies[AUTH_SESSION_COOKIE] ?? null,
-    refresh: cookies[AUTH_REFRESH_COOKIE] ?? null,
+    refresh: cookies[AUTH_ENCRYPTED_REFRESH_COOKIE] ?? null,
   };
 }
 
@@ -240,7 +240,7 @@ export async function setRefreshTokenCookie(
   const encrypted = await encryptValue(refreshToken);
   appendCookie(
     headers,
-    AUTH_REFRESH_COOKIE,
+    AUTH_ENCRYPTED_REFRESH_COOKIE,
     encrypted,
     request,
     REFRESH_TOKEN_MAX_AGE_IN_SECONDS
@@ -252,56 +252,13 @@ export function clearSessionCookie(headers: Headers, request: Request) {
 }
 
 export function clearRefreshTokenCookie(headers: Headers, request: Request) {
-  appendCookie(headers, AUTH_REFRESH_COOKIE, "", request, 0);
+  appendCookie(headers, AUTH_ENCRYPTED_REFRESH_COOKIE, "", request, 0);
 }
 
 export async function readSession(request: Request) {
   const raw = getAuthCookies(request).session;
   if (!raw) return null;
   return await verifySession(raw);
-}
-
-export async function readSessionWithRefresh(
-  headers: Headers,
-  request: Request
-) {
-  const authCookies = getAuthCookies(request);
-
-  let currentSession = await verifySession(authCookies.session, {
-    allowExpired: true,
-  });
-  if (currentSession && currentSession.expiresAt > Date.now()) {
-    return currentSession;
-  }
-
-  // No refresh, cant do anything.
-  if (!authCookies.refresh) {
-    clearSessionCookie(headers, request);
-    return null;
-  }
-
-  try {
-    const refreshToken = await decryptValue(authCookies.refresh);
-    const refreshed = await refreshMicrosoftAccessToken(refreshToken);
-    if (!currentSession) {
-      const profile = await fetchMicrosoftUser(refreshed.access_token);
-      currentSession = await buildSession(profile, refreshed.expires_in);
-    }
-    const session = await buildSession(currentSession, refreshed.expires_in);
-
-    await setSessionCookie(headers, request, session);
-    await setRefreshTokenCookie(
-      headers,
-      request,
-      refreshed.refresh_token ?? refreshToken
-    );
-    return session;
-  } catch (error) {
-    console.error(error);
-    clearSessionCookie(headers, request);
-    clearRefreshTokenCookie(headers, request);
-    return null;
-  }
 }
 
 export async function buildSession(
@@ -367,6 +324,7 @@ export async function verifySession(
 ) {
   try {
     const payload = jwtVerify(raw, env.ENCRYPTION_KEY, {
+      // algorithms: ["RS256"],
       algorithms: ["HS256"],
       ignoreExpiration: Boolean(options?.allowExpired),
     });
@@ -378,7 +336,8 @@ export async function verifySession(
       return null;
     }
     return session;
-  } catch {
+  } catch (error) {
+    console.error(error);
     return null;
   }
 }
@@ -481,4 +440,85 @@ export async function decryptValue(input: string) {
     ciphertext
   );
   return new TextDecoder().decode(decrypted);
+}
+
+export async function getAuth() {
+  const _cookies = await cookies();
+  const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
+  const refreshTokenInCookie = _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE);
+  let sessionEmail = null;
+  if (sessionInCookie) {
+    const verifiedSession = await verifySession(sessionInCookie.value);
+    if (verifiedSession) {
+      sessionEmail = verifiedSession.email;
+    }
+  } else {
+    if (refreshTokenInCookie) {
+      const decryptedRefreshToken = await decryptValue(
+        refreshTokenInCookie.value
+      );
+      const refreshed = await refreshMicrosoftAccessToken(
+        decryptedRefreshToken
+      );
+      const profile = await fetchMicrosoftUser(refreshed.access_token);
+      const currentSession = await buildSession(profile, refreshed.expires_in);
+      // console.log("verifiedSession", verifiedSession);
+      // if (verifiedSession) {
+      //   console.log("verifiedSession.email", verifiedSession.email);
+      //   sessionEmail = verifiedSession.email;
+      // }
+      sessionEmail = currentSession.email;
+    }
+  }
+  if (!sessionEmail) {
+    return null;
+  }
+  return {
+    email: sessionEmail,
+  };
+}
+
+export async function readSessionWithRefresh(
+  headers: Headers,
+  request: Request
+) {
+  const authCookies = getAuthCookies(request);
+
+  let currentSession = await verifySession(authCookies.session, {
+    allowExpired: true,
+  });
+  if (currentSession && currentSession.expiresAt > Date.now()) {
+    return currentSession;
+  }
+
+  // No refresh, cant do anything.
+  if (!authCookies.refresh) {
+    clearSessionCookie(headers, request);
+    return null;
+  }
+
+  try {
+    const refreshToken = await decryptValue(authCookies.refresh);
+    const refreshed = await refreshMicrosoftAccessToken(refreshToken);
+    if (!currentSession) {
+      const profile = await fetchMicrosoftUser(refreshed.access_token);
+      currentSession = await buildSession(profile, refreshed.expires_in);
+    } else {
+      currentSession = await buildSession(currentSession, refreshed.expires_in);
+    }
+    // const session = await buildSession(currentSession, refreshed.expires_in);
+
+    await setSessionCookie(headers, request, currentSession);
+    await setRefreshTokenCookie(
+      headers,
+      request,
+      refreshed.refresh_token ?? refreshToken
+    );
+    return currentSession;
+  } catch (error) {
+    console.error(error);
+    clearSessionCookie(headers, request);
+    // clearRefreshTokenCookie(headers, request);
+    return null;
+  }
 }

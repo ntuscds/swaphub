@@ -6,6 +6,7 @@ import { SwapRequestModal } from "@/components/swap-request-modal";
 import { MySwaps } from "@/components/my-swaps";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { getAuth } from "@/lib/microsoft-auth";
 
 export async function SwapRequestModalAsync() {
   const courses = await fetchQuery(api.tasks.getCourses, {});
@@ -21,28 +22,27 @@ export async function SwapRequestModalAsync() {
 }
 
 export default async function Page() {
-  if (true) {
+  const auth = await getAuth();
+  if (!auth?.email) {
     redirect("/onboard");
   }
   return (
-    <AuthGuard>
-      <main>
-        <ScrollArea className="bg-background text-foreground h-screen p-4">
-          <div className="flex flex-col gap-4 items-center pb-24">
-            <div className="flex flex-col gap-12 pt-8 max-w-4xl w-full">
-              <div className="flex flex-col gap-2">
-                <h1 className="text-xl font-bold">My Swaps</h1>
-              </div>
+    <main>
+      <ScrollArea className="bg-background text-foreground h-screen p-4">
+        <div className="flex flex-col gap-4 items-center pb-24">
+          <div className="flex flex-col gap-12 pt-8 max-w-4xl w-full">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-xl font-bold">My Swaps</h1>
             </div>
-            <MySwaps />
           </div>
-        </ScrollArea>
-        <div className="fixed bottom-8 right-8">
-          <Suspense fallback={<SwapRequestModal courses={[]} />}>
-            <SwapRequestModalAsync />
-          </Suspense>
+          <MySwaps />
         </div>
-      </main>
-    </AuthGuard>
+      </ScrollArea>
+      <div className="fixed bottom-8 right-8">
+        <Suspense fallback={<SwapRequestModal courses={[]} />}>
+          <SwapRequestModalAsync />
+        </Suspense>
+      </div>
+    </main>
   );
 }

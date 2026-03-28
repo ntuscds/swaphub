@@ -1,8 +1,9 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AUTH_REFRESH_COOKIE as AUTH_ENCRYPTED_REFRESH_COOKIE,
+  AUTH_ENCRYPTED_REFRESH_COOKIE as AUTH_ENCRYPTED_REFRESH_COOKIE,
   AUTH_SESSION_COOKIE,
   decryptValue,
+  getAuth,
   refreshMicrosoftAccessToken,
   verifySession,
 } from "@/lib/microsoft-auth";
@@ -167,41 +168,16 @@ export default async function Page({
     error?: string;
   }>;
 }) {
-  const _cookies = await cookies();
-  const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
-  const refreshTokenInCookie = _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE);
   let errorMessages = [];
   const { error } = await searchParams;
   if (error) {
     errorMessages.push(error);
   }
 
-  let sessionEmail = null;
-  if (sessionInCookie) {
-    const verifiedSession = await verifySession(sessionInCookie.value);
-    if (verifiedSession) {
-      sessionEmail = verifiedSession.email;
-    }
-  } else {
-    if (refreshTokenInCookie) {
-      const decryptedRefreshToken = await decryptValue(
-        refreshTokenInCookie.value
-      );
-      const refreshed = await refreshMicrosoftAccessToken(
-        decryptedRefreshToken
-      );
-      if (refreshed) {
-        const verifiedSession = await verifySession(refreshed.access_token);
-        if (verifiedSession) {
-          sessionEmail = verifiedSession.email;
-        }
-      }
-    }
-  }
-
-  if (sessionEmail) {
+  const sessionEmail = await getAuth();
+  if (sessionEmail?.email) {
     const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
-      sessionEmail.endsWith(domain)
+      sessionEmail.email.endsWith(domain)
     );
     if (!isAllowedDomain) {
       errorMessages.push(

@@ -117,17 +117,16 @@ export default defineSchema({
 
   // FIndex swap / matching tables
   swapper: defineTable({
-    telegramUserId: v.int64(),
-    // userId: v.id("users"),
+    userId: v.id("users"),
     courseId: v.id("courses"),
     index: v.string(),
     hasSwapped: v.boolean(),
     previouslyMatchedWith: v.optional(v.id("swapper")),
   })
-    .index("by_telegramUserId_courseId", ["telegramUserId", "courseId"])
+    .index("by_userId_courseId", ["userId", "courseId"])
     .index("by_courseId_index", ["courseId", "index"])
     .index("by_courseId", ["courseId"])
-    .index("by_telegramUserId", ["telegramUserId"]),
+    .index("by_userId", ["userId"]),
 
   swapper_wants: defineTable({
     swapperId: v.id("swapper"),

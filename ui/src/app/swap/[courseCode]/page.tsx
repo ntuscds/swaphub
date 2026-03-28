@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../../convex/_generated/api";
+import { getAuth } from "@/lib/microsoft-auth";
 
 export default async function RequestPage({
   params,
@@ -15,6 +16,10 @@ export default async function RequestPage({
     courseCode: string;
   }>;
 }) {
+  const auth = await getAuth();
+  if (!auth?.email) {
+    redirect("/onboard");
+  }
   const { courseCode } = await params;
   const header = await fetchQuery(api.tasks.getCourseHeaderByCode, {
     courseCode,
