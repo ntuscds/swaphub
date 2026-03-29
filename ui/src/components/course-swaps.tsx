@@ -39,247 +39,6 @@ type DirectMatch = CourseRequestAndMatches["directMatches"][number];
 type ThreeWayCycleMatch =
   CourseRequestAndMatches["threeWayCycleMatches"][number];
 
-export function SwapItemMatchBottomSheetHint({
-  courseId,
-  match,
-}: {
-  courseId: Id<"courses">;
-  match: DirectMatch;
-}) {
-  const handleSwapRequestCallbackMut = useAction(api.actions.sendSwapRequest);
-  const { handle, error, isPending } = useConvexMutationState(
-    handleSwapRequestCallbackMut,
-    {
-      onSuccess: () => {
-        toast.success("Swap request accepted!", {
-          description:
-            "We will notify the swapper of your request. They will reach out to you to confirm the swap. Keep your DMs open!",
-        });
-      },
-    }
-  );
-
-  return (
-    <div className="flex flex-col p-2.5 gap-4 border border-border rounded-md bg-card">
-      <h3 className="text-sm font-medium text-primary">
-        Someone wants to swap with you!
-      </h3>
-      {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Error!</AlertTitle>
-          <p className="text-muted-foreground max-w-none">{error}</p>
-        </Alert>
-      )}
-      <div className="w-full flex flex-row gap-2">
-        <Button
-          variant="ghost"
-          className="flex-1 border border-border bg-primary/20"
-          onClick={() =>
-            handle({
-              courseId,
-              otherSwapperId: match.otherSwapperId,
-              // action: "already_swapped",
-            })
-          }
-          disabled={isPending}
-        >
-          Already Swapped
-        </Button>
-        <Button
-          variant="default"
-          className="flex-1"
-          onClick={() =>
-            handle({ courseId, otherSwapperId: match.otherSwapperId })
-          }
-          disabled={isPending}
-        >
-          Accept
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function PersonSvg({
-  className,
-  color,
-  backgroundColor,
-}: {
-  className?: string;
-  color: string;
-  backgroundColor: string;
-}) {
-  const id = useId();
-  return (
-    <svg
-      className={cn("size-16", className)}
-      viewBox="0 0 128 168"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M0 128C0 105.909 17.9086 88 40 88H88C110.091 88 128 105.909 128 128V168H0V128Z"
-        fill={`url(#${id}-paint0)`}
-      />
-      <circle cx="64" cy="64" r="64" fill={`url(#${id}-paint1)`} />
-      <defs>
-        <linearGradient
-          id={`${id}-paint0`}
-          x1="64"
-          y1="88"
-          x2="64"
-          y2="168"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor={color} />
-          <stop offset="1" stopColor={backgroundColor} />
-        </linearGradient>
-        <linearGradient
-          id={`${id}-paint1`}
-          x1="64"
-          y1="0"
-          x2="64"
-          y2="128"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor={color} />
-          <stop offset="1" stopColor={backgroundColor} />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
-function DirectSwapArtboard({
-  yourIndex,
-  otherIndex,
-}: {
-  yourIndex: string;
-  otherIndex: string;
-}) {
-  return (
-    <svg
-      className="w-full"
-      viewBox="0 0 512 220"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M0 128C0 105.909 17.9086 88 40 88H88C110.091 88 128 105.909 128 128V168H0V128Z"
-        fill="url(#paint0_linear_42_168)"
-      />
-      <circle cx="64" cy="64" r="64" fill="url(#paint1_linear_42_168)" />
-      <path
-        d="M43.6136 196.545H46.0341L50.875 204.693H51.0795L55.9205 196.545H58.3409L52.0341 206.807V214H49.9205V206.807L43.6136 196.545ZM64.2685 214.273C63.0866 214.273 62.0497 213.991 61.1577 213.429C60.2713 212.866 59.5781 212.08 59.0781 211.068C58.5838 210.057 58.3366 208.875 58.3366 207.523C58.3366 206.159 58.5838 204.969 59.0781 203.952C59.5781 202.935 60.2713 202.145 61.1577 201.582C62.0497 201.02 63.0866 200.739 64.2685 200.739C65.4503 200.739 66.4844 201.02 67.3707 201.582C68.2628 202.145 68.956 202.935 69.4503 203.952C69.9503 204.969 70.2003 206.159 70.2003 207.523C70.2003 208.875 69.9503 210.057 69.4503 211.068C68.956 212.08 68.2628 212.866 67.3707 213.429C66.4844 213.991 65.4503 214.273 64.2685 214.273ZM64.2685 212.466C65.1662 212.466 65.9048 212.236 66.4844 211.776C67.0639 211.315 67.4929 210.71 67.7713 209.96C68.0497 209.21 68.1889 208.398 68.1889 207.523C68.1889 206.648 68.0497 205.832 67.7713 205.077C67.4929 204.321 67.0639 203.71 66.4844 203.244C65.9048 202.778 65.1662 202.545 64.2685 202.545C63.3707 202.545 62.6321 202.778 62.0526 203.244C61.473 203.71 61.044 204.321 60.7656 205.077C60.4872 205.832 60.348 206.648 60.348 207.523C60.348 208.398 60.4872 209.21 60.7656 209.96C61.044 210.71 61.473 211.315 62.0526 211.776C62.6321 212.236 63.3707 212.466 64.2685 212.466ZM81.5206 208.648V200.909H83.532V214H81.5206V211.784H81.3842C81.0774 212.449 80.6001 213.014 79.9524 213.48C79.3047 213.94 78.4865 214.17 77.4979 214.17C76.6797 214.17 75.9524 213.991 75.3161 213.634C74.6797 213.27 74.1797 212.724 73.8161 211.997C73.4524 211.264 73.2706 210.341 73.2706 209.227V200.909H75.282V209.091C75.282 210.045 75.549 210.807 76.0831 211.375C76.6229 211.943 77.3104 212.227 78.1456 212.227C78.6456 212.227 79.1541 212.099 79.6712 211.844C80.1939 211.588 80.6314 211.196 80.9837 210.668C81.3416 210.139 81.5206 209.466 81.5206 208.648Z"
-        fill="#1D4ED8"
-      />
-      <path
-        d="M384 129C384 106.909 401.909 89 424 89H472C494.091 89 512 106.909 512 129V169H384V129Z"
-        fill="url(#paint2_linear_42_168)"
-      />
-      <circle cx="448" cy="65" r="64" fill="url(#paint3_linear_42_168)" />
-      <path
-        d="M431.841 205.273C431.841 207.114 431.509 208.705 430.844 210.045C430.179 211.386 429.267 212.42 428.108 213.148C426.949 213.875 425.625 214.239 424.136 214.239C422.648 214.239 421.324 213.875 420.165 213.148C419.006 212.42 418.094 211.386 417.429 210.045C416.764 208.705 416.432 207.114 416.432 205.273C416.432 203.432 416.764 201.841 417.429 200.5C418.094 199.159 419.006 198.125 420.165 197.398C421.324 196.67 422.648 196.307 424.136 196.307C425.625 196.307 426.949 196.67 428.108 197.398C429.267 198.125 430.179 199.159 430.844 200.5C431.509 201.841 431.841 203.432 431.841 205.273ZM429.795 205.273C429.795 203.761 429.543 202.486 429.037 201.446C428.537 200.406 427.858 199.619 427 199.085C426.148 198.551 425.193 198.284 424.136 198.284C423.08 198.284 422.122 198.551 421.264 199.085C420.412 199.619 419.733 200.406 419.227 201.446C418.727 202.486 418.477 203.761 418.477 205.273C418.477 206.784 418.727 208.06 419.227 209.099C419.733 210.139 420.412 210.926 421.264 211.46C422.122 211.994 423.08 212.261 424.136 212.261C425.193 212.261 426.148 211.994 427 211.46C427.858 210.926 428.537 210.139 429.037 209.099C429.543 208.06 429.795 206.784 429.795 205.273ZM440.815 200.909V202.614H434.031V200.909H440.815ZM436.009 197.773H438.02V210.25C438.02 210.818 438.102 211.244 438.267 211.528C438.438 211.807 438.653 211.994 438.915 212.091C439.182 212.182 439.463 212.227 439.759 212.227C439.98 212.227 440.162 212.216 440.304 212.193C440.446 212.165 440.56 212.142 440.645 212.125L441.054 213.932C440.918 213.983 440.727 214.034 440.483 214.085C440.239 214.142 439.929 214.17 439.554 214.17C438.986 214.17 438.429 214.048 437.884 213.804C437.344 213.56 436.895 213.188 436.537 212.688C436.185 212.188 436.009 211.557 436.009 210.795V197.773ZM446.134 206.125V214H444.122V196.545H446.134V202.955H446.304C446.611 202.278 447.071 201.741 447.685 201.344C448.304 200.94 449.128 200.739 450.156 200.739C451.048 200.739 451.83 200.918 452.5 201.276C453.17 201.628 453.69 202.17 454.06 202.903C454.435 203.631 454.622 204.557 454.622 205.682V214H452.611V205.818C452.611 204.778 452.341 203.974 451.801 203.406C451.267 202.832 450.526 202.545 449.577 202.545C448.918 202.545 448.327 202.685 447.804 202.963C447.287 203.241 446.878 203.648 446.577 204.182C446.281 204.716 446.134 205.364 446.134 206.125ZM463.79 214.273C462.529 214.273 461.441 213.994 460.526 213.438C459.617 212.875 458.915 212.091 458.421 211.085C457.933 210.074 457.688 208.898 457.688 207.557C457.688 206.216 457.933 205.034 458.421 204.011C458.915 202.983 459.603 202.182 460.484 201.608C461.37 201.028 462.404 200.739 463.586 200.739C464.268 200.739 464.941 200.852 465.606 201.08C466.271 201.307 466.876 201.676 467.421 202.188C467.967 202.693 468.401 203.364 468.725 204.199C469.049 205.034 469.211 206.062 469.211 207.284V208.136H459.12V206.398H467.165C467.165 205.659 467.018 205 466.722 204.42C466.433 203.841 466.018 203.384 465.478 203.048C464.944 202.713 464.313 202.545 463.586 202.545C462.785 202.545 462.092 202.744 461.506 203.142C460.927 203.534 460.481 204.045 460.168 204.676C459.856 205.307 459.7 205.983 459.7 206.705V207.864C459.7 208.852 459.87 209.69 460.211 210.378C460.558 211.06 461.038 211.58 461.651 211.938C462.265 212.29 462.978 212.466 463.79 212.466C464.319 212.466 464.796 212.392 465.222 212.244C465.654 212.091 466.026 211.864 466.339 211.562C466.651 211.256 466.893 210.875 467.063 210.42L469.006 210.966C468.802 211.625 468.458 212.205 467.975 212.705C467.492 213.199 466.896 213.585 466.185 213.864C465.475 214.136 464.677 214.273 463.79 214.273ZM472.271 214V200.909H474.214V202.886H474.35C474.589 202.239 475.021 201.713 475.646 201.31C476.271 200.906 476.975 200.705 477.759 200.705C477.907 200.705 478.092 200.707 478.313 200.713C478.535 200.719 478.702 200.727 478.816 200.739V202.784C478.748 202.767 478.592 202.741 478.347 202.707C478.109 202.668 477.856 202.648 477.589 202.648C476.952 202.648 476.384 202.781 475.884 203.048C475.39 203.31 474.998 203.673 474.708 204.139C474.424 204.599 474.282 205.125 474.282 205.716V214H472.271Z"
-        fill="white"
-      />
-      <path
-        d="M335.707 93.7071C336.098 93.3166 336.098 92.6834 335.707 92.2929L329.343 85.9289C328.953 85.5384 328.319 85.5384 327.929 85.9289C327.538 86.3195 327.538 86.9526 327.929 87.3431L333.586 93L327.929 98.6569C327.538 99.0474 327.538 99.6805 327.929 100.071C328.319 100.462 328.953 100.462 329.343 100.071L335.707 93.7071ZM155 93V94L335 94V93V92L155 92V93Z"
-        fill="#334155"
-      />
-      <path
-        d="M176.293 128.293C175.902 128.683 175.902 129.317 176.293 129.707L182.657 136.071C183.047 136.462 183.681 136.462 184.071 136.071C184.462 135.681 184.462 135.047 184.071 134.657L178.414 129L184.071 123.343C184.462 122.953 184.462 122.319 184.071 121.929C183.681 121.538 183.047 121.538 182.657 121.929L176.293 128.293ZM357 129V128L177 128V129V130L357 130V129Z"
-        fill="#334155"
-      />
-      <rect
-        x="208"
-        y="42"
-        width="96"
-        height="34"
-        rx="12"
-        fill="#1D4ED8"
-        fillOpacity="0.25"
-      />
-      <text
-        x={256}
-        y={62}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="currentColor"
-        fontSize="20"
-        className="text-primary-500 font-medium"
-      >
-        {yourIndex}
-      </text>
-      <rect
-        x="208"
-        y="145"
-        width="96"
-        height="34"
-        rx="12"
-        fill="#94A3B8"
-        fillOpacity="0.25"
-      />
-      <text
-        x={256}
-        y={164}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="currentColor"
-        fontSize="20"
-        className="text-white font-medium"
-      >
-        {otherIndex}
-      </text>
-      <defs>
-        <linearGradient
-          id="paint0_linear_42_168"
-          x1="64"
-          y1="88"
-          x2="64"
-          y2="168"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#1D4ED8" />
-          <stop offset="1" stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="paint1_linear_42_168"
-          x1="64"
-          y1="0"
-          x2="64"
-          y2="128"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#1D4ED8" />
-          <stop offset="1" stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="paint2_linear_42_168"
-          x1="448"
-          y1="89"
-          x2="448"
-          y2="169"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stop-color="#94A3B8" />
-          <stop offset="1" stop-color="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="paint3_linear_42_168"
-          x1="448"
-          y1="1"
-          x2="448"
-          y2="129"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#94A3B8" />
-          <stop offset="1" stopColor="#020617" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
 function ThreeWayCycleArtboard({
   yourIndex,
   otherIndex,
@@ -493,14 +252,133 @@ function ThreeWayCycleArtboard({
   );
 }
 
+export function SwapConfirmationBottomSheetFooter({
+  // courseId,
+  // match,
+  targetSwapperId,
+  middlemanSwapperId,
+}: {
+  // courseId: Id<"courses">;
+  targetSwapperId: Id<"swapper">;
+  middlemanSwapperId?: Id<"swapper">;
+
+  // match: DirectMatch;
+}) {
+  const handleSwapRequestCallbackMut = useAction(api.actions.sendSwapRequest);
+  const { handle, error, isPending } = useConvexMutationState(
+    handleSwapRequestCallbackMut,
+    {
+      onSuccess: () => {
+        toast.success("Swap request accepted!", {
+          description:
+            "We will notify the swapper of your request. They will reach out to you to confirm the swap. Keep your DMs open!",
+        });
+      },
+    }
+  );
+
+  return (
+    <div className="flex flex-col p-2.5 gap-4 border border-border rounded-md bg-card">
+      <h3 className="text-sm font-medium text-primary">
+        Someone wants to swap with you!
+      </h3>
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Error!</AlertTitle>
+          <p className="text-muted-foreground max-w-none">{error}</p>
+        </Alert>
+      )}
+      <div className="w-full flex flex-row gap-2">
+        <Button
+          variant="ghost"
+          className="flex-1 border border-border bg-primary/20"
+          onClick={() =>
+            // handle({
+            //   courseId,
+            //   otherSwapperId: match.otherSwapperId,
+            //   // action: "already_swapped",
+            // })
+            {}
+          }
+          disabled={isPending}
+        >
+          Decline
+        </Button>
+        <Button
+          variant="default"
+          className="flex-1"
+          onClick={
+            () => {}
+            // handle({ courseId, otherSwapperId: match.otherSwapperId })
+          }
+          disabled={isPending}
+        >
+          Accept
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RequestSwapBottomSheetFooter({
+  disabled,
+  // id,
+  targetSwapperId,
+  middlemanSwapperId,
+  requestClose,
+}: {
+  disabled: boolean;
+  targetSwapperId: Id<"swapper">;
+  middlemanSwapperId?: Id<"swapper">;
+  requestClose?: () => void;
+}) {
+  const requestSwapMut = useAction(api.actions.sendSwapRequest);
+  const requestSwapState = useConvexMutationState(requestSwapMut);
+  return (
+    <>
+      {requestSwapState.error && (
+        <Alert variant="destructive">
+          <AlertTitle>Error!</AlertTitle>
+          <p className="text-muted-foreground max-w-none">
+            {requestSwapState.error}
+          </p>
+        </Alert>
+      )}
+      <div className="flex flex-row gap-2 pb-8">
+        <Button className="flex-1" variant="outline" onClick={requestClose}>
+          Cancel
+        </Button>
+        <Button
+          className="flex-1"
+          onClick={() =>
+            // !disabled &&
+            // requestSwapState.handle({
+            //   courseId: course.id,
+            //   otherSwapperId: id,
+            // })
+            {}
+          }
+          disabled={requestSwapState.isPending || disabled}
+        >
+          {requestSwapState.isPending && (
+            <Loader2 className="size-4 animate-spin" />
+          )}
+          Request Swap
+        </Button>
+      </div>
+    </>
+  );
+  // return (
+
+  // );
+}
+
 export function SwapItemMatchBottomSheet({
-  id,
   course,
-  match,
+  match: matchObj,
   isAlreadySwapped,
   requestClose,
 }: {
-  id: Id<"swapper">;
   course: {
     id: Id<"courses">;
     haveIndex: string;
@@ -508,16 +386,20 @@ export function SwapItemMatchBottomSheet({
     code: string;
     name: string;
   };
-  match: DirectMatch;
+  match:
+    | {
+        type: "direct";
+        match: DirectMatch;
+      }
+    | {
+        type: "three-way-cycle";
+        match: ThreeWayCycleMatch;
+      };
   isAlreadySwapped: boolean;
   requestClose?: () => void;
 }) {
-  // const requestSwapMut = useMutation(api.tasks.requestSwap);
-  // const requestSwapState = useConvexMutationState(requestSwapMut);
-  const requestSwapMut = useAction(api.actions.sendSwapRequest);
-  const requestSwapState = useConvexMutationState(requestSwapMut);
-
   let statusElement = null;
+  const { match } = matchObj;
   if (match.status === "pending") {
     statusElement = match.isSelfInitiated ? (
       <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
@@ -542,15 +424,27 @@ export function SwapItemMatchBottomSheet({
 
   // }
 
+  const disabled = match.status === "swapped" || match.status === "pending";
   let hintElement = null;
+  let footer = (
+    <RequestSwapBottomSheetFooter
+      disabled={disabled}
+      targetSwapperId={match.otherSwapperId}
+      middlemanSwapperId={
+        matchObj.type === "three-way-cycle"
+          ? matchObj.match.middlemanSwapperId
+          : undefined
+      }
+      requestClose={requestClose}
+    />
+  );
   if (match.status === "pending") {
     if (match.isSelfInitiated) {
       if (isAlreadySwapped) {
         hintElement = (
           <div className="flex flex-col p-2.5 gap-1 border border-border rounded-md bg-card">
-            <h3 className="text-sm font-medium text-primary">
-              You have requested a swap with this user. However, you already
-              have a swap for this course.
+            <h3 className="text-sm font-medium text-primary-500">
+              You have already swapped.
             </h3>
             <p className="text-muted-foreground">
               They won't be able to request a swap with you unless you unmark
@@ -561,7 +455,7 @@ export function SwapItemMatchBottomSheet({
       } else {
         hintElement = (
           <div className="flex flex-col p-2.5 gap-1 border border-border rounded-md bg-card">
-            <h3 className="text-sm font-medium text-primary">
+            <h3 className="text-sm font-medium text-primary-500">
               You have requested a swap with this user.
             </h3>
             <p className="text-muted-foreground">
@@ -576,9 +470,8 @@ export function SwapItemMatchBottomSheet({
       if (isAlreadySwapped) {
         hintElement = (
           <div className="flex flex-col p-2.5 gap-1 border border-border rounded-md bg-card">
-            <h3 className="text-sm font-medium text-primary">
-              You have requested a swap with this user. However, you already
-              have a swap for this course.
+            <h3 className="text-sm font-medium text-primary-500">
+              They have already swapped.
             </h3>
             <p className="text-muted-foreground">
               They won't be able to request a swap with you unless you unmark
@@ -588,13 +481,20 @@ export function SwapItemMatchBottomSheet({
         );
       } else {
         hintElement = (
-          <SwapItemMatchBottomSheetHint courseId={course.id} match={match} />
+          <SwapConfirmationBottomSheetFooter
+            targetSwapperId={match.otherSwapperId}
+            middlemanSwapperId={
+              matchObj.type === "three-way-cycle"
+                ? matchObj.match.middlemanSwapperId
+                : undefined
+            }
+            // match={match}
+          />
         );
       }
     }
   }
 
-  const disabled = match.status === "swapped" || match.status === "pending";
   return (
     <>
       <div className="max-h-[calc(100vh-120px)] overflow-y-auto">
@@ -603,26 +503,6 @@ export function SwapItemMatchBottomSheet({
             {course.code} {course.name} Swap Request
           </SheetTitle>
           <div className="pt-2">{statusElement}</div>
-
-          {/* {!match.isPerfectMatch && (
-            <Alert className="mt-2" variant="warning">
-              <AlertTitle>They may not want your index 😔</AlertTitle>
-              <p className="text-muted-foreground">
-                Perhaps they may not have considered your index, you should try
-                to request a swap with them.
-              </p>
-            </Alert>
-          )} */}
-          {/* {(match.status !== undefined || match.isPerfectMatch) && (
-            <div className="flex flex-row gap-2 items-center pt-1">
-              {match.status !== undefined && statusElement}
-              {match.isPerfectMatch && (
-                <Badge variant="outline" className="text-primary bg-primary/10">
-                  Perfect Match! 🎉
-                </Badge>
-              )}
-            </div>
-          )} */}
         </SheetHeader>
         <div className="flex flex-col items-center justify-center px-4">
           <div className="w-full max-w-72">
@@ -637,83 +517,10 @@ export function SwapItemMatchBottomSheet({
             />
           </div>
         </div>
-        {/* <div className="flex flex-col gap-4 px-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-col gap-2">
-              <p>Details</p>
-            </div>
-            <div className="border border-collapse border-muted rounded-xl">
-              <Table className="w-full">
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground">
-                      Course
-                    </TableCell>
-                    <TableCell className="text-foreground text-right text-wrap whitespace-normal">
-                      {course.code} {course.name}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground">
-                      Your Index
-                    </TableCell>
-                    <TableCell className="text-foreground text-right flex flex-row gap-1 items-center justify-end">
-                      <p
-                        className={cn({
-                          "text-foreground": match.isPerfectMatch,
-                          "text-yellow-500": !match.isPerfectMatch,
-                        })}
-                      >
-                        {course.haveIndex}
-                      </p>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground">
-                      Their Index
-                    </TableCell>
-                    <TableCell className="text-primary text-right">
-                      {match.index}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </div> */}
       </div>
       <SheetFooter className="flex flex-col gap-4 border-t border-border">
-        {requestSwapState.error && (
-          <Alert variant="destructive">
-            <AlertTitle>Error!</AlertTitle>
-            <p className="text-muted-foreground max-w-none">
-              {requestSwapState.error}
-            </p>
-          </Alert>
-        )}
-
         {hintElement}
-        <div className="flex flex-row gap-2 pb-8">
-          <Button className="flex-1" variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={() =>
-              !disabled &&
-              requestSwapState.handle({
-                courseId: course.id,
-                otherSwapperId: id,
-              })
-            }
-            disabled={requestSwapState.isPending || disabled}
-          >
-            {requestSwapState.isPending && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
-            Request Swap
-          </Button>
-        </div>
+        {footer}
       </SheetFooter>
     </>
   );
@@ -860,34 +667,43 @@ export function CourseSwapMatches({
   const toggleSwapRequestMut = useMutation(api.tasks.toggleSwapRequest);
   const toggleSwapRequestState = useConvexMutationState(toggleSwapRequestMut);
   const [bottomSheetMatchItem, setBottomSheetMatchItem] = useState<{
-    id: Id<"swapper">;
+    // id: Id<"swapper">;
+    match:
+      | {
+          type: "direct";
+          match: DirectMatch;
+        }
+      | {
+          type: "three-way-cycle";
+          match: ThreeWayCycleMatch;
+        };
     isOpen: boolean;
   } | null>(null);
-  const bottomSheetMatchItemData = useMemo(() => {
-    if (!bottomSheetMatchItem?.id) return null;
-    if (!requestsQuery) return null;
-    const match = requestsQuery.directMatches.find(
-      (match) => match.otherSwapperId === bottomSheetMatchItem.id
-    );
-    if (!match) return null;
-    if (
-      !requestsQuery.course.haveIndex ||
-      requestsQuery.course.hasSwapped === undefined
-    ) {
-      return null;
-    }
-    return {
-      id: bottomSheetMatchItem.id,
-      course: {
-        id: requestsQuery.course.id,
-        haveIndex: requestsQuery.course.haveIndex,
-        hasSwapped: requestsQuery.course.hasSwapped,
-        code,
-        name: requestsQuery.course.name,
-      },
-      match,
-    };
-  }, [bottomSheetMatchItem?.id, requestsQuery, code]);
+  // const bottomSheetMatchItemData = useMemo(() => {
+  //   if (!bottomSheetMatchItem?.id) return null;
+  //   if (!requestsQuery) return null;
+  //   const match = requestsQuery.directMatches.find(
+  //     (match) => match.otherSwapperId === bottomSheetMatchItem.id
+  //   );
+  //   if (!match) return null;
+  //   if (
+  //     !requestsQuery.course.haveIndex ||
+  //     requestsQuery.course.hasSwapped === undefined
+  //   ) {
+  //     return null;
+  //   }
+  //   return {
+  //     id: bottomSheetMatchItem.id,
+  //     course: {
+  //       id: requestsQuery.course.id,
+  //       haveIndex: requestsQuery.course.haveIndex,
+  //       hasSwapped: requestsQuery.course.hasSwapped,
+  //       code,
+  //       name: requestsQuery.course.name,
+  //     },
+  //     match,
+  //   };
+  // }, [bottomSheetMatchItem?.id, requestsQuery, code]);
 
   // const editUrl = useMemo(() => {
   //   if (typeof window === "undefined") return `/swap/${code}/edit`;
@@ -946,7 +762,11 @@ export function CourseSwapMatches({
                   })}
                   onRequestOpen={() =>
                     setBottomSheetMatchItem({
-                      id: rawMatch.otherSwapperId,
+                      // id: rawMatch.otherSwapperId,
+                      match: {
+                        type: "direct",
+                        match: rawMatch,
+                      },
                       isOpen: true,
                     })
                   }
@@ -1090,11 +910,16 @@ export function CourseSwapMatches({
         }
       >
         <SheetContent side={sheetSide}>
-          {bottomSheetMatchItemData && (
+          {bottomSheetMatchItem?.match && requestsQuery?.course && (
             <SwapItemMatchBottomSheet
-              id={bottomSheetMatchItemData.id}
-              course={bottomSheetMatchItemData.course}
-              match={bottomSheetMatchItemData.match}
+              course={{
+                id: requestsQuery.course.id,
+                haveIndex: requestsQuery.course.haveIndex ?? "",
+                hasSwapped: requestsQuery.course.hasSwapped ?? false,
+                code: requestsQuery.course.code ?? "",
+                name: requestsQuery.course.name ?? "",
+              }}
+              match={bottomSheetMatchItem.match}
               isAlreadySwapped={requestsQuery?.course.hasSwapped === true}
               requestClose={() =>
                 setBottomSheetMatchItem((old) => {

@@ -119,7 +119,6 @@ export default defineSchema({
     courseId: v.id("courses"),
     index: v.string(),
     hasSwapped: v.boolean(),
-    previouslyMatchedWith: v.optional(v.id("swapper")),
   })
     .index("by_userId_courseId", ["userId", "courseId"])
     .index("by_courseId_index", ["courseId", "index"])
@@ -134,13 +133,20 @@ export default defineSchema({
 
   swap_requests: defineTable({
     courseId: v.id("courses"),
-    swapper1: v.id("swapper"),
-    swapper2: v.id("swapper"),
-    middlemanSwapper: v.optional(v.id("swapper")),
     initiator: v.id("swapper"),
-    requestedAt: v.optional(v.number()), // ms since epoch
+    targetSwapper: v.id("swapper"),
+    middlemanSwapper: v.optional(v.id("swapper")),
+    acceptedByInitiator: v.boolean(),
+    acceptedByTargetSwapper: v.boolean(),
+    acceptedByMiddlemanSwapper: v.boolean(),
+    isCompleted: v.boolean(),
   })
-    .index("by_course_swapper_pair", ["courseId", "swapper1", "swapper2"])
+    .index("by_courseId_initiator_targetSwapper_middlemanSwapper", [
+      "courseId",
+      "initiator",
+      "targetSwapper",
+      "middlemanSwapper",
+    ])
     .index("by_courseId", ["courseId"])
     .index("by_initiator", ["initiator"]),
 

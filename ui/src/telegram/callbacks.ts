@@ -2,27 +2,31 @@ import { Id } from "../../convex/_generated/dataModel";
 
 export const COMMAND_PREFIX = {
   ACCEPT: "a",
-  ALREADY_SWAPPED: "s",
+  DECLINE: "d",
 };
 
 export function serializeAccept(
-  courseId: Id<"courses">,
-  swapper1: Id<"swapper">,
-  swapper2: Id<"swapper">
+  initiator: Id<"swapper">,
+  targetSwapper: Id<"swapper">,
+  middlemanSwapper?: Id<"swapper"> | null
 ) {
   const id = Math.floor(Math.random() * 1000000).toString(16);
-  const data = `${COMMAND_PREFIX.ACCEPT}:${id}:${courseId}:${swapper1}:${swapper2}`;
-  return data;
+  if (middlemanSwapper) {
+    return `${COMMAND_PREFIX.ACCEPT}:${id}:${initiator}:${targetSwapper}:${middlemanSwapper}`;
+  }
+  return `${COMMAND_PREFIX.ACCEPT}:${id}:${initiator}:${targetSwapper}`;
 }
 
-export function serializeAlreadySwapped(
-  courseId: Id<"courses">,
-  swapper1: Id<"swapper">,
-  swapper2: Id<"swapper">
+export function serializeDecline(
+  initiator: Id<"swapper">,
+  targetSwapper: Id<"swapper">,
+  middlemanSwapper?: Id<"swapper"> | null
 ) {
   const id = Math.floor(Math.random() * 1000000).toString(16);
-  const data = `${COMMAND_PREFIX.ALREADY_SWAPPED}:${id}:${courseId}:${swapper1}:${swapper2}`;
-  return data;
+  if (middlemanSwapper) {
+    return `${COMMAND_PREFIX.DECLINE}:${id}:${initiator}:${targetSwapper}:${middlemanSwapper}`;
+  }
+  return `${COMMAND_PREFIX.DECLINE}:${id}:${initiator}:${targetSwapper}`;
 }
 
 export function getAction(data: string) {
@@ -34,26 +38,60 @@ export function getAction(data: string) {
 
 export function deserializeAccept(data: string) {
   const parts = data.split(":");
-  if (parts.length !== 5) return null;
-  const [actionChar, id, courseIdStr, swapper1Str, swapper2Str] = parts;
-  if (actionChar !== "a") return null;
-  return {
-    id,
-    courseId: courseIdStr as Id<"courses">,
-    swapper1: swapper1Str as Id<"swapper">,
-    swapper2: swapper2Str as Id<"swapper">,
-  };
+  if (parts.length === 5) {
+    const [
+      actionChar,
+      id,
+      initiatorStr,
+      targetSwapperStr,
+      middlemanSwapperStr,
+    ] = parts;
+    if (actionChar !== COMMAND_PREFIX.ACCEPT) return null;
+    return {
+      id,
+      initiator: initiatorStr as Id<"swapper">,
+      targetSwapper: targetSwapperStr as Id<"swapper">,
+      middlemanSwapper: middlemanSwapperStr as Id<"swapper"> | null,
+    };
+  }
+  if (parts.length === 4) {
+    const [actionChar, id, initiatorStr, targetSwapperStr] = parts;
+    if (actionChar !== COMMAND_PREFIX.ACCEPT) return null;
+    return {
+      id,
+      initiator: initiatorStr as Id<"swapper">,
+      targetSwapper: targetSwapperStr as Id<"swapper">,
+    };
+  }
+  return null;
 }
 
-export function deserializeAlreadySwapped(data: string) {
+export function deserializeDecline(data: string) {
   const parts = data.split(":");
-  if (parts.length !== 5) return null;
-  const [actionChar, id, courseIdStr, swapper1Str, swapper2Str] = parts;
-  if (actionChar !== "s") return null;
-  return {
-    id,
-    courseId: courseIdStr as Id<"courses">,
-    swapper1: swapper1Str as Id<"swapper">,
-    swapper2: swapper2Str as Id<"swapper">,
-  };
+  if (parts.length === 5) {
+    const [
+      actionChar,
+      id,
+      initiatorStr,
+      targetSwapperStr,
+      middlemanSwapperStr,
+    ] = parts;
+    if (actionChar !== COMMAND_PREFIX.DECLINE) return null;
+    return {
+      id,
+      initiator: initiatorStr as Id<"swapper">,
+      targetSwapper: targetSwapperStr as Id<"swapper">,
+      middlemanSwapper: middlemanSwapperStr as Id<"swapper"> | null,
+    };
+  }
+  if (parts.length === 4) {
+    const [actionChar, id, initiatorStr, targetSwapperStr] = parts;
+    if (actionChar !== COMMAND_PREFIX.DECLINE) return null;
+    return {
+      id,
+      initiator: initiatorStr as Id<"swapper">,
+      targetSwapper: targetSwapperStr as Id<"swapper">,
+    };
+  }
+  return null;
 }
