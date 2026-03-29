@@ -73,8 +73,8 @@ You have: [${escapeMarkdown(other.index)}](${otherIndexUrl}).`,
               [
                 { text: "Accept", callback_data: webhook.accept },
                 {
-                  text: "Already Swapped",
-                  callback_data: webhook.already_swapped,
+                  text: "Decline",
+                  callback_data: webhook.decline,
                 },
               ],
             ],

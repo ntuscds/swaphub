@@ -512,10 +512,14 @@ export const getCourseRequestAndMatches = query({
     const allMyRequests = await ctx.db
       .query("swap_requests")
       .filter((q) =>
-        q.or(
-          q.eq(q.field("initiator"), mySwapper._id),
-          q.eq(q.field("targetSwapper"), mySwapper._id),
-          q.eq(q.field("middlemanSwapper"), mySwapper._id)
+        q.and(
+          q.or(
+            q.eq(q.field("initiator"), mySwapper._id),
+            q.eq(q.field("targetSwapper"), mySwapper._id),
+            q.eq(q.field("middlemanSwapper"), mySwapper._id)
+          ),
+          q.eq(q.field("courseId"), courseId),
+          q.eq(q.field("isCompleted"), false)
         )
       )
       .collect();
@@ -960,6 +964,7 @@ export const requestSwap = internalMutation({
     //   )
     //   .unique();
 
+    console.log("HELLO");
     if (existingRequests) {
       throw new ConvexError(
         "You have already requested a swap for this course."
@@ -979,21 +984,20 @@ export const requestSwap = internalMutation({
 
     const acceptPayloadId = await ctx.db.insert("telegram_callback_data", {
       callbackData: serializeAccept(
+        targetUser._id,
         meSwapper._id,
         targetSwapper._id,
         middlemanSwapper?._id
       ),
     });
-    const alreadySwappedPayloadId = await ctx.db.insert(
-      "telegram_callback_data",
-      {
-        callbackData: serializeDecline(
-          meSwapper._id,
-          targetSwapper._id,
-          middlemanSwapper?._id
-        ),
-      }
-    );
+    const declinePayloadId = await ctx.db.insert("telegram_callback_data", {
+      callbackData: serializeDecline(
+        targetUser._id,
+        meSwapper._id,
+        targetSwapper._id,
+        middlemanSwapper?._id
+      ),
+    });
 
     return {
       course: {
@@ -1026,7 +1030,7 @@ export const requestSwap = internalMutation({
           : null,
       webhook: {
         accept: acceptPayloadId,
-        already_swapped: alreadySwappedPayloadId,
+        decline: declinePayloadId,
       },
     };
   },
@@ -1169,20 +1173,18 @@ export const handleSwapRequestWebhookCallback = internalMutation({
 
     // Determine who the caller is.
     let iam: "initiator" | "targetSwapper" | "middlemanSwapper" = "initiator";
-    if (args.fromTelegramUserId === initiatorUser.telegramUserId) {
+    if (parsed.myUserId === initiatorUser._id) {
       throw new ConvexError("You cannot accept your own swap request.");
       // iam = "initiator";
-    } else if (args.fromTelegramUserId === targetSwapperUser.telegramUserId) {
+    } else if (parsed.myUserId === targetSwapperUser._id) {
       iam = "targetSwapper";
-    } else if (
-      args.fromTelegramUserId === middlemanSwapperUser?.telegramUserId
-    ) {
+    } else if (parsed.myUserId === middlemanSwapperUser?._id) {
       iam = "middlemanSwapper";
     } else {
       throw new ConvexError("Not a participant in this swap request");
     }
 
-    const request = await ctx.db
+    const requests = await ctx.db
       .query("swap_requests")
       .withIndex("by_courseId_initiator_targetSwapper_middlemanSwapper", (q) =>
         q
@@ -1191,9 +1193,15 @@ export const handleSwapRequestWebhookCallback = internalMutation({
           .eq("targetSwapper", targetSwapper._id)
           .eq("middlemanSwapper", middlemanSwapper?._id)
       )
-      .unique();
-    if (!request) {
+      .collect();
+    // Exclude completed requests.
+    const incompletedRequests = requests.filter((r) => !r.isCompleted);
+    if (incompletedRequests.length <= 0) {
       throw new ConvexError("Swap request not found.");
+    }
+    const request = incompletedRequests[0];
+    if (incompletedRequests.length > 1) {
+      throw new ConvexError("Multiple swap requests found.");
     }
 
     const course = await ctx.db.get(initiator.courseId);

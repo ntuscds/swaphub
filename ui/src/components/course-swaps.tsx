@@ -134,20 +134,29 @@ function RequestSwapBottomSheetFooter({
           </p>
         </Alert>
       )}
+      {requestSwapState.isSuccess && (
+        <Alert variant="success">
+          <AlertTitle>Success!</AlertTitle>
+          <p className="text-muted-foreground max-w-none">
+            Swap request sent successfully!
+          </p>
+        </Alert>
+      )}
       <div className="flex flex-row gap-2 pb-8">
         <Button className="flex-1" variant="outline" onClick={requestClose}>
           Cancel
         </Button>
         <Button
           className="flex-1"
-          onClick={() =>
-            // !disabled &&
-            // requestSwapState.handle({
-            //   courseId: course.id,
-            //   otherSwapperId: id,
-            // })
-            {}
-          }
+          onClick={() => {
+            if (disabled) {
+              return;
+            }
+            requestSwapState.handle({
+              targetSwapperId,
+              middlemanSwapperId,
+            });
+          }}
           disabled={requestSwapState.isPending || disabled}
         >
           {requestSwapState.isPending && (
