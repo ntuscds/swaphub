@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { useAction, useMutation, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -31,30 +32,19 @@ import { toast } from "sonner";
 import { useConvexMutationState } from "./use-convex-mutation-state";
 import { AcadYear } from "@/lib/acad";
 
-type SwapCourseRequestCourse = {
-  id: Id<"courses">;
-  haveIndex?: string;
-  hasSwapped?: boolean;
-};
-
-type SwapCourseRequestMatch = {
-  id: Id<"swapper">;
-  numberOfRequests: number;
-  isPerfectMatch: boolean;
-  index: string;
-  isVerified: boolean;
-  requestedAt: number;
-  status?: "pending" | "swapped" | "cancelled";
-  isSelfInitiated: boolean;
-  revealedBy?: string;
-};
+type CourseRequestAndMatches = FunctionReturnType<
+  typeof api.tasks.getCourseRequestAndMatches
+>;
+type DirectMatch = CourseRequestAndMatches["directMatches"][number];
+type ThreeWayCycleMatch =
+  CourseRequestAndMatches["threeWayCycleMatches"][number];
 
 export function SwapItemMatchBottomSheetHint({
   courseId,
   match,
 }: {
   courseId: Id<"courses">;
-  match: SwapCourseRequestMatch;
+  match: DirectMatch;
 }) {
   const handleSwapRequestCallbackMut = useAction(api.actions.sendSwapRequest);
   const { handle, error, isPending } = useConvexMutationState(
@@ -72,7 +62,7 @@ export function SwapItemMatchBottomSheetHint({
   return (
     <div className="flex flex-col p-2.5 gap-4 border border-border rounded-md bg-card">
       <h3 className="text-sm font-medium text-primary">
-        Hey, @{match.revealedBy ?? "???"} want to swap with you!
+        Someone wants to swap with you!
       </h3>
       {error && (
         <Alert variant="destructive">
@@ -87,7 +77,7 @@ export function SwapItemMatchBottomSheetHint({
           onClick={() =>
             handle({
               courseId,
-              otherSwapperId: match.id,
+              otherSwapperId: match.otherSwapperId,
               // action: "already_swapped",
             })
           }
@@ -98,7 +88,9 @@ export function SwapItemMatchBottomSheetHint({
         <Button
           variant="default"
           className="flex-1"
-          onClick={() => handle({ courseId, otherSwapperId: match.id })}
+          onClick={() =>
+            handle({ courseId, otherSwapperId: match.otherSwapperId })
+          }
           disabled={isPending}
         >
           Accept
@@ -116,11 +108,14 @@ export function SwapItemMatchBottomSheet({
   requestClose,
 }: {
   id: Id<"swapper">;
-  course: SwapCourseRequestCourse & {
+  course: {
+    id: Id<"courses">;
+    haveIndex: string;
+    hasSwapped: boolean;
     code: string;
     name: string;
   };
-  match: SwapCourseRequestMatch;
+  match: DirectMatch;
   isAlreadySwapped: boolean;
   requestClose?: () => void;
 }) {
@@ -268,32 +263,6 @@ export function SwapItemMatchBottomSheet({
                       {match.index}
                     </TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground">
-                      Is Verified Student
-                    </TableCell>
-                    <TableCell
-                      className={cn("text-primary text-right", {
-                        "text-green-500": match.isVerified,
-                        "text-red-500": !match.isVerified,
-                      })}
-                    >
-                      {match.isVerified ? "Yes" : "No"}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground">
-                      Total Requests
-                    </TableCell>
-                    <TableCell
-                      className={cn("text-right", {
-                        "text-muted-foreground": match.numberOfRequests > 0,
-                        "text-green-500": match.numberOfRequests === 0,
-                      })}
-                    >
-                      {match.numberOfRequests}
-                    </TableCell>
-                  </TableRow>
                 </TableBody>
               </Table>
             </div>
@@ -348,13 +317,13 @@ export function SwapItemMatchBottomSheet({
 }
 
 export function SwapItemMatch({
-  id,
   match,
+  myIndex,
   className,
   onRequestOpen,
 }: {
-  id: Id<"swapper">;
-  match: SwapCourseRequestMatch;
+  match: DirectMatch;
+  myIndex: string;
   className?: string;
   onRequestOpen?: (id: Id<"swapper">) => void;
 }) {
@@ -376,39 +345,94 @@ export function SwapItemMatch({
       </Badge>
     );
   } else {
-    statusElement = <span className="text-sm text-primary">Request</span>;
+    statusElement = <span className="text-sm text-primary-500">Request</span>;
   }
 
   return (
-    <button
-      // key={match.id}
-      onClick={() => onRequestOpen?.(id)}
+    <TableRow
+      onClick={() => onRequestOpen?.(match.otherSwapperId)}
       className={cn(
-        "flex flex-row gap-2 px-2.5 py-2 items-center justify-between",
         {
-          "bg-primary/10": match.isPerfectMatch,
+          "bg-primary-500/10": match.isPerfectMatch,
+          // "opacity-50": match.status === "swapped",
         },
         className
       )}
     >
-      <div className="flex flex-row gap-2 items-center justify-between">
-        <p className="text-sm text-foreground">{match.index}</p>
-        <div className="flex flex-row items-center">
-          {match.isVerified && <BadgeCheck className="size-4 text-green-500" />}
-          {match.numberOfRequests > 0 && (
-            <Badge variant="outline" className="text-muted-foreground">
-              {match.numberOfRequests} Requested
-            </Badge>
-          )}
-        </div>
-      </div>
-      <div className="flex flex-row gap-2 items-center">
-        <div className="flex flex-row gap-1 items-center">
-          {statusElement}
-          <ArrowRight className="size-4 text-primary" />
-        </div>
-      </div>
-    </button>
+      <TableCell className="font-medium text-sm lg:text-base text-foreground">
+        {match.index}
+      </TableCell>
+      <TableCell className="text-foreground text-sm lg:text-base">
+        {match.isPerfectMatch ? (
+          <Badge variant="outline" className="text-primary-500 bg-primary/10">
+            {myIndex}
+          </Badge>
+        ) : (
+          <Badge variant="destructive">Don't have {"):"}</Badge>
+        )}
+      </TableCell>
+      <TableCell className="flex flex-row gap-2 items-center justify-end text-right text-sm lg:text-base">
+        {statusElement} <ArrowRight className="size-4 text-primary-500" />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+export function SwapItemThreeWayCycleMatch({
+  match,
+  className,
+  onRequestOpen,
+}: {
+  match: ThreeWayCycleMatch;
+  className?: string;
+  onRequestOpen?: (id: Id<"swapper">, middlemanId: Id<"swapper">) => void;
+}) {
+  let statusElement = null;
+  if (match.status === "pending") {
+    statusElement = match.isSelfInitiated ? (
+      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+        Pending
+      </Badge>
+    ) : (
+      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+        Requested by Someone!
+      </Badge>
+    );
+  } else if (match.status === "swapped") {
+    statusElement = (
+      <Badge variant="default" className="text-gray-400 bg-gray-600/30">
+        Already Swapped
+      </Badge>
+    );
+  } else {
+    statusElement = <span className="text-sm text-primary-500">Request</span>;
+  }
+
+  return (
+    <TableRow
+      onClick={() =>
+        onRequestOpen?.(match.otherSwapperId, match.middlemanSwapperId)
+      }
+      className={cn(
+        {
+          "bg-primary-500/10": match.isPerfectMatch,
+          // "opacity-50": match.status === "swapped",
+        },
+        className
+      )}
+    >
+      <TableCell className="font-medium text-sm lg:text-base text-foreground">
+        1. <span className="text-primary-500"> {match.index}</span>
+        <span className="text-muted-foreground text-xs">{" <-> "}</span>
+        {match.middlemanIndex} <br />
+        2. <span className="text-primary-500"> {match.middlemanIndex}</span>
+        <span className="text-muted-foreground text-xs">{" <-> "}</span>
+        {match.index}
+      </TableCell>
+      <TableCell className="flex flex-row gap-2 items-center justify-end text-right text-sm lg:text-base">
+        {statusElement} <ArrowRight className="size-4 text-primary-500" />
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -433,37 +457,12 @@ export function CourseSwapMatches({
     id: Id<"swapper">;
     isOpen: boolean;
   } | null>(null);
-  const normalizeMatch = useCallback(
-    (
-      match:
-        | (typeof requestsQuery extends undefined
-            ? never
-            : NonNullable<typeof requestsQuery>["directMatches"][number])
-        | null
-    ): SwapCourseRequestMatch | null => {
-      if (!match) return null;
-      return {
-        id: match.otherSwapperId,
-        numberOfRequests: 0,
-        isPerfectMatch: match.isPerfectMatch,
-        index: match.index,
-        isVerified: false,
-        requestedAt: "requestedAt" in match ? (match.requestedAt ?? 0) : 0,
-        status: match.status,
-        isSelfInitiated:
-          "isSelfInitiated" in match ? (match.isSelfInitiated ?? false) : false,
-        revealedBy: undefined,
-      };
-    },
-    [requestsQuery]
-  );
   const bottomSheetMatchItemData = useMemo(() => {
     if (!bottomSheetMatchItem?.id) return null;
     if (!requestsQuery) return null;
-    const rawMatch = requestsQuery.directMatches.find(
+    const match = requestsQuery.directMatches.find(
       (match) => match.otherSwapperId === bottomSheetMatchItem.id
     );
-    const match = normalizeMatch(rawMatch ?? null);
     if (!match) return null;
     if (
       !requestsQuery.course.haveIndex ||
@@ -482,7 +481,7 @@ export function CourseSwapMatches({
       },
       match,
     };
-  }, [bottomSheetMatchItem?.id, requestsQuery, code, normalizeMatch]);
+  }, [bottomSheetMatchItem?.id, requestsQuery, code]);
 
   // const editUrl = useMemo(() => {
   //   if (typeof window === "undefined") return `/swap/${code}/edit`;
@@ -503,28 +502,43 @@ export function CourseSwapMatches({
     const disabled = requestsQuery.course.hasSwapped ?? false;
     directMatchElement = (
       <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
-        {requestsQuery.directMatches.map((rawMatch, index) => {
-          const match = normalizeMatch(rawMatch);
-          if (!match) return null;
-          return (
-            <SwapItemMatch
-              id={match.id}
-              key={match.id}
-              match={match}
-              className={cn({
-                "opacity-50": disabled,
-                "border-b border-border":
-                  index !== requestsQuery.directMatches.length - 1,
-              })}
-              onRequestOpen={() =>
-                setBottomSheetMatchItem({
-                  id: match.id,
-                  isOpen: true,
-                })
-              }
-            />
-          );
-        })}
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
+                Their Index
+              </TableHead>
+              <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
+                They Want
+              </TableHead>
+              <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
+                Status
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requestsQuery.directMatches.map((rawMatch, index) => {
+              return (
+                <SwapItemMatch
+                  key={rawMatch.otherSwapperId}
+                  match={rawMatch}
+                  myIndex={requestsQuery.course.haveIndex ?? ""}
+                  className={cn({
+                    "opacity-50": disabled,
+                    "border-b border-border":
+                      index !== requestsQuery.directMatches.length - 1,
+                  })}
+                  onRequestOpen={() =>
+                    setBottomSheetMatchItem({
+                      id: rawMatch.otherSwapperId,
+                      isOpen: true,
+                    })
+                  }
+                />
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
     );
   } else {
@@ -536,77 +550,46 @@ export function CourseSwapMatches({
       </div>
     );
   }
-  directMatchElement = (
-    <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
-      <Table className="w-full">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
-              Their Index
-            </TableHead>
-            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
-              They Want
-            </TableHead>
-            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
-              Status
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow>
-            <TableCell className="font-medium text-sm lg:text-base text-foreground">
-              100000
-            </TableCell>
-            <TableCell className="text-foreground text-sm lg:text-base">
-              <Badge variant="destructive">Don't have {"):"}</Badge>
-            </TableCell>
-            <TableCell className="text-foreground text-right text-sm lg:text-base">
-              100000
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell className="font-medium text-sm lg:text-base text-foreground">
-              100000
-            </TableCell>
-            <TableCell className="text-foreground text-sm lg:text-base">
-              100000
-            </TableCell>
-            <TableCell className="text-foreground text-right text-sm lg:text-base">
-              100000
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
-  );
 
-  let threeWayCycleMatchElement = (
-    <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
-      <Table className="w-full">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
-              Swap Sequence
-            </TableHead>
-            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
-              Status
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow>
-            <TableCell className="font-medium text-sm lg:text-base text-foreground">
-              100000 {" <-> "} You, then You {" <-> "} 100001
-            </TableCell>
-
-            <TableCell className="text-foreground text-right text-sm lg:text-base">
-              100000
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
-  );
+  let threeWayCycleMatchElement = null;
+  if (requestsQuery === undefined) {
+    threeWayCycleMatchElement = <Skeleton className="h-48 w-full" />;
+  } else if (requestsQuery.threeWayCycleMatches.length > 0) {
+    threeWayCycleMatchElement = (
+      <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
+                Swap Sequence
+              </TableHead>
+              <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
+                Status
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requestsQuery.threeWayCycleMatches.map((rawMatch, index) => {
+              return (
+                <SwapItemThreeWayCycleMatch
+                  key={`${rawMatch.otherSwapperId}-${rawMatch.middlemanSwapperId}-${index}`}
+                  match={rawMatch}
+                />
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  } else {
+    threeWayCycleMatchElement = (
+      <div className="w-full flex flex-col items-center justify-center bg-card border border-border rounded-md py-4 text-sm">
+        <div className="text-center text-sm lg:text-base xl:text-lg text-muted-foreground">
+          No 3-way cycles yet {"):"}
+        </div>
+      </div>
+    );
+  }
 
   let yourRequestElement = null;
   if (requestsQuery === undefined) {

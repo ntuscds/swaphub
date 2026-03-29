@@ -485,6 +485,7 @@ export const getCourseRequestAndMatches = query({
         },
         wantIndexes: [],
         directMatches: [],
+        threeWayCycleMatches: [],
       };
     }
 
@@ -534,6 +535,7 @@ export const getCourseRequestAndMatches = query({
     ))[] = [];
     const threeWayCycleMatches: ((typeof directMatches)[number] & {
       middlemanSwapperId: Id<"swapper">;
+      middlemanIndex: string;
     })[] = [];
 
     // Direct matches.
@@ -659,6 +661,7 @@ export const getCourseRequestAndMatches = query({
         threeWayCycleMatches.push({
           ...directMatch,
           middlemanSwapperId: middleman._id,
+          middlemanIndex: middleman.index,
         });
       }
     }
