@@ -198,7 +198,7 @@ export const getAllRequests = query({
 export const getCourseHeaderByCode = query({
   args: {
     courseCode: v.string(),
-    acadYear: v.optional(acadYearValidator),
+    acadYear: acadYearValidator,
   },
   handler: async (ctx, args) => {
     const resolvedAcadYear = resolveAcadYear(args.acadYear);
@@ -233,14 +233,28 @@ export const getCourseHeaderByCode = query({
 /** Indexes for a course with aggregate have/want counts (edit form). */
 export const getCourseIndexesForEdit = query({
   args: {
-    courseId: v.id("courses"),
+    courseCode: v.string(),
+    acadYear: v.optional(acadYearValidator),
   },
   handler: async (ctx, args) => {
-    const courseId = args.courseId;
+    const resolvedAcadYear = resolveAcadYear(args.acadYear);
+    const course = await ctx.db
+      .query("courses")
+      .withIndex("by_code_ay_semester", (q) =>
+        q
+          .eq("code", args.courseCode)
+          .eq("ay", resolvedAcadYear.ay)
+          .eq("semester", resolvedAcadYear.semester)
+      )
+      .unique();
 
+    if (!course) {
+      throw new ConvexError("Course not found.");
+    }
+    const courseId = course._id;
     const courseIndexes = await ctx.db
       .query("course_index")
-      .withIndex("by_courseId", (q) => q.eq("courseId", args.courseId))
+      .withIndex("by_courseId", (q) => q.eq("courseId", courseId))
       .collect();
 
     const allSwappers = await ctx.db
@@ -266,12 +280,19 @@ export const getCourseIndexesForEdit = query({
       );
     }
 
-    return courseIndexes.map((r) => ({
-      id: r._id,
-      index: r.index,
-      haveCount: haveCountByIndex.get(r.index) ?? 0,
-      wantCount: wantCountByIndex.get(r.index) ?? 0,
-    }));
+    return {
+      course: {
+        id: courseId,
+        code: course.code,
+        name: course.name,
+      },
+      indexes: courseIndexes.map((r) => ({
+        id: r._id,
+        index: r.index,
+        haveCount: haveCountByIndex.get(r.index) ?? 0,
+        wantCount: wantCountByIndex.get(r.index) ?? 0,
+      })),
+    };
   },
 });
 
@@ -416,7 +437,9 @@ export const setRequest = mutation({
 
 export const getCourseRequestAndMatches = query({
   args: {
-    courseId: v.id("courses"),
+    // courseId: v.id("courses"),
+    courseCode: v.string(),
+    acadYear: v.optional(acadYearValidator),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -433,12 +456,21 @@ export const getCourseRequestAndMatches = query({
       throw new ConvexError("User not found");
     }
 
-    const courseId = args.courseId;
+    const resolvedAcadYear = resolveAcadYear(args.acadYear);
+    const course = await ctx.db
+      .query("courses")
+      .withIndex("by_code_ay_semester", (q) =>
+        q
+          .eq("code", args.courseCode)
+          .eq("ay", resolvedAcadYear.ay)
+          .eq("semester", resolvedAcadYear.semester)
+      )
+      .unique();
 
-    const course = await ctx.db.get(courseId);
     if (!course) {
       throw new ConvexError("Course not found.");
     }
+    const courseId = course._id;
 
     const allSwappers = await ctx.db
       .query("swapper")
@@ -627,6 +659,7 @@ export const getCourseRequestAndMatches = query({
     return {
       course: {
         id: courseId,
+        name: course.name,
         haveIndex,
         hasSwapped: mySwapper.hasSwapped,
       },

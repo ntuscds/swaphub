@@ -10,53 +10,17 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cache, Suspense } from "react";
 import { getAuth } from "@/lib/microsoft-auth";
-
-const loadCourseHeader = cache((courseCode: string) =>
-  fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode })
-);
-
-async function EditCourseHeader({ courseCode }: { courseCode: string }) {
-  const data = await loadCourseHeader(courseCode);
-  if (!data) {
-    notFound();
-  }
-  let swappersText: string | null = null;
-  if (data.swappersCount === 1) {
-    swappersText = "1 swapper";
-  } else if (data.swappersCount > 0) {
-    swappersText = `${data.swappersCount} swappers`;
-  }
-  return (
-    <>
-      <p className="text-xl font-bold">
-        {data.code} {data.name}
-      </p>
-      {swappersText && <Badge variant="secondary">{swappersText}</Badge>}
-    </>
-  );
-}
-
-function EditCourseHeaderFallback() {
-  return (
-    <div className="flex flex-col gap-2">
-      <Skeleton className="h-7 w-3/4 max-w-md" />
-      <Skeleton className="h-6 w-24" />
-    </div>
-  );
-}
+import { CurrentAcadYear } from "@/lib/acad";
 
 async function EditCourseFormSection({ courseCode }: { courseCode: string }) {
-  const header = await loadCourseHeader(courseCode);
-  if (!header) {
-    notFound();
-  }
   const indexes = await fetchQuery(api.tasks.getCourseIndexesForEdit, {
-    courseId: header.courseId,
+    courseCode,
+    acadYear: CurrentAcadYear,
   });
   return (
     <SwapRequestFormWithPrefill
-      courseId={header.courseId}
-      courseIndexes={indexes}
+      courseId={indexes.course.id}
+      courseIndexes={indexes.indexes}
     />
   );
 }
@@ -85,31 +49,8 @@ export default async function RequestPage({
   }
 
   return (
-    <main>
-      <ScrollArea className="bg-background text-foreground h-screen p-4">
-        <div className="flex flex-col items-center">
-          <div className="flex flex-col gap-12 py-8 max-w-4xl w-full">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-2">
-                <Button variant="link" className="w-fit px-0">
-                  <Link
-                    href={backTo ?? "/"}
-                    className="flex items-center gap-0.5"
-                  >
-                    <ArrowLeft className="size-4" /> Back
-                  </Link>
-                </Button>
-                <Suspense fallback={<EditCourseHeaderFallback />}>
-                  <EditCourseHeader courseCode={courseCode} />
-                </Suspense>
-              </div>
-              <Suspense fallback={<EditCourseFormFallback />}>
-                <EditCourseFormSection courseCode={courseCode} />
-              </Suspense>
-            </div>
-          </div>
-        </div>
-      </ScrollArea>
-    </main>
+    <Suspense fallback={<EditCourseFormFallback />}>
+      <EditCourseFormSection courseCode={courseCode} />
+    </Suspense>
   );
 }

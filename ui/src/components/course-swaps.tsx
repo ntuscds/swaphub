@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Checkbox } from "./ui/checkbox";
 import { toast } from "sonner";
 import { useConvexMutationState } from "./use-convex-mutation-state";
+import { AcadYear } from "@/lib/acad";
 
 type SwapCourseRequestCourse = {
   id: Id<"courses">;
@@ -405,16 +406,19 @@ export function SwapItemMatch({
 }
 
 export function CourseSwapMatches({
-  courseId,
-  name,
+  // courseId,
+  // name,
   code,
+  acadYear,
 }: {
-  courseId: Id<"courses">;
-  name: string;
+  // courseId: Id<"courses">;
+  // name: string;
   code: string;
+  acadYear: AcadYear;
 }) {
   const requestsQuery = useQuery(api.tasks.getCourseRequestAndMatches, {
-    courseId,
+    courseCode: code,
+    acadYear,
   });
   const toggleSwapRequestMut = useMutation(api.tasks.toggleSwapRequest);
   const toggleSwapRequestState = useConvexMutationState(toggleSwapRequestMut);
@@ -467,11 +471,11 @@ export function CourseSwapMatches({
         haveIndex: requestsQuery.course.haveIndex,
         hasSwapped: requestsQuery.course.hasSwapped,
         code,
-        name,
+        name: requestsQuery.course.name,
       },
       match,
     };
-  }, [bottomSheetMatchItem?.id, requestsQuery, code, name, normalizeMatch]);
+  }, [bottomSheetMatchItem?.id, requestsQuery, code, normalizeMatch]);
 
   // const editUrl = useMemo(() => {
   //   if (typeof window === "undefined") return `/swap/${code}/edit`;
@@ -519,7 +523,7 @@ export function CourseSwapMatches({
   } else {
     matchesElement = (
       <div className="w-full flex flex-col items-center justify-center bg-card border border-border rounded-md py-4 text-sm">
-        <div className="text-center text-sm text-muted-foreground">
+        <div className="text-center text-sm lg:text-base xl:text-lg text-muted-foreground">
           No matches yet {"):"}
         </div>
       </div>
@@ -535,20 +539,20 @@ export function CourseSwapMatches({
         <Table className="w-full">
           <TableBody>
             <TableRow>
-              <TableCell className="font-medium text-muted-foreground">
+              <TableCell className="font-medium text-sm lg:text-base text-muted-foreground">
                 Your Index
               </TableCell>
-              <TableCell className="text-foreground text-right">
+              <TableCell className="text-foreground text-right text-sm lg:text-base">
                 {requestsQuery.course.haveIndex ?? (
                   <span className="text-muted-foreground">Not Set</span>
                 )}
               </TableCell>
             </TableRow>
             <TableRow>
-              <TableCell className="font-medium text-muted-foreground">
+              <TableCell className="font-medium text-sm lg:text-base text-muted-foreground">
                 Want Index
               </TableCell>
-              <TableCell className="text-foreground text-right text-wrap whitespace-normal max-w-sm">
+              <TableCell className="text-foreground text-right text-sm lg:text-base text-wrap whitespace-normal max-w-sm">
                 {requestsQuery.wantIndexes.length > 0 ? (
                   requestsQuery.wantIndexes.join(", ")
                 ) : (
@@ -574,9 +578,11 @@ export function CourseSwapMatches({
       )}
       <div className="flex flex-col gap-2">
         <div className="flex flex-row gap-2 items-center justify-between">
-          <h2 className="text-base font-bold">Your Request</h2>
+          <h2 className="text-base lg:text-lg xl:text-xl font-bold">
+            Your Request
+          </h2>
           <Link href={editUrl}>
-            <Button variant="outline">
+            <Button variant="outline" size="lg">
               <Pencil className="size-3.5" />
               Edit
             </Button>
@@ -586,7 +592,7 @@ export function CourseSwapMatches({
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex flex-row gap-2 items-center justify-between">
-          <h2 className="text-base font-bold">Matches</h2>
+          <h2 className="text-base lg:text-lg xl:text-xl font-bold">Matches</h2>
           {requestsQuery && requestsQuery.course.hasSwapped !== undefined && (
             <div className="flex flex-row gap-2 items-center">
               <p className="text-sm text-muted-foreground">Have Swapped?</p>
@@ -595,7 +601,7 @@ export function CourseSwapMatches({
                 checked={requestsQuery.course.hasSwapped}
                 onCheckedChange={() => {
                   void toggleSwapRequestState.handle({
-                    courseId,
+                    courseId: requestsQuery.course.id,
                     hasSwapped: !requestsQuery.course.hasSwapped,
                   });
                 }}
