@@ -99,14 +99,12 @@ export default defineSchema({
 
   // FIndex swap / matching tables
   users: defineTable({
-    userId: v.int64(),
     handle: v.string(),
     telegramUserId: v.int64(),
     email: v.string(),
     school: v.string(),
   })
     .index("by_handle", ["handle"])
-    .index("by_userId", ["userId"])
     .index("by_email", ["email"]),
 
   // Telegram user verification
@@ -138,6 +136,7 @@ export default defineSchema({
     courseId: v.id("courses"),
     swapper1: v.id("swapper"),
     swapper2: v.id("swapper"),
+    middlemanSwapper: v.optional(v.id("swapper")),
     initiator: v.id("swapper"),
     requestedAt: v.optional(v.number()), // ms since epoch
   })

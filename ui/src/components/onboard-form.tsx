@@ -22,7 +22,7 @@ import {
 } from "./use-convex-mutation-state";
 import { retrieveRawInitData } from "@tma.js/sdk-react";
 import { useStableQuery } from "./use-stable-query";
-import { Skeleton } from "./ui/skeleton";
+import { useRouter } from "next/navigation";
 
 const FormSchema = z.object({
   school: z.enum(schools, { message: "School is required" }),
@@ -30,8 +30,15 @@ const FormSchema = z.object({
 
 export function SelectSchoolForm() {
   const selectSchool = useMutation(api.tasks.selectSchool);
-  const { handle, error, isSuccess, isPending } =
-    useConvexMutationState(selectSchool);
+  const router = useRouter();
+  const { handle, error, isSuccess, isPending } = useConvexMutationState(
+    selectSchool,
+    {
+      onSuccess: () => {
+        router.push("/swap");
+      },
+    }
+  );
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {

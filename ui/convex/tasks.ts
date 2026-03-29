@@ -1133,14 +1133,12 @@ export const verifyTelegramAccount = internalMutation({
 
       if (existingUser) {
         await ctx.db.patch(existingUser._id, {
-          userId: args.telegramUserId,
           telegramUserId: args.telegramUserId,
           handle: args.username,
           email: args.email,
         });
       } else {
         await ctx.db.insert("users", {
-          userId: args.telegramUserId,
           telegramUserId: args.telegramUserId,
           handle: args.username,
           email: args.email,
@@ -1166,14 +1164,12 @@ export const verifyTelegramAccount = internalMutation({
 
     if (existingUser) {
       await ctx.db.patch(existingUser._id, {
-        userId: args.telegramUserId,
         telegramUserId: args.telegramUserId,
         handle: args.username,
         email: args.email,
       });
     } else {
       await ctx.db.insert("users", {
-        userId: args.telegramUserId,
         telegramUserId: args.telegramUserId,
         handle: args.username,
         email: args.email,
@@ -1182,5 +1178,63 @@ export const verifyTelegramAccount = internalMutation({
     }
 
     return { success: true };
+  },
+});
+
+function nameMockEmail(email: string, number: number) {
+  return `MOCK_${number}@fakemail.io`;
+}
+
+function isMockEmail(email: string) {
+  const mockEmailRegex = /^MOCK_[a-zA-Z0-9]+@fakemail\.io$/;
+  return mockEmailRegex.test(email);
+}
+
+export const getAllMockAccounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+    const email = identity.email ?? identity.subject;
+    if (!email) {
+      throw new ConvexError("Email not found");
+    }
+
+    const accounts = await ctx.db.query("users").collect();
+    return accounts.sort((a, b) => a.email.localeCompare(b.email));
+  },
+});
+
+export const duplicateAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+    const email = identity.email ?? identity.subject;
+    if (!email) {
+      throw new ConvexError("Email not found");
+    }
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (!existing) {
+      throw new ConvexError("User not found");
+    }
+
+    const countUsers = await ctx.db.query("users").collect();
+    const newEmail = nameMockEmail(email, countUsers.length + 1);
+    const newHandle = `${existing.handle} (${newEmail})`;
+    await ctx.db.insert("users", {
+      email: newEmail,
+      handle: newHandle,
+      telegramUserId: existing.telegramUserId,
+      school: "CCDS",
+    });
   },
 });
