@@ -15,7 +15,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import { Alert, AlertTitle } from "./ui/alert";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -431,7 +438,7 @@ export function CourseSwapMatches({
       match:
         | (typeof requestsQuery extends undefined
             ? never
-            : NonNullable<typeof requestsQuery>["matches"][number])
+            : NonNullable<typeof requestsQuery>["directMatches"][number])
         | null
     ): SwapCourseRequestMatch | null => {
       if (!match) return null;
@@ -453,7 +460,7 @@ export function CourseSwapMatches({
   const bottomSheetMatchItemData = useMemo(() => {
     if (!bottomSheetMatchItem?.id) return null;
     if (!requestsQuery) return null;
-    const rawMatch = requestsQuery.matches.find(
+    const rawMatch = requestsQuery.directMatches.find(
       (match) => match.otherSwapperId === bottomSheetMatchItem.id
     );
     const match = normalizeMatch(rawMatch ?? null);
@@ -489,14 +496,14 @@ export function CourseSwapMatches({
     );
   }, [code]);
 
-  let matchesElement = null;
+  let directMatchElement = null;
   if (requestsQuery === undefined) {
-    matchesElement = <Skeleton className="h-48 w-full" />;
-  } else if (requestsQuery.matches.length > 0) {
+    directMatchElement = <Skeleton className="h-48 w-full" />;
+  } else if (requestsQuery.directMatches.length > 0) {
     const disabled = requestsQuery.course.hasSwapped ?? false;
-    matchesElement = (
+    directMatchElement = (
       <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
-        {requestsQuery.matches.map((rawMatch, index) => {
+        {requestsQuery.directMatches.map((rawMatch, index) => {
           const match = normalizeMatch(rawMatch);
           if (!match) return null;
           return (
@@ -507,7 +514,7 @@ export function CourseSwapMatches({
               className={cn({
                 "opacity-50": disabled,
                 "border-b border-border":
-                  index !== requestsQuery.matches.length - 1,
+                  index !== requestsQuery.directMatches.length - 1,
               })}
               onRequestOpen={() =>
                 setBottomSheetMatchItem({
@@ -521,7 +528,7 @@ export function CourseSwapMatches({
       </div>
     );
   } else {
-    matchesElement = (
+    directMatchElement = (
       <div className="w-full flex flex-col items-center justify-center bg-card border border-border rounded-md py-4 text-sm">
         <div className="text-center text-sm lg:text-base xl:text-lg text-muted-foreground">
           No matches yet {"):"}
@@ -529,6 +536,77 @@ export function CourseSwapMatches({
       </div>
     );
   }
+  directMatchElement = (
+    <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
+      <Table className="w-full">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
+              Their Index
+            </TableHead>
+            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
+              They Want
+            </TableHead>
+            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
+              Status
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell className="font-medium text-sm lg:text-base text-foreground">
+              100000
+            </TableCell>
+            <TableCell className="text-foreground text-sm lg:text-base">
+              <Badge variant="destructive">Don't have {"):"}</Badge>
+            </TableCell>
+            <TableCell className="text-foreground text-right text-sm lg:text-base">
+              100000
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell className="font-medium text-sm lg:text-base text-foreground">
+              100000
+            </TableCell>
+            <TableCell className="text-foreground text-sm lg:text-base">
+              100000
+            </TableCell>
+            <TableCell className="text-foreground text-right text-sm lg:text-base">
+              100000
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+
+  let threeWayCycleMatchElement = (
+    <div className="w-full flex flex-col bg-card border border-border rounded-md py-1 text-sm">
+      <Table className="w-full">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
+              Swap Sequence
+            </TableHead>
+            <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
+              Status
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell className="font-medium text-sm lg:text-base text-foreground">
+              100000 {" <-> "} You, then You {" <-> "} 100001
+            </TableCell>
+
+            <TableCell className="text-foreground text-right text-sm lg:text-base">
+              100000
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   let yourRequestElement = null;
   if (requestsQuery === undefined) {
@@ -591,7 +669,10 @@ export function CourseSwapMatches({
         {yourRequestElement}
       </div>
       <div className="flex flex-col gap-2">
-        <div className="flex flex-row gap-2 items-center justify-between">
+        <h2 className="text-base lg:text-lg xl:text-xl font-bold">
+          Direct Matches
+        </h2>
+        {/* <div className="flex flex-row gap-2 items-center justify-between">
           <h2 className="text-base lg:text-lg xl:text-xl font-bold">Matches</h2>
           {requestsQuery && requestsQuery.course.hasSwapped !== undefined && (
             <div className="flex flex-row gap-2 items-center">
@@ -609,8 +690,8 @@ export function CourseSwapMatches({
               />
             </div>
           )}
-        </div>
-        {requestsQuery !== undefined &&
+        </div> */}
+        {/* {requestsQuery !== undefined &&
           requestsQuery.course.hasSwapped === true && (
             <div className="text-sm text-muted-foreground border border-border rounded-md p-2 bg-card">
               <h2 className="text-foreground">
@@ -621,8 +702,14 @@ export function CourseSwapMatches({
                 receiving swap requests.
               </p>
             </div>
-          )}
-        {matchesElement}
+          )} */}
+        {directMatchElement}
+      </div>
+      <div className="flex flex-col gap-2">
+        <h2 className="text-base lg:text-lg xl:text-xl font-bold">
+          3-Way Cycles
+        </h2>
+        {threeWayCycleMatchElement}
       </div>
       <Sheet
         open={bottomSheetMatchItem?.isOpen ?? false}

@@ -11,8 +11,6 @@ import {
   serializeAccept,
   serializeAlreadySwapped,
 } from "@/telegram/callbacks";
-import { isValid, parse } from "@tma.js/init-data-node";
-import { env } from "@/lib/env";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -486,7 +484,7 @@ export const getCourseRequestAndMatches = query({
           name: course.name,
         },
         wantIndexes: [],
-        matches: [],
+        directMatches: [],
       };
     }
 
@@ -511,7 +509,7 @@ export const getCourseRequestAndMatches = query({
       )
       .collect();
 
-    const matches: ({
+    const directMatches: ({
       otherSwapperId: Id<"swapper">;
       isPerfectMatch: boolean;
       index: string;
@@ -534,7 +532,11 @@ export const getCourseRequestAndMatches = query({
           isSelfInitiated: boolean;
         }
     ))[] = [];
+    const threeWayCycleMatches: ((typeof directMatches)[number] & {
+      middlemanSwapperId: Id<"swapper">;
+    })[] = [];
 
+    // Direct matches.
     for (const otherSwapper of allSwappers) {
       // TAG: Personal check
       if (otherSwapper.userId === user._id) continue;
@@ -574,7 +576,7 @@ export const getCourseRequestAndMatches = query({
         myMatchRequestWithOther?.initiator === mySwapper._id;
       if (isAvailable) {
         if (myMatchRequestWithOther) {
-          matches.push({
+          directMatches.push({
             otherSwapperId: otherSwapper._id,
             isPerfectMatch: isPerfectMatchWithOther,
             index: otherSwapper.index,
@@ -583,7 +585,7 @@ export const getCourseRequestAndMatches = query({
             requestedAt: myMatchRequestWithOther._creationTime,
           });
         } else {
-          matches.push({
+          directMatches.push({
             otherSwapperId: otherSwapper._id,
             isPerfectMatch: isPerfectMatchWithOther,
             index: otherSwapper.index,
@@ -595,7 +597,7 @@ export const getCourseRequestAndMatches = query({
       else {
         if (myMatchRequestWithOther) {
           if (otherSwapper.previouslyMatchedWith === mySwapper._id) {
-            matches.push({
+            directMatches.push({
               otherSwapperId: otherSwapper._id,
               isPerfectMatch: isPerfectMatchWithOther,
               index: otherSwapper.index,
@@ -603,7 +605,7 @@ export const getCourseRequestAndMatches = query({
               isSelfInitiated,
             });
           } else {
-            matches.push({
+            directMatches.push({
               otherSwapperId: otherSwapper._id,
               isPerfectMatch: isPerfectMatchWithOther,
               index: otherSwapper.index,
@@ -621,6 +623,46 @@ export const getCourseRequestAndMatches = query({
       }
     }
 
+    // Three-way cycle matches.
+    const filterNonPerfectMatches = directMatches.filter(
+      (m) => !m.isPerfectMatch
+    );
+    // Find a middleman who wants what you have
+    // and has an index that can be given to
+    // someone else who has what you want.
+    const swapperById = new Map(
+      allSwappers.map((swapper) => [swapper._id, swapper])
+    );
+    const wantsBySwapperId = new Map<Id<"swapper">, Set<string>>();
+    for (const want of allSwapperWants) {
+      const wants = wantsBySwapperId.get(want.swapperId) ?? new Set<string>();
+      wants.add(want.wantIndex);
+      wantsBySwapperId.set(want.swapperId, wants);
+    }
+
+    for (const directMatch of filterNonPerfectMatches) {
+      const otherSwapper = swapperById.get(directMatch.otherSwapperId);
+      if (!otherSwapper) continue;
+
+      const otherWants = wantsBySwapperId.get(otherSwapper._id);
+      if (!otherWants || otherWants.size === 0) continue;
+
+      for (const middleman of allSwappers) {
+        if (middleman._id === mySwapper._id) continue;
+        if (middleman._id === otherSwapper._id) continue;
+        if (middleman.hasSwapped) continue;
+
+        const middlemanWants = wantsBySwapperId.get(middleman._id);
+        if (!middlemanWants?.has(haveIndex)) continue;
+        if (!otherWants.has(middleman.index)) continue;
+
+        threeWayCycleMatches.push({
+          ...directMatch,
+          middlemanSwapperId: middleman._id,
+        });
+      }
+    }
+
     // Sort matches by:
     // 1. By state: Swapped -> Pending -> undefined -> Cancelled
     // 2. In case of same state, by perfect match first, then requestedAt (newest first)
@@ -630,7 +672,7 @@ export const getCourseRequestAndMatches = query({
       undefined: 2,
       cancelled: 3,
     } as const;
-    matches.sort((a, b) => {
+    directMatches.sort((a, b) => {
       const aState =
         a.status === undefined
           ? statusPriority.undefined
@@ -664,7 +706,8 @@ export const getCourseRequestAndMatches = query({
         hasSwapped: mySwapper.hasSwapped,
       },
       wantIndexes: Array.from(wantIndexesSet),
-      matches,
+      directMatches,
+      threeWayCycleMatches,
     };
   },
 });
