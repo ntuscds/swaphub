@@ -20,6 +20,9 @@ import {
   VerifyTelegramForm,
 } from "@/components/onboard-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "../../../convex/_generated/api";
+import { fetchQuery } from "convex/nextjs";
+import { redirect } from "next/navigation";
 
 const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
 
@@ -186,18 +189,40 @@ export default async function Page({
     }
   }
 
+  if (!sessionEmail) {
+    return (
+      <main>
+        <ScrollArea className="bg-background text-foreground h-screen p-4">
+          <SignInToMicrosoft errorMessages={errorMessages} />
+        </ScrollArea>
+      </main>
+    );
+  }
+
+  const accountSetup = await fetchQuery(api.tasks.getAccountSetup, {
+    email: sessionEmail.email,
+  });
+  if (accountSetup === "complete") {
+    redirect("/swap");
+  }
+  if (accountSetup === "not_setup") {
+    return (
+      <main>
+        <ScrollArea className="bg-background text-foreground h-screen p-4">
+          <SignInToMicrosoft errorMessages={errorMessages} />
+        </ScrollArea>
+      </main>
+    );
+  }
+
   return (
     <main>
       <ScrollArea className="bg-background text-foreground h-screen p-4">
-        {sessionEmail ? (
-          <OnboardingForm
-            loadingNode={<Loading />}
-            verifyTelegramNode={<VerifyTelegram />}
-            selectSchoolNode={<SelectSchool />}
-          />
-        ) : (
-          <SignInToMicrosoft errorMessages={errorMessages} />
-        )}
+        <OnboardingForm
+          verifyTelegramNode={<VerifyTelegram />}
+          selectSchoolNode={<SelectSchool />}
+          defaultAccountSetup={accountSetup}
+        />
       </ScrollArea>
     </main>
   );

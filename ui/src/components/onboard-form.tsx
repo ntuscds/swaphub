@@ -237,16 +237,19 @@ export function VerifyTelegramForm() {
 export function OnboardingForm({
   verifyTelegramNode,
   selectSchoolNode,
-  loadingNode,
+  defaultAccountSetup,
 }: {
   verifyTelegramNode: React.ReactNode;
   selectSchoolNode: React.ReactNode;
-  loadingNode: React.ReactNode;
+  defaultAccountSetup: "telegram_not_setup" | "school_not_setup";
 }) {
   const getSelfQuery = useStableQuery(api.tasks.getSelf);
 
   if (getSelfQuery === undefined) {
-    return loadingNode;
+    if (defaultAccountSetup === "school_not_setup") {
+      return selectSchoolNode;
+    }
+    return verifyTelegramNode;
   }
 
   if (getSelfQuery === null) {

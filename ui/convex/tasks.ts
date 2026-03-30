@@ -42,6 +42,28 @@ export const getSelf = query({
   },
 });
 
+export const getAccountSetup = query({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .unique();
+    if (!user) {
+      return "not_setup" as const;
+    }
+    if (!user.telegramUserId) {
+      return "telegram_not_setup" as const;
+    }
+    if (!user.school) {
+      return "school_not_setup" as const;
+    }
+    return "complete" as const;
+  },
+});
+
 export const getCourses = query({
   args: {
     acadYear: v.optional(acadYearValidator),
