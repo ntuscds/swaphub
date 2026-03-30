@@ -319,8 +319,8 @@ export function SwapItemMatchBottomSheet({
               />
             ) : (
               <ThreeWayCycleArtboard
-                yourIndex={course.haveIndex}
-                otherIndex={match.index}
+                requestorIndex={course.haveIndex}
+                targetIndex={match.index}
                 middleIndex={matchObj.match.middlemanIndex}
                 iam="intiator"
               />

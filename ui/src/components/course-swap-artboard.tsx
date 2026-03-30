@@ -1,11 +1,11 @@
 export function ThreeWayCycleArtboard({
-  yourIndex,
-  otherIndex,
+  requestorIndex,
+  targetIndex,
   middleIndex,
   iam,
 }: {
-  yourIndex: string;
-  otherIndex: string;
+  requestorIndex: string;
+  targetIndex: string;
   middleIndex: string;
   iam: "intiator" | "target" | "middleman";
 }) {
@@ -110,34 +110,14 @@ export function ThreeWayCycleArtboard({
         fill="#334155"
         d="M327.222 117.802a1 1 0 0 0-.541-1.307l-8.315-3.444a1 1 0 1 0-.765 1.848l7.391 3.061-3.062 7.391a1 1 0 0 0 1.848.766l3.444-8.315ZM160 186.302l.383.924 166.298-68.883-.383-.924-.382-.924-166.299 68.883.383.924ZM193.178 210.76c-.211.51.031 1.095.541 1.307l8.315 3.444a1.001 1.001 0 0 0 .766-1.848l-7.391-3.061 3.061-7.391a1 1 0 0 0-1.848-.766l-3.444 8.315Zm167.222-68.5-.382-.924-166.299 68.883.383.924.383.924 166.298-68.883-.383-.924ZM340.458 368.807a1 1 0 0 0 .541-1.307l-3.444-8.315a1.001 1.001 0 0 0-1.848.766l3.061 7.391-7.391 3.061a1.001 1.001 0 0 0 .766 1.848l8.315-3.444ZM173.777 299l-.383.924 166.298 68.883.383-.924.383-.924-166.299-68.883-.382.924ZM179.943 339.755a1 1 0 0 0-.542 1.306l3.445 8.315a.999.999 0 1 0 1.847-.765l-3.061-7.391 7.391-3.062a1 1 0 0 0-.765-1.848l-8.315 3.445Zm166.681 69.807.382-.924-166.298-68.883-.383.924-.382.923 166.298 68.883.383-.923Z"
       />
-      <circle cx={378.5} cy={178.5} r={3.5} fill="#444" />
-      <circle
-        cx={3.5}
-        cy={3.5}
-        r={3.5}
-        fill="#555"
-        transform="matrix(1 0 0 -1 375 339)"
-      />
-      <circle
-        cx={3.5}
-        cy={3.5}
-        r={3.5}
-        fill="#777"
-        transform="matrix(1 0 0 -1 327 451)"
-      />
-      <circle cx={330.5} cy={67.5} r={3.5} fill="#222" />
-      <circle cx={189.5} cy={256.5} r={3.5} fill="#333" />
-      <circle cx={141.5} cy={368.5} r={3.5} fill="#666" />
-      <circle cx={141.5} cy={145.5} r={3.5} fill="#111" />
 
       <svg
-        x="296"
-        y="42"
+        x="283"
+        y="51"
         width="96"
         height="34"
-        // className="direct-arboard__slide-in-left-to-right"
-        // style={{ "--slide-x": "202px" } as React.CSSProperties}
-        // className="direct-arboard__slide"
+        style={{ "--x": "-187px", "--y": "78px" } as React.CSSProperties}
+        className="three-cycle-arboard__slide-requestor"
       >
         <rect width="100%" height="100%" className="fill-primary-950" rx="12" />
         <text
@@ -145,10 +125,72 @@ export function ThreeWayCycleArtboard({
           y="50%"
           dominantBaseline="middle"
           textAnchor="middle"
-          className="fill-primary-300 font-medium"
+          fill="currentColor"
+          className="text-primary-300 font-medium"
           fontSize="20"
         >
-          {yourIndex}
+          {requestorIndex}
+        </text>
+      </svg>
+
+      <svg
+        x="331"
+        y="162"
+        width="96"
+        height="34"
+        style={
+          {
+            "--x1": "-189px",
+            "--y1": "78px",
+            "--x2": "0",
+            "--y2": "156px",
+          } as React.CSSProperties
+        }
+        className="three-cycle-arboard__slide-middleman"
+      >
+        <rect
+          width="100%"
+          height="100%"
+          className="fill-secondary-950"
+          rx="12"
+        />
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="middle"
+          textAnchor="middle"
+          fill="currentColor"
+          className="text-secondary-300 font-medium"
+          fontSize="20"
+        >
+          {requestorIndex}
+        </text>
+      </svg>
+
+      <svg
+        x="94"
+        y="352"
+        width="96"
+        height="34"
+        style={{ "--x": "187px", "--y": "78px" } as React.CSSProperties}
+        className="three-cycle-arboard__slide-target"
+      >
+        <rect
+          width="100%"
+          height="100%"
+          className="fill-background-900"
+          rx="12"
+        />
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="middle"
+          textAnchor="middle"
+          fill="currentColor"
+          className="text-white font-medium"
+          fontSize="20"
+        >
+          {targetIndex}
         </text>
       </svg>
 
@@ -311,9 +353,8 @@ export function DirectSwapArtboard({
         y="42"
         width="96"
         height="34"
-        style={{ "--slide-x": "-202px" } as React.CSSProperties}
+        style={{ "--x": "-202px" } as React.CSSProperties}
         className="direct-arboard__slide"
-        // className="direct-arboard__slide-in-left-to-right"
       >
         <rect width="100%" height="100%" className="fill-primary-950" rx="12" />
         <text
@@ -334,20 +375,16 @@ export function DirectSwapArtboard({
         y="145"
         width="96"
         height="34"
-        style={{ "--slide-x": "202px" } as React.CSSProperties}
+        style={{ "--x": "202px" } as React.CSSProperties}
         className="direct-arboard__slide"
       >
         <rect
           width="100%"
           height="100%"
-          // fill="#94A3B8"
-          className="fill-background-500/25"
-          // fillOpacity={0.25}
+          className="fill-background-900"
           rx="12"
         />
         <text
-          // x={48}
-          // y={17}
           x="50%"
           y="50%"
           dominantBaseline="middle"
