@@ -48,11 +48,8 @@ export function SwapConfirmationBottomSheetFooter({
   targetSwapperId,
   middlemanSwapperId,
 }: {
-  // courseId: Id<"courses">;
   targetSwapperId: Id<"swapper">;
   middlemanSwapperId?: Id<"swapper">;
-
-  // match: DirectMatch;
 }) {
   const handleSwapRequestCallbackMut = useAction(api.actions.sendSwapRequest);
   const { handle, error, isPending } = useConvexMutationState(
@@ -68,8 +65,8 @@ export function SwapConfirmationBottomSheetFooter({
   );
 
   return (
-    <div className="flex flex-col p-2.5 gap-4 border border-border rounded-md bg-card">
-      <h3 className="text-sm font-medium text-primary">
+    <div className="flex flex-col gap-4">
+      <h3 className="text-sm font-medium text-primary-500">
         Someone wants to swap with you!
       </h3>
       {error && (
@@ -279,7 +276,7 @@ export function SwapItemMatchBottomSheet({
           </div>
         );
       } else {
-        hintElement = (
+        footer = (
           <SwapConfirmationBottomSheetFooter
             targetSwapperId={match.otherSwapperId}
             middlemanSwapperId={
@@ -322,7 +319,7 @@ export function SwapItemMatchBottomSheet({
                 requestorIndex={course.haveIndex}
                 targetIndex={match.index}
                 middleIndex={matchObj.match.middlemanIndex}
-                iam="intiator"
+                iam={matchObj.match.iam}
               />
             )}
           </div>

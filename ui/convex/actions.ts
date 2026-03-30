@@ -10,6 +10,7 @@ import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
 import { isValid, parse } from "@tma.js/init-data-node";
+import { es } from "zod/v4/locales";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
@@ -42,7 +43,7 @@ export const sendSwapRequest = action({
       middlemanSwapperId: args.middlemanSwapperId,
     });
 
-    const { course, initiator, target, middleman, webhook } = result;
+    const { course, initiator, target, middleman } = result;
     const username = initiator.handle;
 
     const myIndexUrl = buildFStarsUrl(
@@ -73,8 +74,8 @@ You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "Accept", callback_data: webhook.accept },
-                { text: "Decline", callback_data: webhook.decline },
+                { text: "Accept", callback_data: middleman.webhook.accept! },
+                { text: "Decline", callback_data: middleman.webhook.decline! },
               ],
             ],
           },
@@ -93,8 +94,8 @@ You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "Accept", callback_data: webhook.accept },
-                { text: "Decline", callback_data: webhook.decline },
+                { text: "Accept", callback_data: target.webhook.accept },
+                { text: "Decline", callback_data: target.webhook.decline },
               ],
             ],
           },
@@ -117,10 +118,10 @@ You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "Accept", callback_data: webhook.accept },
+                { text: "Accept", callback_data: target.webhook.accept },
                 {
                   text: "Decline",
-                  callback_data: webhook.decline,
+                  callback_data: target.webhook.decline,
                 },
               ],
             ],
@@ -234,11 +235,18 @@ You have accepted @${escapeMarkdown(initiator.handle)}'s swap request, message t
             if (!middlemanSwapper) {
               throw new ConvexError("Middleman swapper not found.");
             }
+
             // Initiator declined the swap.
             if (!initiator.acceptedByInitiator) {
               setMessageForMe(`*Swap failed for ${escapeMarkdown(courseLabel)}*.
 It seems that this request is no longer valid.`);
             } else {
+              const swapSequenceMessageInitiator = `First, YOU (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
+              Then, YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(targetSwapper.handle)} (${targetSwapper.index}) swap.`;
+              const swapSequenceMessageTarget = `Wait for (${escapeMarkdown(initiator.handle)} (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
+              Then, YOU (${targetSwapper.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index})`;
+              const swapSequenceMessageMiddleman = ` YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(initiator.handle)} (${initiator.index}) swap.`;
+
               if (iam === "middlemanSwapper") {
                 if (!isCompleted) {
                   msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
@@ -259,15 +267,21 @@ You have yet to confirm this swap request.`;
                   msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
 You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(targetSwapper.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
 
+${swapSequenceMessageMiddleman}
+
 Message them to proceed with the swap!`;
 
                   msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
 @${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
 
+${swapSequenceMessageTarget}
+
 Message them to proceed with the swap!`;
 
                   msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
 @${escapeMarkdown(middlemanSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+
+${swapSequenceMessageInitiator}
 
 Message them to proceed with the swap!`;
                 }
@@ -280,7 +294,7 @@ You have accepted @${escapeMarkdown(initiator.handle)}'s request.
                   msgForInitiator = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
 @${escapeMarkdown(middlemanSwapper.handle)} has accepted your request.
 
-3 / 3 confirmations received.`;
+2 / 3 confirmations received.`;
                   msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
 @${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in.
 
@@ -291,15 +305,21 @@ You have yet to confirm this swap request.`;
                   msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
 You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
 
+${swapSequenceMessageTarget}
+
 Message them to proceed with the swap!`;
 
                   msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
 @${escapeMarkdown(targetSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
 
+${swapSequenceMessageInitiator}
+
 Message them to proceed with the swap!`;
 
                   msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
 @${escapeMarkdown(targetSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+
+${swapSequenceMessageMiddleman}
 
 Message them to proceed with the swap!`;
                 }

@@ -121,10 +121,13 @@ export const getAllRequests = query({
                 q.eq("courseId", request.courseId)
               )
               .filter((q) => {
-                return q.or(
-                  q.eq(q.field("targetSwapper"), request._id),
-                  q.eq(q.field("initiator"), request._id),
-                  q.eq(q.field("middlemanSwapper"), request._id)
+                return q.and(
+                  q.or(
+                    q.eq(q.field("targetSwapper"), request._id),
+                    q.eq(q.field("initiator"), request._id),
+                    q.eq(q.field("middlemanSwapper"), request._id)
+                  ),
+                  q.eq(q.field("isCompleted"), false)
                 );
               })
               .collect(),
@@ -548,6 +551,7 @@ export const getCourseRequestAndMatches = query({
     const threeWayCycleMatches: (BaseMatch & {
       middlemanSwapperId: Id<"swapper">;
       middlemanIndex: string;
+      iam: "intiator" | "target" | "middleman";
     })[] = [];
 
     const swapperById = new Map(
@@ -688,6 +692,20 @@ export const getCourseRequestAndMatches = query({
         // Deduce the status of the match.
         const isSelfInitiated =
           myMatchRequestWithBothOthers?.initiator === mySwapper._id;
+
+        let iam: "intiator" | "target" | "middleman" = "intiator";
+        if (myMatchRequestWithBothOthers?.initiator === mySwapper._id) {
+          iam = "intiator";
+        } else if (
+          myMatchRequestWithBothOthers?.targetSwapper === mySwapper._id
+        ) {
+          iam = "target";
+        } else if (
+          myMatchRequestWithBothOthers?.middlemanSwapper === mySwapper._id
+        ) {
+          iam = "middleman";
+        }
+
         if (isAvailable) {
           if (myMatchRequestWithBothOthers) {
             threeWayCycleMatches.push({
@@ -697,6 +715,7 @@ export const getCourseRequestAndMatches = query({
               middlemanIndex: middleman.index,
               status: "pending",
               isSelfInitiated,
+              iam,
             });
           } else {
             threeWayCycleMatches.push({
@@ -705,6 +724,7 @@ export const getCourseRequestAndMatches = query({
               middlemanSwapperId: middleman._id,
               middlemanIndex: middleman.index,
               status: undefined,
+              iam,
             });
           }
         } else {
@@ -716,6 +736,7 @@ export const getCourseRequestAndMatches = query({
               middlemanIndex: middleman.index,
               status: "swapped",
               isSelfInitiated,
+              iam,
             });
           } else {
             // This should not happen.
@@ -970,22 +991,52 @@ export const requestSwap = internalMutation({
       isCompleted: false,
     });
 
-    const acceptPayloadId = await ctx.db.insert("telegram_callback_data", {
-      callbackData: serializeAccept(
-        targetUser._id,
-        meSwapper._id,
-        targetSwapper._id,
-        middlemanSwapper?._id
-      ),
-    });
-    const declinePayloadId = await ctx.db.insert("telegram_callback_data", {
-      callbackData: serializeDecline(
-        targetUser._id,
-        meSwapper._id,
-        targetSwapper._id,
-        middlemanSwapper?._id
-      ),
-    });
+    const targetAcceptPayloadId = await ctx.db.insert(
+      "telegram_callback_data",
+      {
+        callbackData: serializeAccept(
+          targetUser._id,
+          meSwapper._id,
+          targetSwapper._id,
+          middlemanSwapper?._id
+        ),
+      }
+    );
+    const targetDeclinePayloadId = await ctx.db.insert(
+      "telegram_callback_data",
+      {
+        callbackData: serializeDecline(
+          targetUser._id,
+          meSwapper._id,
+          targetSwapper._id,
+          middlemanSwapper?._id
+        ),
+      }
+    );
+
+    let middlemanAcceptPayloadId: Id<"telegram_callback_data"> | null = null;
+    let middlemanDeclinePayloadId: Id<"telegram_callback_data"> | null = null;
+    if (middlemanSwapperUser) {
+      middlemanAcceptPayloadId = await ctx.db.insert("telegram_callback_data", {
+        callbackData: serializeAccept(
+          middlemanSwapperUser._id,
+          meSwapper._id,
+          targetSwapper._id,
+          middlemanSwapper?._id
+        ),
+      });
+      middlemanDeclinePayloadId = await ctx.db.insert(
+        "telegram_callback_data",
+        {
+          callbackData: serializeDecline(
+            middlemanSwapperUser._id,
+            meSwapper._id,
+            targetSwapper._id,
+            middlemanSwapper?._id
+          ),
+        }
+      );
+    }
 
     return {
       course: {
@@ -1006,6 +1057,10 @@ export const requestSwap = internalMutation({
         telegramUserId: targetUser.telegramUserId,
         handle: targetUser.handle,
         index: targetSwapper.index,
+        webhook: {
+          accept: targetAcceptPayloadId,
+          decline: targetDeclinePayloadId,
+        },
       },
       middleman:
         middlemanSwapper && middlemanSwapperUser
@@ -1014,12 +1069,12 @@ export const requestSwap = internalMutation({
               telegramUserId: middlemanSwapperUser.telegramUserId,
               handle: middlemanSwapperUser.handle,
               index: middlemanSwapper.index,
+              webhook: {
+                accept: middlemanAcceptPayloadId,
+                decline: middlemanDeclinePayloadId,
+              },
             }
           : null,
-      webhook: {
-        accept: acceptPayloadId,
-        decline: declinePayloadId,
-      },
     };
   },
 });
@@ -1254,19 +1309,23 @@ export const handleSwapRequestWebhookCallback = internalMutation({
         handle: initiatorUser.handle,
         telegramUserId: initiatorUser.telegramUserId,
         acceptedByInitiator,
+        index: initiator.index,
       },
       targetSwapper: {
         handle: targetSwapperUser.handle,
         telegramUserId: targetSwapperUser.telegramUserId,
         acceptedByTargetSwapper,
+        index: targetSwapper.index,
       },
-      middlemanSwapper: middlemanSwapperUser
-        ? {
-            handle: middlemanSwapperUser.handle,
-            telegramUserId: middlemanSwapperUser.telegramUserId,
-            acceptedByMiddlemanSwapper,
-          }
-        : null,
+      middlemanSwapper:
+        middlemanSwapperUser && middlemanSwapper
+          ? {
+              handle: middlemanSwapperUser.handle,
+              telegramUserId: middlemanSwapperUser.telegramUserId,
+              acceptedByMiddlemanSwapper,
+              index: middlemanSwapper.index,
+            }
+          : null,
       // thisTelegramUserId: Number(thisUser.telegramUserId),
       // otherTelegramUserId: Number(otherUser.telegramUserId),
       // otherUsername: user2.handle,
