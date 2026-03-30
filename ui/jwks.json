@@ -1,12 +1,1 @@
-{
-  "keys": [
-    {
-      "kty": "RSA",
-      "n": "s5ZM3Bsmg2KtelPeBaUmFGENotw1rYZT9PacMlhoQG9-nd3AWffv1Vcg4kIS5lReCzNEE_mSxWgN4HYxYpaTtdg7-RLwcuHCf04CKH3DSVPDOpKfTNU7YIO9I_41HHV8l02N--vMJs4IMsv033w2Pzbs0c_hMrP9xUogoxLJtj0Sc2ZKKAEoUqUNLAIqtD6LdHfNBJLeGJ1W3trYgClBQxW6c2_vqgKgplopaxsC1-M51o9qFbAS116H0FuZhlgqC1o2eVSSfk_5EZ_RBoilCGz79Zxqu7kRGWHsFCjNLdZlEXA9Z1MeDHZTDt49cRRi6ONwso_f5aXmFfehbo_1Lw",
-      "e": "AQAB",
-      "kid": "telegram-miniapp",
-      "use": "sig",
-      "alg": "RS256"
-    }
-  ]
-}
+{"keys":[{"kty":"RSA","n":"s5ZM3Bsmg2KtelPeBaUmFGENotw1rYZT9PacMlhoQG9-nd3AWffv1Vcg4kIS5lReCzNEE_mSxWgN4HYxYpaTtdg7-RLwcuHCf04CKH3DSVPDOpKfTNU7YIO9I_41HHV8l02N--vMJs4IMsv033w2Pzbs0c_hMrP9xUogoxLJtj0Sc2ZKKAEoUqUNLAIqtD6LdHfNBJLeGJ1W3trYgClBQxW6c2_vqgKgplopaxsC1-M51o9qFbAS116H0FuZhlgqC1o2eVSSfk_5EZ_RBoilCGz79Zxqu7kRGWHsFCjNLdZlEXA9Z1MeDHZTDt49cRRi6ONwso_f5aXmFfehbo_1Lw","e":"AQAB","kid":"swaphub","use":"sig","alg":"RS256"}]}

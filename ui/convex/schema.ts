@@ -99,27 +99,31 @@ export default defineSchema({
 
   // FIndex swap / matching tables
   users: defineTable({
-    userId: v.int64(),
     handle: v.string(),
+    telegramUserId: v.int64(),
+    email: v.string(),
     school: v.string(),
-    // joinDate: v.optional(v.number()), // ms since epoch
   })
     .index("by_handle", ["handle"])
-    .index("by_userId", ["userId"]),
+    .index("by_email", ["email"]),
+
+  // Telegram user verification
+  telegram_user_verification: defineTable({
+    email: v.string(),
+    code: v.string(),
+  }).index("by_email", ["email"]),
 
   // FIndex swap / matching tables
   swapper: defineTable({
-    telegramUserId: v.int64(),
-    // userId: v.id("users"),
+    userId: v.id("users"),
     courseId: v.id("courses"),
     index: v.string(),
     hasSwapped: v.boolean(),
-    previouslyMatchedWith: v.optional(v.id("swapper")),
   })
-    .index("by_telegramUserId_courseId", ["telegramUserId", "courseId"])
+    .index("by_userId_courseId", ["userId", "courseId"])
     .index("by_courseId_index", ["courseId", "index"])
     .index("by_courseId", ["courseId"])
-    .index("by_telegramUserId", ["telegramUserId"]),
+    .index("by_userId", ["userId"]),
 
   swapper_wants: defineTable({
     swapperId: v.id("swapper"),
@@ -129,12 +133,20 @@ export default defineSchema({
 
   swap_requests: defineTable({
     courseId: v.id("courses"),
-    swapper1: v.id("swapper"),
-    swapper2: v.id("swapper"),
     initiator: v.id("swapper"),
-    requestedAt: v.optional(v.number()), // ms since epoch
+    targetSwapper: v.id("swapper"),
+    middlemanSwapper: v.optional(v.id("swapper")),
+    acceptedByInitiator: v.boolean(),
+    acceptedByTargetSwapper: v.boolean(),
+    acceptedByMiddlemanSwapper: v.boolean(),
+    isCompleted: v.boolean(),
   })
-    .index("by_course_swapper_pair", ["courseId", "swapper1", "swapper2"])
+    .index("by_courseId_initiator_targetSwapper_middlemanSwapper", [
+      "courseId",
+      "initiator",
+      "targetSwapper",
+      "middlemanSwapper",
+    ])
     .index("by_courseId", ["courseId"])
     .index("by_initiator", ["initiator"]),
 

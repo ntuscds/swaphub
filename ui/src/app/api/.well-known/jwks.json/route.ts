@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 
@@ -6,11 +7,8 @@ import crypto from "node:crypto";
  * Cache this result in a cdn.
  */
 export async function GET() {
-  const publicKeyRaw = process.env.CONVEX_JWT_PUBLIC_KEY!.replaceAll(
-    "\\\\n",
-    "\n"
-  );
-  const kid = process.env.CONVEX_JWT_KID ?? "telegram-miniapp";
+  const publicKeyRaw = env.CONVEX_JWT_PUBLIC_KEY;
+  const kid = env.CONVEX_JWT_KID;
 
   if (!publicKeyRaw) {
     return NextResponse.json(

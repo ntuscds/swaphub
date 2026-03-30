@@ -35,8 +35,9 @@ export function useConvexMutationState<
   optionsRef.current = options;
 
   const handle = useCallback(
-    async (...args: Parameters<Mutate>) => {
+    async (...args: Parameters<Mutate>): Promise<R | undefined> => {
       setError(null);
+      setIsSuccess(false);
       setIsPending(true);
       try {
         const result = await mutate(...args);
@@ -48,6 +49,7 @@ export function useConvexMutationState<
         setError(
           err instanceof Error ? err.message : String(err ?? "Request failed")
         );
+        return undefined;
       } finally {
         setIsPending(false);
       }
@@ -94,8 +96,9 @@ export function useConvexActionState<
   optionsRef.current = options;
 
   const handle = useCallback(
-    async (...args: Parameters<Act>) => {
+    async (...args: Parameters<Act>): Promise<R | undefined> => {
       setError(null);
+      setIsSuccess(false);
       setIsPending(true);
       try {
         const result = await action(...args);
@@ -107,6 +110,7 @@ export function useConvexActionState<
         setError(
           err instanceof Error ? err.message : String(err ?? "Request failed")
         );
+        return undefined;
       } finally {
         setIsPending(false);
       }

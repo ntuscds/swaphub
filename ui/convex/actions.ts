@@ -9,6 +9,8 @@ import { env } from "@/lib/env";
 import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
+import { isValid, parse } from "@tma.js/init-data-node";
+import { es } from "zod/v4/locales";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
@@ -29,51 +31,97 @@ function buildFStarsUrl(
 
 export const sendSwapRequest = action({
   args: {
-    courseId: v.id("courses"),
-    otherSwapperId: v.id("swapper"),
+    targetSwapperId: v.id("swapper"),
+    middlemanSwapperId: v.optional(v.id("swapper")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
     const result = await ctx.runMutation(internal.tasks.requestSwap, {
-      courseId: args.courseId,
-      otherSwapperId: args.otherSwapperId,
+      targetSwapperId: args.targetSwapperId,
+      middlemanSwapperId: args.middlemanSwapperId,
     });
 
-    const { course, me, other, webhook } = result;
-    const username = me.handle;
+    const { course, initiator, target, middleman } = result;
+    const username = initiator.handle;
 
     const myIndexUrl = buildFStarsUrl(
       course.code,
-      me.index,
+      initiator.index,
       course.ay,
       course.semester
     );
     const otherIndexUrl = buildFStarsUrl(
       course.code,
-      other.index,
+      target.index,
       course.ay,
       course.semester
     );
 
-    await bot
-      .sendMessage(
-        Number(other.telegramUserId),
+    // 3 way swap.
+    if (middleman) {
+      await bot.sendMessage(
+        Number(middleman.telegramUserId),
         `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
-@${escapeMarkdown(username)} wants to swap with you!
-They have: [${escapeMarkdown(me.index)}](${myIndexUrl})
-You have: [${escapeMarkdown(other.index)}](${otherIndexUrl}).`,
+@${escapeMarkdown(username)} wants to do a 3 way swap with you!
+You only need to swap with them:
+They have: [${escapeMarkdown(initiator.index)}](${myIndexUrl})
+You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
         {
           parse_mode: "Markdown",
           disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "Accept", callback_data: webhook.accept },
+                { text: "Accept", callback_data: middleman.webhook.accept! },
+                { text: "Decline", callback_data: middleman.webhook.decline! },
+              ],
+            ],
+          },
+        }
+      );
+      await bot.sendMessage(
+        Number(target.telegramUserId),
+        `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
+@${escapeMarkdown(username)} wants to do a 3 way swap with you!
+After they swap with another party, you only need to swap with them:
+They will have: [${escapeMarkdown(initiator.index)}](${myIndexUrl})
+You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
+        {
+          parse_mode: "Markdown",
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "Accept", callback_data: target.webhook.accept },
+                { text: "Decline", callback_data: target.webhook.decline },
+              ],
+            ],
+          },
+        }
+      );
+      return;
+    }
+
+    // Direct swap.
+    await bot
+      .sendMessage(
+        Number(target.telegramUserId),
+        `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
+@${escapeMarkdown(username)} wants to swap with you!
+They have: [${escapeMarkdown(initiator.index)}](${myIndexUrl})
+You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
+        {
+          parse_mode: "Markdown",
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "Accept", callback_data: target.webhook.accept },
                 {
-                  text: "Already Swapped",
-                  callback_data: webhook.already_swapped,
+                  text: "Decline",
+                  callback_data: target.webhook.decline,
                 },
               ],
             ],
@@ -82,7 +130,7 @@ You have: [${escapeMarkdown(other.index)}](${otherIndexUrl}).`,
       )
       .catch((error) => {
         console.error(
-          `Error sending message to ${other.telegramUserId}:`,
+          `Error sending message to ${target.telegramUserId}:`,
           error
         );
       });
@@ -131,7 +179,16 @@ export const processTelegramWebhookCallback = internalAction({
           return { ok: true as const };
         }
 
-        const mutationResult = await ctx.runMutation(
+        const {
+          action,
+          isDirectSwap,
+          isCompleted,
+          course,
+          iam,
+          initiator,
+          targetSwapper,
+          middlemanSwapper,
+        } = await ctx.runMutation(
           internal.tasks.handleSwapRequestWebhookCallback,
           {
             payloadId: args.payloadId,
@@ -139,50 +196,182 @@ export const processTelegramWebhookCallback = internalAction({
           }
         );
 
-        const courseLabel = `${mutationResult.courseCode} ${mutationResult.courseName}`;
-        if (mutationResult.action === "accept") {
-          await bot
-            .sendMessage(
-              mutationResult.otherTelegramUserId,
-              `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.\n@${escapeMarkdown(
-                args.fromUsername
-              )} has accepted your swap request, they may get in touch with you, please make sure your DMs are open.\n \nThis request is now marked as "Swapped". If this falls through, you may re-enable this request *My Swaps > ${escapeMarkdown(courseLabel)} > Uncheck "Have Swapped"*.`,
-              { parse_mode: "Markdown" }
-            )
-            .catch((error) => {
-              console.error(
-                `Error sending message to ${mutationResult.otherTelegramUserId}:`,
-                error
+        const courseLabel = `${course.code} ${course.name}`;
+        let msgForInitiator = "";
+        let msgForMiddlemanSwapper = "";
+        let msgForTargetSwapper = "";
+
+        const setMessageForMe = (msg: string) => {
+          if (iam === "middlemanSwapper") {
+            msgForMiddlemanSwapper = msg;
+          } else if (iam === "targetSwapper") {
+            msgForTargetSwapper = msg;
+          } else {
+            throw new ConvexError("Invalid iam");
+          }
+        };
+
+        if (action === "accept") {
+          if (isDirectSwap) {
+            if (iam === "middlemanSwapper") {
+              throw new ConvexError(
+                "Middleman swapper cannot accept direct swap request. How did this happen?"
               );
-            });
-          await bot
-            .sendMessage(
-              mutationResult.thisTelegramUserId,
-              `*Successfully sent swap request*\nPlease message @${escapeMarkdown(
-                mutationResult.otherUsername
-              )} to proceed with the swap. We have reminded them to open their DMs.\n \nThis request is now marked as "Swapped". If this falls through, you may re-enable this request *My Swaps > ${escapeMarkdown(courseLabel)} > Uncheck "Have Swapped"*.`,
-              { parse_mode: "Markdown" }
-            )
-            .catch((error) => {
-              console.error(
-                `Error sending message to ${mutationResult.otherTelegramUserId}:`,
-                error
-              );
-            });
+            }
+
+            // Initiator declined the swap.
+            if (!isCompleted) {
+              setMessageForMe(`*Swap failed for ${escapeMarkdown(courseLabel)}*.
+It seems that this request is no longer valid.`);
+            } else {
+              msgForTargetSwapper = `*Swap confirmation for ${escapeMarkdown(courseLabel)}*.
+You have accepted @${escapeMarkdown(initiator.handle)}'s swap request, message them to proceed with the swap!.`;
+              msgForInitiator = `*Swap confirmation for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(targetSwapper.handle)} has accepted your swap request, message them to proceed with the swap!.`;
+            }
+          }
+          // 3 Way Swap
+          else {
+            if (!middlemanSwapper) {
+              throw new ConvexError("Middleman swapper not found.");
+            }
+
+            // Initiator declined the swap.
+            if (!initiator.acceptedByInitiator) {
+              setMessageForMe(`*Swap failed for ${escapeMarkdown(courseLabel)}*.
+It seems that this request is no longer valid.`);
+            } else {
+              const swapSequenceMessageInitiator = `First, YOU (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
+              Then, YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(targetSwapper.handle)} (${targetSwapper.index}) swap.`;
+              const swapSequenceMessageTarget = `Wait for (${escapeMarkdown(initiator.handle)} (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
+              Then, YOU (${targetSwapper.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index})`;
+              const swapSequenceMessageMiddleman = ` YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(initiator.handle)} (${initiator.index}) swap.`;
+
+              if (iam === "middlemanSwapper") {
+                if (!isCompleted) {
+                  msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+You have accepted @${escapeMarkdown(initiator.handle)}'s request.
+
+2 / 3 confirmations received.`;
+                  msgForInitiator = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has accepted your request.
+
+2 / 3 confirmations received.`;
+                  msgForTargetSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in.
+
+2 / 3 confirmations received.
+
+You have yet to confirm this swap request.`;
+                } else {
+                  msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(targetSwapper.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
+
+${swapSequenceMessageMiddleman}
+
+Message them to proceed with the swap!`;
+
+                  msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
+
+${swapSequenceMessageTarget}
+
+Message them to proceed with the swap!`;
+
+                  msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+
+${swapSequenceMessageInitiator}
+
+Message them to proceed with the swap!`;
+                }
+              } else if (iam === "targetSwapper") {
+                if (!isCompleted) {
+                  msgForTargetSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+You have accepted @${escapeMarkdown(initiator.handle)}'s request.
+
+2 / 3 confirmations received.`;
+                  msgForInitiator = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has accepted your request.
+
+2 / 3 confirmations received.`;
+                  msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in.
+
+2 / 3 confirmations received.
+
+You have yet to confirm this swap request.`;
+                } else {
+                  msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+
+${swapSequenceMessageTarget}
+
+Message them to proceed with the swap!`;
+
+                  msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(targetSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
+
+${swapSequenceMessageInitiator}
+
+Message them to proceed with the swap!`;
+
+                  msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(targetSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+
+${swapSequenceMessageMiddleman}
+
+Message them to proceed with the swap!`;
+                }
+              }
+            }
+          }
         } else {
-          await bot
-            .sendMessage(
-              mutationResult.thisTelegramUserId,
-              `*Marked ${escapeMarkdown(courseLabel)} as already swapped*.\nIf you still want to swap for this course, you may re-enable this request *My Swaps > ${escapeMarkdown(courseLabel)} > Uncheck "Have Swapped"*.`,
-              { parse_mode: "Markdown" }
-            )
-            .catch((error) => {
-              console.error(
-                `Error sending message to ${mutationResult.thisTelegramUserId}:`,
-                error
-              );
-            });
+          if (isDirectSwap) {
+            msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(targetSwapper.handle)} has declined to participate in your swap request.`;
+            msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You declined to participate in @${escapeMarkdown(initiator.handle)}'s swap request.`;
+          } else {
+            if (!middlemanSwapper) {
+              throw new ConvexError("Middleman swapper not found.");
+            }
+
+            if (iam === "targetSwapper") {
+              msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
+              msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+              msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(targetSwapper.handle)} has declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+            } else if (iam === "middlemanSwapper") {
+              msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(targetSwapper.handle)} has declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+              msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+              msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
+            }
+          }
         }
+
+        const sendMessage = async (userId: bigint | undefined, msg: string) => {
+          if (msg === "") return;
+          if (!userId) return;
+          await bot
+            .sendMessage(Number(userId), msg, {
+              parse_mode: "Markdown",
+            })
+            .catch((error) => {
+              console.error(`Error sending message to ${userId}:`, error);
+            });
+        };
+
+        await Promise.all([
+          sendMessage(initiator.telegramUserId, msgForInitiator),
+          sendMessage(targetSwapper.telegramUserId, msgForTargetSwapper),
+          sendMessage(middlemanSwapper?.telegramUserId, msgForMiddlemanSwapper),
+        ]);
 
         await bot.answerCallbackQuery(args.callbackId).catch(() => {});
         if (args.messageChatId != null && args.messageId != null) {
@@ -204,6 +393,148 @@ export const processTelegramWebhookCallback = internalAction({
     }
 
     return { ok: true as const };
+  },
+});
+
+export const handleTelegramWebhookCommand = internalAction({
+  args: {
+    text: v.string(),
+    fromId: v.number(),
+    fromUsername: v.optional(v.string()),
+    chatId: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const raw = args.text.trim();
+    if (!raw.startsWith("/")) {
+      return { ok: true as const };
+    }
+
+    const [commandWithTarget, ...params] = raw.split(/\s+/);
+    const command = commandWithTarget.split("@")[0]?.toLowerCase();
+    if (command !== "/link") {
+      return { ok: true as const };
+    }
+
+    const chatId = args.chatId ?? args.fromId;
+    if (params.length < 2) {
+      await bot
+        .sendMessage(
+          chatId,
+          "Usage: /link <email> <code>\nExample: /link user@e.ntu.edu.sg abc123"
+        )
+        .catch((error) => {
+          console.error(`Error sending /link usage to ${chatId}:`, error);
+        });
+      return { ok: true as const };
+    }
+
+    const email = params[0] ?? "";
+    const code = params[1] ?? "";
+    const username = args.fromUsername ?? `user_${args.fromId}`;
+
+    try {
+      const result = await ctx.runMutation(
+        internal.tasks.verifyTelegramAccount,
+        {
+          email,
+          code,
+          telegramUserId: BigInt(args.fromId),
+          username,
+        }
+      );
+
+      if (!result.success) {
+        await bot
+          .sendMessage(
+            chatId,
+            "Link failed. Please double-check your email/code and try again."
+          )
+          .catch((error) => {
+            console.error(
+              `Error sending /link failure message to ${chatId}:`,
+              error
+            );
+          });
+        return { ok: true as const };
+      }
+
+      await bot
+        .sendMessage(
+          chatId,
+          "Telegram account linked successfully! Please go back to the web app to continue."
+        )
+        .catch((error) => {
+          console.error(
+            `Error sending /link success message to ${chatId}:`,
+            error
+          );
+        });
+      return { ok: true as const };
+    } catch (error) {
+      console.error(`Error handling /link command from ${args.fromId}:`, error);
+      await bot
+        .sendMessage(chatId, "Something went wrong while linking your account.")
+        .catch(() => {});
+      return { ok: true as const };
+    }
+  },
+});
+
+export const requestLinkTelegramAccount = action({
+  args: {
+    telegramRawInitData: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ success: boolean; email: string; code: string }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+    const email = identity.email ?? identity.subject;
+    if (!email) {
+      throw new ConvexError("Email not found");
+    }
+
+    if (args.telegramRawInitData) {
+      if (!isValid(args.telegramRawInitData, env.BOT_KEY)) {
+        throw new ConvexError("Invalid Telegram init data");
+      }
+      const initData = parse(args.telegramRawInitData);
+      if (!initData.user) {
+        throw new ConvexError("Invalid Telegram init data");
+      }
+      const telegramUserId = BigInt(initData.user.id);
+
+      const username = initData.user.username;
+      if (!username) {
+        throw new ConvexError("Invalid Telegram username");
+      }
+
+      // If valid, then do the link process
+      const result = await ctx.runMutation(
+        internal.tasks.verifyTelegramAccount,
+        {
+          email,
+          code: "",
+          telegramUserId,
+          username,
+          bypassCodeCheck: true,
+        }
+      );
+      if (!result.success) {
+        throw new ConvexError("Failed to link Telegram account");
+      }
+
+      return {
+        success: true,
+        email,
+        code: "",
+      };
+    }
+
+    return await ctx.runMutation(internal.tasks.requestLinkTelegramAccount, {});
   },
 });
 

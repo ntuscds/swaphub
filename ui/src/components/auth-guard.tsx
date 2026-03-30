@@ -3,7 +3,7 @@
 import { api } from "../../convex/_generated/api";
 import { useConvexAuth, useQuery } from "convex/react";
 import { ScrollArea } from "./ui/scroll-area";
-import { OnboardForm } from "./onboard-form";
+import { SelectSchoolForm } from "./onboard-form";
 import { useStableQuery } from "./use-stable-query";
 import { useSelf } from "./providers";
 
@@ -62,7 +62,7 @@ export function AuthGuard({ children }: { children?: React.ReactNode }) {
                 </p>
               </div>
 
-              <OnboardForm />
+              <SelectSchoolForm />
             </div>
           </div>
         </ScrollArea>

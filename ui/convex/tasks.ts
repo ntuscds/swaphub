@@ -6,10 +6,10 @@ import { Id } from "./_generated/dataModel";
 import {
   COMMAND_PREFIX,
   deserializeAccept,
-  deserializeAlreadySwapped,
+  deserializeDecline,
   getAction,
   serializeAccept,
-  serializeAlreadySwapped,
+  serializeDecline,
 } from "@/telegram/callbacks";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
@@ -33,14 +33,11 @@ export const getSelf = query({
       throw new ConvexError("Unauthorized");
     }
 
-    const telegramUserId = BigInt(identity.subject);
-    // if (!Number.isFinite(telegramUserId)) {
-    //   throw new ConvexError("Invalid auth subject");
-    // }
+    const email = identity.email ?? identity.subject;
 
     return await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", telegramUserId))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
   },
 });
@@ -71,11 +68,19 @@ export const getAllRequests = query({
       throw new ConvexError("Unauthorized");
     }
 
-    const me = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
 
     const allMySwappers = await ctx.db
       .query("swapper")
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
 
     return Promise.all(
@@ -116,10 +121,13 @@ export const getAllRequests = query({
                 q.eq("courseId", request.courseId)
               )
               .filter((q) => {
-                // Either swapper1 or swapper2 is me.
-                return q.or(
-                  q.eq(q.field("swapper1"), request._id),
-                  q.eq(q.field("swapper2"), request._id)
+                return q.and(
+                  q.or(
+                    q.eq(q.field("targetSwapper"), request._id),
+                    q.eq(q.field("initiator"), request._id),
+                    q.eq(q.field("middlemanSwapper"), request._id)
+                  ),
+                  q.eq(q.field("isCompleted"), false)
                 );
               })
               .collect(),
@@ -134,11 +142,16 @@ export const getAllRequests = query({
         // Deduce which requests are pending.
         let pendingRequests: typeof allMySwapRequests = [];
         for (const request of allMySwapRequests) {
-          const swapper1 = swapperMap.get(request.swapper1);
-          const swapper2 = swapperMap.get(request.swapper2);
-          if (!swapper1 || !swapper2) continue;
+          const initiator = swapperMap.get(request.initiator);
+          const target = swapperMap.get(request.targetSwapper);
+          if (!initiator || !target) continue;
 
-          if (swapper1.hasSwapped || swapper2.hasSwapped) continue;
+          if (request.middlemanSwapper) {
+            const middleman = swapperMap.get(request.middlemanSwapper);
+            if (!middleman) continue;
+          }
+
+          if (initiator.hasSwapped || target.hasSwapped) continue;
 
           // This request is pending.
           pendingRequests.push(request);
@@ -162,7 +175,7 @@ export const getAllRequests = query({
         const myWantsAsSet = new Set(myWants.map((w) => w.wantIndex));
         for (const otherSwapper of allSwappersInCourse) {
           if (otherSwapper.hasSwapped) continue;
-          if (otherSwapper.telegramUserId === me) continue;
+          if (otherSwapper.userId === user._id) continue;
           // The other swapper has the index I want and I have the index they want.
           if (
             !myWantsAsSet.has(otherSwapper.index) ||
@@ -191,7 +204,7 @@ export const getAllRequests = query({
 export const getCourseHeaderByCode = query({
   args: {
     courseCode: v.string(),
-    acadYear: v.optional(acadYearValidator),
+    acadYear: acadYearValidator,
   },
   handler: async (ctx, args) => {
     const resolvedAcadYear = resolveAcadYear(args.acadYear);
@@ -226,14 +239,28 @@ export const getCourseHeaderByCode = query({
 /** Indexes for a course with aggregate have/want counts (edit form). */
 export const getCourseIndexesForEdit = query({
   args: {
-    courseId: v.id("courses"),
+    courseCode: v.string(),
+    acadYear: v.optional(acadYearValidator),
   },
   handler: async (ctx, args) => {
-    const courseId = args.courseId;
+    const resolvedAcadYear = resolveAcadYear(args.acadYear);
+    const course = await ctx.db
+      .query("courses")
+      .withIndex("by_code_ay_semester", (q) =>
+        q
+          .eq("code", args.courseCode)
+          .eq("ay", resolvedAcadYear.ay)
+          .eq("semester", resolvedAcadYear.semester)
+      )
+      .unique();
 
+    if (!course) {
+      throw new ConvexError("Course not found.");
+    }
+    const courseId = course._id;
     const courseIndexes = await ctx.db
       .query("course_index")
-      .withIndex("by_courseId", (q) => q.eq("courseId", args.courseId))
+      .withIndex("by_courseId", (q) => q.eq("courseId", courseId))
       .collect();
 
     const allSwappers = await ctx.db
@@ -259,12 +286,19 @@ export const getCourseIndexesForEdit = query({
       );
     }
 
-    return courseIndexes.map((r) => ({
-      id: r._id,
-      index: r.index,
-      haveCount: haveCountByIndex.get(r.index) ?? 0,
-      wantCount: wantCountByIndex.get(r.index) ?? 0,
-    }));
+    return {
+      course: {
+        id: courseId,
+        code: course.code,
+        name: course.name,
+      },
+      indexes: courseIndexes.map((r) => ({
+        id: r._id,
+        index: r.index,
+        haveCount: haveCountByIndex.get(r.index) ?? 0,
+        wantCount: wantCountByIndex.get(r.index) ?? 0,
+      })),
+    };
   },
 });
 
@@ -281,13 +315,22 @@ export const getRequestForCourse = query({
       throw new ConvexError("Unauthorized");
     }
 
-    const me = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+
     const courseId = args.courseId;
 
     const meSwapper = await ctx.db
       .query("swapper")
-      .withIndex("by_telegramUserId_courseId", (q) =>
-        q.eq("telegramUserId", me).eq("courseId", courseId)
+      .withIndex("by_userId_courseId", (q) =>
+        q.eq("userId", user._id).eq("courseId", courseId)
       )
       .unique();
     if (!meSwapper) {
@@ -329,7 +372,14 @@ export const setRequest = mutation({
       throw new ConvexError("At most 16 wanted indexes are allowed.");
     }
 
-    const me = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
 
     const course = await ctx.db.get(args.courseId);
     if (!course) {
@@ -340,7 +390,7 @@ export const setRequest = mutation({
 
     const mySwappers = await ctx.db
       .query("swapper")
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
     const existingSwapper = mySwappers.find((s) => s.courseId === courseId);
 
@@ -349,7 +399,7 @@ export const setRequest = mutation({
       await ctx.db.patch(existingSwapper._id, { index: args.haveIndex });
     } else {
       mySwapperId = await ctx.db.insert("swapper", {
-        telegramUserId: me,
+        userId: user._id,
         courseId,
         index: args.haveIndex,
         hasSwapped: false,
@@ -393,7 +443,9 @@ export const setRequest = mutation({
 
 export const getCourseRequestAndMatches = query({
   args: {
-    courseId: v.id("courses"),
+    // courseId: v.id("courses"),
+    courseCode: v.string(),
+    acadYear: v.optional(acadYearValidator),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -401,19 +453,36 @@ export const getCourseRequestAndMatches = query({
       throw new ConvexError("Unauthorized");
     }
 
-    const me = BigInt(identity.subject);
-    const courseId = args.courseId;
+    const email = identity.email ?? identity.subject;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
 
-    const course = await ctx.db.get(courseId);
+    const resolvedAcadYear = resolveAcadYear(args.acadYear);
+    const course = await ctx.db
+      .query("courses")
+      .withIndex("by_code_ay_semester", (q) =>
+        q
+          .eq("code", args.courseCode)
+          .eq("ay", resolvedAcadYear.ay)
+          .eq("semester", resolvedAcadYear.semester)
+      )
+      .unique();
+
     if (!course) {
       throw new ConvexError("Course not found.");
     }
+    const courseId = course._id;
 
     const allSwappers = await ctx.db
       .query("swapper")
       .withIndex("by_courseId", (q) => q.eq("courseId", courseId))
       .collect();
-    const mySwapper = allSwappers.find((s) => s.telegramUserId === me);
+    const mySwapper = allSwappers.find((s) => s.userId === user._id);
 
     if (!mySwapper) {
       return {
@@ -423,7 +492,8 @@ export const getCourseRequestAndMatches = query({
           name: course.name,
         },
         wantIndexes: [],
-        matches: [],
+        directMatches: [],
+        threeWayCycleMatches: [],
       };
     }
 
@@ -436,71 +506,92 @@ export const getCourseRequestAndMatches = query({
       )
       .collect();
 
-    const wantIndexesSet = new Set(allSwapperWants.map((w) => w.wantIndex));
+    const wantIndexesSet = new Set(
+      allSwapperWants
+        .filter((w) => w.swapperId === mySwapper._id)
+        .map((w) => w.wantIndex)
+    );
 
     const allMyRequests = await ctx.db
       .query("swap_requests")
       .filter((q) =>
-        q.or(
-          q.eq(q.field("swapper1"), mySwapper._id),
-          q.eq(q.field("swapper2"), mySwapper._id)
+        q.and(
+          q.or(
+            q.eq(q.field("initiator"), mySwapper._id),
+            q.eq(q.field("targetSwapper"), mySwapper._id),
+            q.eq(q.field("middlemanSwapper"), mySwapper._id)
+          ),
+          q.eq(q.field("courseId"), courseId),
+          q.eq(q.field("isCompleted"), false)
         )
       )
       .collect();
 
-    const matches: ({
+    type BaseMatch = {
       otherSwapperId: Id<"swapper">;
-      isPerfectMatch: boolean;
       index: string;
     } & (
       | {
           status: undefined;
         }
       | {
-          status: "cancelled";
-          isSelfInitiated: boolean;
-          requestedAt: number;
-        }
-      | {
           status: "pending";
           isSelfInitiated: boolean;
-          requestedAt: number;
         }
       | {
           status: "swapped";
           isSelfInitiated: boolean;
         }
-    ))[] = [];
+    );
+    const directMatches: (BaseMatch & {
+      isPerfectMatch: boolean;
+      haveWhatTheyWant: boolean;
+      haveWhatIWant: boolean;
+    })[] = [];
+    const threeWayCycleMatches: (BaseMatch & {
+      middlemanSwapperId: Id<"swapper">;
+      middlemanIndex: string;
+      iam: "intiator" | "target" | "middleman";
+    })[] = [];
 
+    const swapperById = new Map(
+      allSwappers.map((swapper) => [swapper._id, swapper])
+    );
+    const wantsBySwapperId = new Map<Id<"swapper">, Set<string>>();
+    for (const want of allSwapperWants) {
+      const wants = wantsBySwapperId.get(want.swapperId) ?? new Set<string>();
+      wants.add(want.wantIndex);
+      wantsBySwapperId.set(want.swapperId, wants);
+    }
+
+    // Direct matches.
     for (const otherSwapper of allSwappers) {
       // TAG: Personal check
-      if (otherSwapper.telegramUserId === me) continue;
+      if (otherSwapper.userId === user._id) continue;
 
       // First check if this is a potential match. A potential match
       // is one where the other swapper's index is in my want indexes.
-      const isPotentialMatch = wantIndexesSet.has(otherSwapper.index);
-      // If not a potential match, continue.
-      if (!isPotentialMatch) {
-        continue;
-      }
+      const haveWhatIWant = wantIndexesSet.has(otherSwapper.index);
 
       // Check if this is a perfect match. A perfect match is one where the other swapper's index is in my want indexes and my index is in their want indexes.
-      let isPerfectMatchWithOther = false;
-      if (isPotentialMatch) {
-        const otherWants = allSwapperWants.filter(
-          (w) => w.swapperId === otherSwapper._id
-        );
-        isPerfectMatchWithOther = otherWants.some(
-          (w) => w.wantIndex === haveIndex
-        );
-      }
+      const otherWants = wantsBySwapperId.get(otherSwapper._id);
+      if (!otherWants) continue;
+      const haveWhatTheyWant = otherWants.has(haveIndex);
+      const isPerfectMatchWithOther = haveWhatTheyWant && haveWhatIWant;
 
       // Now we check the availability of the match.
       const isAvailable = !mySwapper.hasSwapped && !otherSwapper.hasSwapped;
       const myMatchRequestWithOther = allMyRequests.find(
         (r) =>
-          r.swapper1 === otherSwapper._id || r.swapper2 === otherSwapper._id
+          (r.initiator === otherSwapper._id ||
+            r.targetSwapper === otherSwapper._id) &&
+          // We will deal with 3 way swaps later.
+          r.middlemanSwapper === undefined
       );
+      // If not a potential match AND there is no request for this match, continue.
+      if (!haveWhatIWant && myMatchRequestWithOther === undefined) {
+        continue;
+      }
       // We show IF there was previously a request for this match, but not if the match is available.
       if (!isAvailable && myMatchRequestWithOther === undefined) {
         continue;
@@ -511,18 +602,22 @@ export const getCourseRequestAndMatches = query({
         myMatchRequestWithOther?.initiator === mySwapper._id;
       if (isAvailable) {
         if (myMatchRequestWithOther) {
-          matches.push({
+          directMatches.push({
             otherSwapperId: otherSwapper._id,
             isPerfectMatch: isPerfectMatchWithOther,
+            haveWhatTheyWant,
+            haveWhatIWant,
             index: otherSwapper.index,
             status: "pending",
             isSelfInitiated,
-            requestedAt: myMatchRequestWithOther._creationTime,
+            // requestedAt: myMatchRequestWithOther._creationTime,
           });
         } else {
-          matches.push({
+          directMatches.push({
             otherSwapperId: otherSwapper._id,
             isPerfectMatch: isPerfectMatchWithOther,
+            haveWhatTheyWant,
+            haveWhatIWant,
             index: otherSwapper.index,
             status: undefined,
           });
@@ -531,24 +626,15 @@ export const getCourseRequestAndMatches = query({
       // No longer available.
       else {
         if (myMatchRequestWithOther) {
-          if (otherSwapper.previouslyMatchedWith === mySwapper._id) {
-            matches.push({
-              otherSwapperId: otherSwapper._id,
-              isPerfectMatch: isPerfectMatchWithOther,
-              index: otherSwapper.index,
-              status: "swapped",
-              isSelfInitiated,
-            });
-          } else {
-            matches.push({
-              otherSwapperId: otherSwapper._id,
-              isPerfectMatch: isPerfectMatchWithOther,
-              index: otherSwapper.index,
-              status: "cancelled",
-              isSelfInitiated,
-              requestedAt: myMatchRequestWithOther._creationTime,
-            });
-          }
+          directMatches.push({
+            otherSwapperId: otherSwapper._id,
+            isPerfectMatch: isPerfectMatchWithOther,
+            haveWhatTheyWant,
+            haveWhatIWant,
+            index: otherSwapper.index,
+            status: "swapped",
+            isSelfInitiated,
+          });
         } else {
           // This should not happen.
           console.error(
@@ -558,16 +644,124 @@ export const getCourseRequestAndMatches = query({
       }
     }
 
+    // Three-way cycle matches.
+    const threeWayConsideredMatches = directMatches.filter(
+      (m) => m.haveWhatIWant
+    );
+    // Find a middleman who wants what you have
+    // and has an index that can be given to
+    // someone else who has what you want.
+
+    for (const mainTargetSwapper of threeWayConsideredMatches) {
+      const otherSwapper = swapperById.get(mainTargetSwapper.otherSwapperId);
+      if (!otherSwapper) continue;
+
+      const otherWants = wantsBySwapperId.get(otherSwapper._id);
+      if (!otherWants || otherWants.size === 0) continue;
+
+      // Find the middleman.
+      for (const middleman of allSwappers) {
+        if (middleman._id === mySwapper._id) continue;
+        if (middleman._id === otherSwapper._id) continue;
+
+        const middlemanWants = wantsBySwapperId.get(middleman._id);
+        if (!middlemanWants?.has(haveIndex)) continue;
+        if (!otherWants.has(middleman.index)) continue;
+
+        const canonicalId = [
+          mySwapper._id,
+          otherSwapper._id,
+          middleman._id,
+        ].sort();
+        const myMatchRequestWithBothOthers = allMyRequests.find((r) => {
+          const requestCanonicalId = [
+            r.initiator,
+            r.targetSwapper,
+            r.middlemanSwapper,
+          ].sort();
+          return requestCanonicalId.every(
+            (id, index) => id === canonicalId[index]
+          );
+        });
+        const isAvailable =
+          !mySwapper.hasSwapped &&
+          !otherSwapper.hasSwapped &&
+          !middleman.hasSwapped;
+        if (!myMatchRequestWithBothOthers && !isAvailable) continue;
+
+        // Deduce the status of the match.
+        const isSelfInitiated =
+          myMatchRequestWithBothOthers?.initiator === mySwapper._id;
+
+        let iam: "intiator" | "target" | "middleman" = "intiator";
+        if (myMatchRequestWithBothOthers?.initiator === mySwapper._id) {
+          iam = "intiator";
+        } else if (
+          myMatchRequestWithBothOthers?.targetSwapper === mySwapper._id
+        ) {
+          iam = "target";
+        } else if (
+          myMatchRequestWithBothOthers?.middlemanSwapper === mySwapper._id
+        ) {
+          iam = "middleman";
+        }
+
+        if (isAvailable) {
+          if (myMatchRequestWithBothOthers) {
+            threeWayCycleMatches.push({
+              otherSwapperId: otherSwapper._id,
+              index: mainTargetSwapper.index,
+              middlemanSwapperId: middleman._id,
+              middlemanIndex: middleman.index,
+              status: "pending",
+              isSelfInitiated,
+              iam,
+            });
+          } else {
+            threeWayCycleMatches.push({
+              otherSwapperId: otherSwapper._id,
+              index: mainTargetSwapper.index,
+              middlemanSwapperId: middleman._id,
+              middlemanIndex: middleman.index,
+              status: undefined,
+              iam,
+            });
+          }
+        } else {
+          if (myMatchRequestWithBothOthers) {
+            threeWayCycleMatches.push({
+              otherSwapperId: otherSwapper._id,
+              index: mainTargetSwapper.index,
+              middlemanSwapperId: middleman._id,
+              middlemanIndex: middleman.index,
+              status: "swapped",
+              isSelfInitiated,
+              iam,
+            });
+          } else {
+            // This should not happen.
+            console.error(
+              "Unhandled state where the request is no longer available but myMatchRequestWithBothOthers is defined."
+            );
+          }
+        }
+        // threeWayCycleMatches.push({
+        //   ...match,
+        //   middlemanSwapperId: middleman._id,
+        //   middlemanIndex: middleman.index,
+        // });
+      }
+    }
+
     // Sort matches by:
-    // 1. By state: Swapped -> Pending -> undefined -> Cancelled
+    // 1. By state: Pending -> undefined -> Swapped
     // 2. In case of same state, by perfect match first, then requestedAt (newest first)
     const statusPriority = {
-      swapped: 0,
       pending: 1,
       undefined: 2,
-      cancelled: 3,
+      swapped: 3,
     } as const;
-    matches.sort((a, b) => {
+    directMatches.sort((a, b) => {
       const aState =
         a.status === undefined
           ? statusPriority.undefined
@@ -596,11 +790,13 @@ export const getCourseRequestAndMatches = query({
     return {
       course: {
         id: courseId,
+        name: course.name,
         haveIndex,
         hasSwapped: mySwapper.hasSwapped,
       },
       wantIndexes: Array.from(wantIndexesSet),
-      matches,
+      directMatches,
+      threeWayCycleMatches,
     };
   },
 });
@@ -614,10 +810,18 @@ export const toggleSwapRequest = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
-    const me = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+
     const mySwappers = await ctx.db
       .query("swapper")
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
     const mySwapper = mySwappers.find((s) => s.courseId === args.courseId);
     if (!mySwapper) throw new ConvexError("Swap request not found.");
@@ -629,108 +833,210 @@ export const toggleSwapRequest = mutation({
 
 export const requestSwap = internalMutation({
   args: {
-    courseId: v.id("courses"),
-    otherSwapperId: v.id("swapper"),
+    // courseId: v.id("courses"),
+    // otherSwapperId: v.id("swapper"),
+    targetSwapperId: v.id("swapper"),
+    middlemanSwapperId: v.optional(v.id("swapper")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
-    const meId = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
+    const meUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (!meUser) {
+      throw new ConvexError("User not found");
+    }
 
-    const course = await ctx.db.get(args.courseId);
+    const targetSwapper = await ctx.db.get(args.targetSwapperId);
+    if (!targetSwapper) {
+      throw new ConvexError("Swap request not found.");
+    }
+    // TAG: Personal check
+    if (targetSwapper.userId === meUser._id) {
+      throw new ConvexError("Cannot request a swap with yourself.");
+    }
+    if (targetSwapper.hasSwapped) {
+      throw new ConvexError("The swapper is no longer looking to swap.");
+    }
+
+    const course = await ctx.db.get(targetSwapper.courseId);
     if (!course) {
       throw new ConvexError("Course not found.");
     }
 
-    const otherSwapper = await ctx.db.get(args.otherSwapperId);
-    if (!otherSwapper || otherSwapper.courseId !== args.courseId) {
-      throw new ConvexError("Swap request not found.");
-    }
-    // TAG: Personal check
-    if (otherSwapper.telegramUserId === meId) {
-      throw new ConvexError("Cannot request a swap with yourself.");
-    }
-    if (otherSwapper.hasSwapped) {
-      throw new ConvexError("The swapper is no longer looking to swap.");
+    let middlemanSwapper: typeof targetSwapper | null = null;
+    let middlemanSwapperUser: typeof meUser | null = null;
+    if (args.middlemanSwapperId) {
+      middlemanSwapper = await ctx.db.get(args.middlemanSwapperId);
+      if (!middlemanSwapper) {
+        throw new ConvexError("Middleman swapper not found.");
+      }
+      if (middlemanSwapper.userId === meUser._id) {
+        throw new ConvexError("Cannot request a swap with yourself.");
+      }
+      if (middlemanSwapper.hasSwapped) {
+        throw new ConvexError(
+          "The middleman swapper is no longer looking to swap."
+        );
+      }
+
+      if (middlemanSwapper.courseId !== course._id) {
+        throw new ConvexError(
+          "The middleman swapper is not for the same course."
+        );
+      }
+
+      middlemanSwapperUser = await ctx.db.get(middlemanSwapper.userId);
+      if (!middlemanSwapperUser) {
+        throw new ConvexError("User not found.");
+      }
     }
 
-    const otherUser = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) =>
-        q.eq("userId", otherSwapper.telegramUserId)
-      )
-      .unique();
-    if (!otherUser) {
-      throw new ConvexError("User not found.");
-    }
-
-    const meUser = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", meId))
-      .unique();
-    if (!meUser) {
+    const targetUser = await ctx.db.get(targetSwapper.userId);
+    if (!targetUser) {
       throw new ConvexError("User not found.");
     }
 
     const meSwapper = await ctx.db
       .query("swapper")
-      .withIndex("by_telegramUserId_courseId", (q) =>
-        q.eq("telegramUserId", meId).eq("courseId", args.courseId)
+      .withIndex("by_userId_courseId", (q) =>
+        q.eq("userId", meUser._id).eq("courseId", course._id)
       )
       .unique();
+    // .unique();
     if (!meSwapper) {
       throw new ConvexError(
         "You have not set your index, please set one under your Telegram settings."
       );
     }
 
-    const swapper1 =
-      meId > otherSwapper.telegramUserId ? meSwapper._id : otherSwapper._id;
-    const swapper2 =
-      meId > otherSwapper.telegramUserId ? otherSwapper._id : meSwapper._id;
-
-    const existing = await ctx.db
+    const existingRequests = await ctx.db
       .query("swap_requests")
-      .withIndex("by_course_swapper_pair", (q) =>
-        q
-          .eq("courseId", args.courseId)
-          .eq("swapper1", swapper1)
-          .eq("swapper2", swapper2)
-      )
-      .unique();
+      .filter((q) => {
+        if (middlemanSwapper) {
+          return q.and(
+            q.or(
+              q.and(
+                q.eq(q.field("initiator"), meSwapper._id),
+                q.eq(q.field("targetSwapper"), targetSwapper._id),
+                q.eq(q.field("middlemanSwapper"), middlemanSwapper._id)
+              ),
+              q.and(
+                q.eq(q.field("initiator"), meSwapper._id),
+                q.eq(q.field("targetSwapper"), middlemanSwapper._id),
+                q.eq(q.field("middlemanSwapper"), targetSwapper._id)
+              ),
+              q.and(
+                q.eq(q.field("initiator"), targetSwapper._id),
+                q.eq(q.field("targetSwapper"), meSwapper._id),
+                q.eq(q.field("middlemanSwapper"), middlemanSwapper._id)
+              ),
+              q.and(
+                q.eq(q.field("initiator"), targetSwapper._id),
+                q.eq(q.field("targetSwapper"), middlemanSwapper._id),
+                q.eq(q.field("middlemanSwapper"), meSwapper._id)
+              ),
+              q.and(
+                q.eq(q.field("initiator"), middlemanSwapper._id),
+                q.eq(q.field("targetSwapper"), meSwapper._id),
+                q.eq(q.field("middlemanSwapper"), targetSwapper._id)
+              ),
+              q.and(
+                q.eq(q.field("initiator"), middlemanSwapper._id),
+                q.eq(q.field("targetSwapper"), targetSwapper._id),
+                q.eq(q.field("middlemanSwapper"), meSwapper._id)
+              )
+            ),
+            q.eq(q.field("courseId"), course._id),
+            q.eq(q.field("isCompleted"), false)
+          );
+        }
+        return q.and(
+          q.or(
+            q.and(
+              q.eq(q.field("initiator"), meSwapper._id),
+              q.eq(q.field("targetSwapper"), targetSwapper._id),
+              q.eq(q.field("middlemanSwapper"), undefined)
+            ),
+            q.and(
+              q.eq(q.field("initiator"), targetSwapper._id),
+              q.eq(q.field("targetSwapper"), meSwapper._id),
+              q.eq(q.field("middlemanSwapper"), undefined)
+            )
+          ),
+          q.eq(q.field("courseId"), course._id),
+          q.eq(q.field("isCompleted"), false)
+        );
+      })
+      .first();
 
-    if (existing) {
+    if (existingRequests) {
       throw new ConvexError(
         "You have already requested a swap for this course."
       );
     }
 
     await ctx.db.insert("swap_requests", {
-      courseId: args.courseId,
-      swapper1,
-      swapper2,
+      courseId: course._id,
       initiator: meSwapper._id,
-      requestedAt: Date.now(),
+      targetSwapper: targetSwapper._id,
+      middlemanSwapper: middlemanSwapper?._id,
+      acceptedByInitiator: true,
+      acceptedByTargetSwapper: false,
+      acceptedByMiddlemanSwapper: false,
+      isCompleted: false,
     });
 
-    const acceptPayloadId = await ctx.db.insert("telegram_callback_data", {
-      callbackData: serializeAccept(
-        course._id,
-        meSwapper._id,
-        otherSwapper._id
-      ),
-    });
-    const alreadySwappedPayloadId = await ctx.db.insert(
+    const targetAcceptPayloadId = await ctx.db.insert(
       "telegram_callback_data",
       {
-        callbackData: serializeAlreadySwapped(
-          course._id,
+        callbackData: serializeAccept(
+          targetUser._id,
           meSwapper._id,
-          otherSwapper._id
+          targetSwapper._id,
+          middlemanSwapper?._id
         ),
       }
     );
+    const targetDeclinePayloadId = await ctx.db.insert(
+      "telegram_callback_data",
+      {
+        callbackData: serializeDecline(
+          targetUser._id,
+          meSwapper._id,
+          targetSwapper._id,
+          middlemanSwapper?._id
+        ),
+      }
+    );
+
+    let middlemanAcceptPayloadId: Id<"telegram_callback_data"> | null = null;
+    let middlemanDeclinePayloadId: Id<"telegram_callback_data"> | null = null;
+    if (middlemanSwapperUser) {
+      middlemanAcceptPayloadId = await ctx.db.insert("telegram_callback_data", {
+        callbackData: serializeAccept(
+          middlemanSwapperUser._id,
+          meSwapper._id,
+          targetSwapper._id,
+          middlemanSwapper?._id
+        ),
+      });
+      middlemanDeclinePayloadId = await ctx.db.insert(
+        "telegram_callback_data",
+        {
+          callbackData: serializeDecline(
+            middlemanSwapperUser._id,
+            meSwapper._id,
+            targetSwapper._id,
+            middlemanSwapper?._id
+          ),
+        }
+      );
+    }
 
     return {
       course: {
@@ -740,22 +1046,35 @@ export const requestSwap = internalMutation({
         ay: course.ay,
         semester: course.semester,
       },
-      me: {
+      initiator: {
         id: meSwapper._id,
-        telegramUserId: meId,
+        telegramUserId: meUser.telegramUserId,
         handle: meUser.handle,
         index: meSwapper.index,
       },
-      other: {
-        id: otherSwapper._id,
-        telegramUserId: otherSwapper.telegramUserId,
-        handle: otherUser.handle,
-        index: otherSwapper.index,
+      target: {
+        id: targetSwapper._id,
+        telegramUserId: targetUser.telegramUserId,
+        handle: targetUser.handle,
+        index: targetSwapper.index,
+        webhook: {
+          accept: targetAcceptPayloadId,
+          decline: targetDeclinePayloadId,
+        },
       },
-      webhook: {
-        accept: acceptPayloadId,
-        already_swapped: alreadySwappedPayloadId,
-      },
+      middleman:
+        middlemanSwapper && middlemanSwapperUser
+          ? {
+              id: middlemanSwapper._id,
+              telegramUserId: middlemanSwapperUser.telegramUserId,
+              handle: middlemanSwapperUser.handle,
+              index: middlemanSwapper.index,
+              webhook: {
+                accept: middlemanAcceptPayloadId,
+                decline: middlemanDeclinePayloadId,
+              },
+            }
+          : null,
     };
   },
 });
@@ -770,7 +1089,15 @@ export const handleSwapRequestCallback = internalMutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
-    const me = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
+    const meUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (!meUser) {
+      throw new ConvexError("User not found");
+    }
+
     const otherSwapper = await ctx.db.get(args.otherSwapperId);
     if (!otherSwapper || otherSwapper.courseId !== args.courseId) {
       throw new ConvexError("Swap request not found.");
@@ -778,7 +1105,7 @@ export const handleSwapRequestCallback = internalMutation({
 
     const mySwappers = await ctx.db
       .query("swapper")
-      .withIndex("by_telegramUserId", (q) => q.eq("telegramUserId", me))
+      .withIndex("by_userId", (q) => q.eq("userId", meUser._id))
       .collect();
     const mySwapper = mySwappers.find((s) => s.courseId === args.courseId);
     if (!mySwapper) throw new ConvexError("Swap request not found.");
@@ -823,114 +1150,190 @@ export const handleSwapRequestWebhookCallback = internalMutation({
     }
     if (
       actionInfo.action !== COMMAND_PREFIX.ACCEPT &&
-      actionInfo.action !== COMMAND_PREFIX.ALREADY_SWAPPED
+      actionInfo.action !== COMMAND_PREFIX.DECLINE
     ) {
       throw new ConvexError("Invalid callback action.");
     }
     const parsed =
       actionInfo.action === COMMAND_PREFIX.ACCEPT
         ? deserializeAccept(payload.callbackData)
-        : deserializeAlreadySwapped(payload.callbackData);
+        : deserializeDecline(payload.callbackData);
     if (!parsed) {
       throw new ConvexError("Invalid callback payload.");
     }
-    const parsedCourseId = parsed.courseId as Id<"courses">;
-    const parsedSwapper1Id = parsed.swapper1 as Id<"swapper">;
-    const parsedSwapper2Id = parsed.swapper2 as Id<"swapper">;
+    const parsedInitiator = parsed.initiator;
+    const parsedTargetSwapper = parsed.targetSwapper;
+    const parsedMiddlemanSwapper = parsed.middlemanSwapper;
+    // const parsedCourseId = parsed.courseId as Id<"courses">;
+    // const parsedSwapper1Id = parsed.swapper1 as Id<"swapper">;
+    // const parsedSwapper2Id = parsed.swapper2 as Id<"swapper">;
 
-    const swapper1 = await ctx.db.get(parsedSwapper1Id);
-    const swapper2 = await ctx.db.get(parsedSwapper2Id);
-    if (!swapper1 || !swapper2) {
-      throw new ConvexError("Swapper not found.");
+    const initiator = await ctx.db.get(parsedInitiator);
+    const targetSwapper = await ctx.db.get(parsedTargetSwapper);
+
+    if (!initiator) {
+      throw new ConvexError("Initiator not found.");
     }
-    if (
-      swapper1.courseId !== parsedCourseId ||
-      swapper2.courseId !== parsedCourseId
-    ) {
-      throw new ConvexError("Invalid callback payload.");
+    if (!targetSwapper) {
+      throw new ConvexError("Target swapper not found.");
     }
 
-    const fromTelegramUserId = args.fromTelegramUserId;
-    const isFromSwapper1 = fromTelegramUserId === swapper1.telegramUserId;
-    const isFromSwapper2 = fromTelegramUserId === swapper2.telegramUserId;
-    if (!isFromSwapper1 && !isFromSwapper2) {
+    if (initiator.courseId !== targetSwapper.courseId) {
+      throw new ConvexError(
+        "Initiator and target swapper are not for the same course."
+      );
+    }
+
+    const initiatorUser = await ctx.db.get(initiator.userId);
+    if (!initiatorUser) {
+      throw new ConvexError("Initiator user not found.");
+    }
+    const targetSwapperUser = await ctx.db.get(targetSwapper.userId);
+    if (!targetSwapperUser) {
+      throw new ConvexError("Target swapper user not found.");
+    }
+
+    // If set, 3 way swap.
+    let isDirectSwap = true;
+    let middlemanSwapper: typeof initiator | null = null;
+    let middlemanSwapperUser: typeof initiatorUser | null = null;
+    if (parsedMiddlemanSwapper) {
+      isDirectSwap = false;
+      middlemanSwapper = await ctx.db.get(parsedMiddlemanSwapper);
+      if (!middlemanSwapper) {
+        throw new ConvexError("Middleman swapper not found.");
+      }
+      if (middlemanSwapper.courseId !== initiator.courseId) {
+        throw new ConvexError(
+          "Middleman swapper is not for the same course as the initiator."
+        );
+      }
+      middlemanSwapperUser = await ctx.db.get(middlemanSwapper.userId);
+      if (!middlemanSwapperUser) {
+        throw new ConvexError("Middleman swapper user not found.");
+      }
+    }
+
+    // Determine who the caller is.
+    let iam: "initiator" | "targetSwapper" | "middlemanSwapper" = "initiator";
+    if (parsed.myUserId === initiatorUser._id) {
+      throw new ConvexError("You cannot accept your own swap request.");
+      // iam = "initiator";
+    } else if (parsed.myUserId === targetSwapperUser._id) {
+      iam = "targetSwapper";
+    } else if (parsed.myUserId === middlemanSwapperUser?._id) {
+      iam = "middlemanSwapper";
+    } else {
       throw new ConvexError("Not a participant in this swap request");
     }
 
-    const thisTelegramUserId = fromTelegramUserId;
-    const otherTelegramUserId = isFromSwapper1
-      ? swapper2.telegramUserId
-      : swapper1.telegramUserId;
-
-    const otherUser = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", otherTelegramUserId))
-      .unique();
-    if (!otherUser) {
-      throw new ConvexError("User not found.");
-    }
-
-    const canonicalSwapper1 =
-      swapper1.telegramUserId > swapper2.telegramUserId
-        ? swapper1._id
-        : swapper2._id;
-    const canonicalSwapper2 =
-      swapper1.telegramUserId > swapper2.telegramUserId
-        ? swapper2._id
-        : swapper1._id;
-    const request = await ctx.db
+    const requests = await ctx.db
       .query("swap_requests")
-      .withIndex("by_course_swapper_pair", (q) =>
+      .withIndex("by_courseId_initiator_targetSwapper_middlemanSwapper", (q) =>
         q
-          .eq("courseId", parsedCourseId)
-          .eq("swapper1", canonicalSwapper1)
-          .eq("swapper2", canonicalSwapper2)
+          .eq("courseId", initiator.courseId)
+          .eq("initiator", initiator._id)
+          .eq("targetSwapper", targetSwapper._id)
+          .eq("middlemanSwapper", middlemanSwapper?._id)
       )
-      .unique();
-    if (!request) {
+      .collect();
+    // Exclude completed requests.
+    const incompletedRequests = requests.filter((r) => !r.isCompleted);
+    if (incompletedRequests.length <= 0) {
       throw new ConvexError("Swap request not found.");
     }
+    const request = incompletedRequests[0];
+    if (incompletedRequests.length > 1) {
+      throw new ConvexError("Multiple swap requests found.");
+    }
 
-    const thisSwapper = isFromSwapper1 ? swapper1 : swapper2;
-    const otherSwapper = isFromSwapper1 ? swapper2 : swapper1;
-
-    const course = await ctx.db.get(parsedCourseId);
+    const course = await ctx.db.get(initiator.courseId);
     if (!course) {
       throw new ConvexError("Course not found");
     }
 
     const action =
-      actionInfo.action === COMMAND_PREFIX.ACCEPT
-        ? "accept"
-        : "already_swapped";
+      actionInfo.action === COMMAND_PREFIX.ACCEPT ? "accept" : "decline";
 
+    let isCompleted = false;
+    let acceptedByInitiator = request.acceptedByInitiator;
+    let acceptedByTargetSwapper = request.acceptedByTargetSwapper;
+    let acceptedByMiddlemanSwapper = request.acceptedByMiddlemanSwapper;
     if (action === "accept") {
-      await Promise.all([
-        ctx.db.patch(thisSwapper._id, {
-          hasSwapped: true,
-          previouslyMatchedWith: otherSwapper._id,
-        }),
-        ctx.db.patch(otherSwapper._id, {
-          hasSwapped: true,
-          previouslyMatchedWith: thisSwapper._id,
-        }),
-      ]);
+      if (iam === "middlemanSwapper") {
+        isCompleted =
+          request.acceptedByInitiator && request.acceptedByTargetSwapper;
+        acceptedByMiddlemanSwapper = true;
+        await ctx.db.patch(request._id, {
+          acceptedByMiddlemanSwapper: true,
+          isCompleted: isCompleted,
+        });
+      } else if (iam === "targetSwapper") {
+        isCompleted = isDirectSwap
+          ? request.acceptedByInitiator
+          : request.acceptedByMiddlemanSwapper && request.acceptedByInitiator;
+        acceptedByTargetSwapper = true;
+        await ctx.db.patch(request._id, {
+          acceptedByTargetSwapper: true,
+          isCompleted: isCompleted,
+        });
+      }
+
+      if (isCompleted) {
+        await Promise.all([
+          ctx.db.patch(initiator._id, { hasSwapped: true }),
+          ctx.db.patch(targetSwapper._id, { hasSwapped: true }),
+          (async () => {
+            if (middlemanSwapper) {
+              await ctx.db.patch(middlemanSwapper._id, { hasSwapped: true });
+            }
+          })(),
+        ]);
+      }
     } else {
-      await ctx.db.patch(thisSwapper._id, { hasSwapped: true });
+      await ctx.db.patch(request._id, {
+        isCompleted: true,
+      });
     }
 
     return {
       action,
-      courseCode: course.code,
-      courseName: course.name,
-      thisTelegramUserId: Number(thisSwapper.telegramUserId),
-      otherTelegramUserId: Number(otherSwapper.telegramUserId),
-      otherUsername: otherUser.handle,
+      isDirectSwap,
+      isCompleted,
+      course: {
+        code: course.code,
+        name: course.name,
+      },
+      iam,
+      initiator: {
+        handle: initiatorUser.handle,
+        telegramUserId: initiatorUser.telegramUserId,
+        acceptedByInitiator,
+        index: initiator.index,
+      },
+      targetSwapper: {
+        handle: targetSwapperUser.handle,
+        telegramUserId: targetSwapperUser.telegramUserId,
+        acceptedByTargetSwapper,
+        index: targetSwapper.index,
+      },
+      middlemanSwapper:
+        middlemanSwapperUser && middlemanSwapper
+          ? {
+              handle: middlemanSwapperUser.handle,
+              telegramUserId: middlemanSwapperUser.telegramUserId,
+              acceptedByMiddlemanSwapper,
+              index: middlemanSwapper.index,
+            }
+          : null,
+      // thisTelegramUserId: Number(thisUser.telegramUserId),
+      // otherTelegramUserId: Number(otherUser.telegramUserId),
+      // otherUsername: user2.handle,
     };
   },
 });
 
-export const onboard = mutation({
+export const selectSchool = mutation({
   args: {
     school: schoolValidator,
   },
@@ -940,38 +1343,191 @@ export const onboard = mutation({
       throw new ConvexError("Unauthorized");
     }
 
-    const username = identity.nickname;
-    if (!username) {
-      throw new ConvexError("Your telegram username is not set.");
-    }
-
-    const telegramUserId = BigInt(identity.subject);
+    // const telegramUserId = BigInt(identity.subject);
+    const email = identity.email ?? identity.subject;
 
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", telegramUserId))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
-    if (existing) {
-      return {
-        success: true,
-        user: existing,
-      };
+    if (!existing) {
+      throw new ConvexError("User not found.");
     }
 
-    const userId = await ctx.db.insert("users", {
-      userId: telegramUserId,
-      handle: username,
+    await ctx.db.patch("users", existing._id, {
       school: args.school,
     });
 
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new ConvexError("Failed to onboard user.");
-    }
-
     return {
       success: true,
-      user,
     };
+  },
+});
+
+const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+function generateCode() {
+  let code = "";
+  for (let i = 0; i < 24; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+const VERIFICATION_CODE_EXPIRATION_TIME_MS = 10 * 60 * 1000;
+
+export const requestLinkTelegramAccount = internalMutation({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+    const email = identity.email ?? identity.subject;
+    if (!email) {
+      throw new ConvexError("Email not found");
+    }
+
+    // Get existing verification code for this email.
+    const existing = await ctx.db
+      .query("telegram_user_verification")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      // Sort by creation time descending.
+      .order("desc")
+      .first();
+    // Verify created at is within last 10mins.
+    if (
+      existing &&
+      existing._creationTime > Date.now() - VERIFICATION_CODE_EXPIRATION_TIME_MS
+    ) {
+      return { success: false, code: existing.code, email };
+    }
+
+    const code = generateCode();
+    await ctx.db.insert("telegram_user_verification", {
+      email,
+      code,
+    });
+    return { success: true, code, email };
+  },
+});
+
+export const verifyTelegramAccount = internalMutation({
+  args: {
+    email: v.string(),
+    code: v.string(),
+    telegramUserId: v.int64(),
+    username: v.string(),
+    bypassCodeCheck: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    if (args.bypassCodeCheck) {
+      const existingUser = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.email))
+        .first();
+
+      if (existingUser) {
+        await ctx.db.patch(existingUser._id, {
+          telegramUserId: args.telegramUserId,
+          handle: args.username,
+          email: args.email,
+        });
+      } else {
+        await ctx.db.insert("users", {
+          telegramUserId: args.telegramUserId,
+          handle: args.username,
+          email: args.email,
+          school: "",
+        });
+      }
+      return { success: true };
+    }
+    const existing = await ctx.db
+      .query("telegram_user_verification")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .order("desc")
+      .first();
+    if (!existing || existing.code !== args.code) {
+      return { success: false };
+    }
+
+    await ctx.db.delete(existing._id);
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (existingUser) {
+      await ctx.db.patch(existingUser._id, {
+        telegramUserId: args.telegramUserId,
+        handle: args.username,
+        email: args.email,
+      });
+    } else {
+      await ctx.db.insert("users", {
+        telegramUserId: args.telegramUserId,
+        handle: args.username,
+        email: args.email,
+        school: "",
+      });
+    }
+
+    return { success: true };
+  },
+});
+
+function nameMockEmail(email: string, number: number) {
+  return `MOCK_${number}@fakemail.io`;
+}
+
+function isMockEmail(email: string) {
+  const mockEmailRegex = /^MOCK_[a-zA-Z0-9]+@fakemail\.io$/;
+  return mockEmailRegex.test(email);
+}
+
+export const getAllMockAccounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+    const email = identity.email ?? identity.subject;
+    if (!email) {
+      throw new ConvexError("Email not found");
+    }
+
+    const accounts = await ctx.db.query("users").collect();
+    return accounts.sort((a, b) => a.email.localeCompare(b.email));
+  },
+});
+
+export const duplicateAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+    const email = identity.email ?? identity.subject;
+    if (!email) {
+      throw new ConvexError("Email not found");
+    }
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (!existing) {
+      throw new ConvexError("User not found");
+    }
+
+    const countUsers = await ctx.db.query("users").collect();
+    const newEmail = nameMockEmail(email, countUsers.length + 1);
+    const newHandle = `${existing.handle} (${newEmail})`;
+    await ctx.db.insert("users", {
+      email: newEmail,
+      handle: newHandle,
+      telegramUserId: existing.telegramUserId,
+      school: "CCDS",
+    });
   },
 });
