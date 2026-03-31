@@ -199,20 +199,15 @@ export default async function Page({
     );
   }
 
-  const accountSetup = await fetchQuery(api.tasks.getAccountSetup, {
+  let accountSetup = await fetchQuery(api.tasks.getAccountSetup, {
     email: sessionEmail.email,
   });
   if (accountSetup === "complete") {
     redirect("/swap");
   }
+
   if (accountSetup === "not_setup") {
-    return (
-      <main>
-        <ScrollArea className="bg-background text-foreground h-screen p-4">
-          <SignInToMicrosoft errorMessages={errorMessages} />
-        </ScrollArea>
-      </main>
-    );
+    accountSetup = "telegram_not_setup";
   }
 
   return (
