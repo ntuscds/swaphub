@@ -478,7 +478,6 @@ export function CourseSwapMatches({
   const toggleSwapRequestMut = useMutation(api.tasks.toggleSwapRequest);
   const toggleSwapRequestState = useConvexMutationState(toggleSwapRequestMut);
   const [bottomSheetMatchItem, setBottomSheetMatchItem] = useState<{
-    // id: Id<"swapper">;
     match:
       | {
           type: "direct";
@@ -490,36 +489,6 @@ export function CourseSwapMatches({
         };
     isOpen: boolean;
   } | null>(null);
-  // const bottomSheetMatchItemData = useMemo(() => {
-  //   if (!bottomSheetMatchItem?.id) return null;
-  //   if (!requestsQuery) return null;
-  //   const match = requestsQuery.directMatches.find(
-  //     (match) => match.otherSwapperId === bottomSheetMatchItem.id
-  //   );
-  //   if (!match) return null;
-  //   if (
-  //     !requestsQuery.course.haveIndex ||
-  //     requestsQuery.course.hasSwapped === undefined
-  //   ) {
-  //     return null;
-  //   }
-  //   return {
-  //     id: bottomSheetMatchItem.id,
-  //     course: {
-  //       id: requestsQuery.course.id,
-  //       haveIndex: requestsQuery.course.haveIndex,
-  //       hasSwapped: requestsQuery.course.hasSwapped,
-  //       code,
-  //       name: requestsQuery.course.name,
-  //     },
-  //     match,
-  //   };
-  // }, [bottomSheetMatchItem?.id, requestsQuery, code]);
-
-  // const editUrl = useMemo(() => {
-  //   if (typeof window === "undefined") return `/swap/${code}/edit`;
-  //   return `/swap/${code}/edit?backTo=${encodeURIComponent(window.location.href)}`;
-  // }, [code]);
   const [editUrl, setEditUrl] = useState<string>("/swap");
   const [sheetSide, setSheetSide] = useState<"bottom" | "right">("bottom");
   useEffect(() => {
@@ -694,6 +663,17 @@ export function CourseSwapMatches({
     );
   }
 
+  let hasSwappedEle = null;
+  if (requestsQuery?.course.hasSwapped === true) {
+    hasSwappedEle = (
+      <div className="flex flex-col gap-1 justify-center items-center w-full bg-green-950 border border-green-700 rounded-md p-2.5 lg:p-4">
+        <h2 className="text-base font-bold text-green-50">
+          You have already Swapped!
+        </h2>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {toggleSwapRequestState.error && (
@@ -704,6 +684,7 @@ export function CourseSwapMatches({
           </p>
         </Alert>
       )}
+      {hasSwappedEle}
       <div className="flex flex-col gap-2">
         <div className="flex flex-row gap-2 items-center justify-between">
           <h2 className="text-base lg:text-lg xl:text-xl font-bold">

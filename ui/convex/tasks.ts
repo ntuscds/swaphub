@@ -123,6 +123,11 @@ export const getAllRequests = query({
                 q.eq("courseId", request.courseId)
               )
               .filter((q) => {
+                // return q.or(
+                //   q.eq(q.field("targetSwapper"), request._id),
+                //   q.eq(q.field("initiator"), request._id),
+                //   q.eq(q.field("middlemanSwapper"), request._id)
+                // );
                 return q.and(
                   q.or(
                     q.eq(q.field("targetSwapper"), request._id),
@@ -175,17 +180,19 @@ export const getAllRequests = query({
         // The other swapper has the index I want and I have the index they want.
         let matchCount = 0;
         const myWantsAsSet = new Set(myWants.map((w) => w.wantIndex));
+        const potentialMatches = [];
         for (const otherSwapper of allSwappersInCourse) {
           if (otherSwapper.hasSwapped) continue;
           if (otherSwapper.userId === user._id) continue;
-          // The other swapper has the index I want and I have the index they want.
-          if (
-            !myWantsAsSet.has(otherSwapper.index) ||
-            otherSwapper.index !== request.index
-          )
-            continue;
-
-          matchCount += 1;
+          if (myWantsAsSet.has(otherSwapper.index)) {
+            // The other swapper has the index I want and I have the index they want.
+            // If not, we mark it as a potential match.
+            if (otherSwapper.index !== request.index) {
+              potentialMatches.push(otherSwapper._id);
+              continue;
+            }
+            matchCount += 1;
+          }
         }
 
         return {
@@ -413,6 +420,25 @@ export const setRequest = mutation({
       success: true as const,
       courseCode: course.code,
     };
+  },
+});
+
+export const getHasSwapped = query({
+  args: {
+    courseId: v.id("courses"),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await getAuth(ctx);
+    const mySwapper = await ctx.db
+      .query("swapper")
+      .withIndex("by_userId_courseId", (q) =>
+        q.eq("userId", user._id).eq("courseId", args.courseId)
+      )
+      .first();
+    if (!mySwapper) {
+      return false;
+    }
+    return mySwapper.hasSwapped;
   },
 });
 

@@ -61,7 +61,17 @@ export default async function Layout({
       <div className="flex flex-col gap-12 py-8 max-w-4xl w-full">
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-2">
-            <DynBackToButton defaultBackTo="/swap" />
+            <div className="flex flex-row gap-2 items-center justify-between">
+              <DynBackToButton defaultBackTo="/swap" />
+              <div className="flex flex-row gap-2 items-center">
+                <Button variant="outline" size="sm">
+                  History
+                </Button>
+                <Button variant="outline" size="sm">
+                  Disable
+                </Button>
+              </div>
+            </div>
             <Suspense fallback={<EditCourseHeaderFallback />}>
               <EditCourseHeader courseCode={courseCode} />
             </Suspense>

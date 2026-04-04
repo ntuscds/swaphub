@@ -71,6 +71,8 @@ export function MySwaps({ className }: { className?: string }) {
                   {request.matchCount} matches
                 </Badge>
               );
+            } else {
+              tag = <p className="text-xs text-primary-500">Request</p>;
             }
           }
           return (
