@@ -23,6 +23,8 @@ import {
 import { retrieveRawInitData } from "@tma.js/sdk-react";
 import { useStableQuery } from "./use-stable-query";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const FormSchema = z.object({
   school: z.enum(schools, { message: "School is required" }),
@@ -34,7 +36,16 @@ export function SelectSchoolForm() {
   const { handle, error, isSuccess, isPending } = useConvexMutationState(
     selectSchool,
     {
-      onSuccess: () => {
+      onSuccess: async () => {
+        await fetch("/api/assume-status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            role: "complete",
+          }),
+        });
         router.push("/swap");
       },
     }
@@ -243,7 +254,32 @@ export function OnboardingForm({
   selectSchoolNode: React.ReactNode;
   defaultAccountSetup: "telegram_not_setup" | "school_not_setup";
 }) {
+  const router = useRouter();
   const getSelfQuery = useStableQuery(api.tasks.getSelf);
+
+  console.log("getSelfQuery", getSelfQuery);
+  useEffect(() => {
+    const accountSetup = getSelfQuery?.accountSetup;
+    if (accountSetup === undefined) {
+      return;
+    }
+    (async () => {
+      // Assume accountSetup in session to match latest backend state.
+      await fetch("/api/assume-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          role: accountSetup,
+        }),
+      });
+
+      if (accountSetup === "complete") {
+        router.push("/swap");
+      }
+    })();
+  }, [getSelfQuery?.accountSetup, router]);
 
   if (getSelfQuery === undefined) {
     if (defaultAccountSetup === "school_not_setup") {

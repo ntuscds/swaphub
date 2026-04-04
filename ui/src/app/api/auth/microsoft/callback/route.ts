@@ -6,6 +6,7 @@ import {
   clearSessionCookie,
   exchangeMicrosoftCode,
   fetchMicrosoftUser,
+  getAccountSetup,
   getAuthCookies,
   getBaseUrl,
   getSafeCallbackUrl,
@@ -56,7 +57,12 @@ export async function GET(request: Request) {
       cookies.verifier
     );
     const profile = await fetchMicrosoftUser(exchanged.access_token);
-    const session = await buildSession(profile, exchanged.expires_in);
+    const accountSetup = await getAccountSetup(profile.email);
+    const session = await buildSession(
+      profile,
+      exchanged.expires_in,
+      accountSetup
+    );
     const callbackUrl = getSafeCallbackUrl(cookies.callback);
 
     const response = NextResponse.redirect(

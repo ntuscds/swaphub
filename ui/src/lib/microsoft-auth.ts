@@ -5,6 +5,9 @@ import {
   verify as jwtVerify,
   type JwtPayload,
 } from "jsonwebtoken";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "../../convex/_generated/api";
+import z from "zod";
 
 export const MICROSOFT_AUTH_BASE_PATH = "/api/auth/microsoft";
 export const MICROSOFT_SCOPE = "openid profile email offline_access";
@@ -19,29 +22,51 @@ const SESSION_MAX_AGE_IN_SECONDS = 10 * 60;
 const REFRESH_TOKEN_MAX_AGE_IN_SECONDS = 60 * 24 * 60 * 60;
 const ACCESS_TOKEN_MAX_AGE_IN_SECONDS = SESSION_MAX_AGE_IN_SECONDS;
 
-type MicrosoftUserInfo = {
-  sub?: string;
-  email?: string;
-  preferred_username?: string;
-  name?: string;
-  picture?: string;
-};
+const MicrosoftUserInfoSchema = z.object({
+  sub: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  picture: z.string().nullable(),
+});
 
-type MicrosoftSessionSeed = {
-  sub?: string;
-  email?: string | null;
-  preferred_username?: string | null;
-  name?: string | null;
-  picture?: string | null;
-};
+export type MicrosoftUserInfo = z.infer<typeof MicrosoftUserInfoSchema>;
 
-export type MicrosoftSession = {
-  sub: string;
-  email: string | null;
-  name: string | null;
-  picture: string | null;
-  expiresAt: number;
-};
+const MicrosoftSessionSeedSchema = z.object({
+  sub: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  picture: z.string().nullable(),
+});
+
+export type MicrosoftSessionSeed = z.infer<typeof MicrosoftSessionSeedSchema>;
+
+const MicrosoftSessionSchema = z.object({
+  sub: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  picture: z.string().nullable(),
+  expiresAt: z.number(),
+  accountSetup: z.enum([
+    "not_setup",
+    "telegram_not_setup",
+    "school_not_setup",
+    "complete",
+  ]),
+});
+
+export type MicrosoftSession = z.infer<typeof MicrosoftSessionSchema>;
+// export type MicrosoftSession = {
+//   sub: string;
+//   email: string | null;
+//   name: string | null;
+//   picture: string | null;
+//   expiresAt: number;
+//   accountSetup?:
+//     | "not_setup"
+//     | "telegram_not_setup"
+//     | "school_not_setup"
+//     | "complete";
+// };
 
 export function getBaseUrl(request: Request) {
   const url = new URL(request.url);
@@ -152,12 +177,9 @@ export async function fetchMicrosoftUser(accessToken: string) {
     throw new Error("Failed to fetch Microsoft user profile");
   }
 
-  const profile = (await response.json()) as MicrosoftUserInfo;
-  if (!profile.sub) {
-    throw new Error("Microsoft user profile did not include a subject");
-  }
-
-  return profile;
+  const profile = await response.json();
+  const parsed = MicrosoftUserInfoSchema.parse(profile);
+  return parsed;
 }
 
 export function getSafeCallbackUrl(input: string | null | undefined) {
@@ -263,15 +285,17 @@ export async function readSession(request: Request) {
 
 export async function buildSession(
   profile: MicrosoftSessionSeed,
-  expiresIn: number
+  expiresIn: number,
+  accountSetup: MicrosoftSession["accountSetup"]
 ) {
   return {
     sub: profile.sub!,
-    email: profile.email ?? profile.preferred_username ?? null,
+    email: profile.email,
     name: profile.name ?? null,
     picture: profile.picture ?? null,
     expiresAt:
       Date.now() + Math.min(expiresIn, ACCESS_TOKEN_MAX_AGE_IN_SECONDS) * 1000,
+    accountSetup: accountSetup,
   } satisfies MicrosoftSession;
 }
 
@@ -298,24 +322,31 @@ async function signSession(session: MicrosoftSession) {
   });
 }
 
-function toMicrosoftSession(
+function fromJwtPayloadToSession(
   payload: JwtPayload | string
 ): MicrosoftSession | null {
   if (!payload || typeof payload === "string") return null;
-  const sub = typeof payload.sub === "string" ? payload.sub : null;
-  const email = typeof payload.email === "string" ? payload.email : null;
-  const name = typeof payload.name === "string" ? payload.name : null;
-  const picture = typeof payload.picture === "string" ? payload.picture : null;
-  const expiresAt =
-    typeof payload.expiresAt === "number" ? payload.expiresAt : null;
-  if (!sub || expiresAt === null) return null;
-  return {
-    sub,
-    email,
-    name,
-    picture,
-    expiresAt,
-  };
+
+  const parsed = MicrosoftSessionSchema.parse(payload);
+  return parsed;
+
+  // const sub = typeof payload.sub === "string" ? payload.sub : null;
+  // const email = typeof payload.email === "string" ? payload.email : null;
+  // const name = typeof payload.name === "string" ? payload.name : null;
+  // const picture = typeof payload.picture === "string" ? payload.picture : null;
+  // const expiresAt =
+  //   typeof payload.expiresAt === "number" ? payload.expiresAt : null;
+  // const accountSetup =
+  //   typeof payload.accountSetup === "string" ? payload.accountSetup : null;
+  // if (!sub || expiresAt === null) return null;
+  // return {
+  //   sub,
+  //   email,
+  //   name,
+  //   picture,
+  //   expiresAt,
+  //   accountSetup,
+  // };
 }
 
 export async function verifySession(
@@ -328,7 +359,7 @@ export async function verifySession(
       algorithms: ["HS256"],
       ignoreExpiration: Boolean(options?.allowExpired),
     });
-    const session = toMicrosoftSession(payload);
+    const session = fromJwtPayloadToSession(payload);
     if (!session) {
       return null;
     }
@@ -446,11 +477,17 @@ export async function getAuth() {
   const _cookies = await cookies();
   const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
   const refreshTokenInCookie = _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE);
-  let sessionEmail = null;
+  let result: {
+    email: string;
+    accountSetup: MicrosoftSession["accountSetup"];
+  } | null = null;
   if (sessionInCookie) {
     const verifiedSession = await verifySession(sessionInCookie.value);
     if (verifiedSession) {
-      sessionEmail = verifiedSession.email;
+      result = {
+        email: verifiedSession.email,
+        accountSetup: verifiedSession.accountSetup,
+      };
     }
   } else {
     if (refreshTokenInCookie) {
@@ -461,21 +498,26 @@ export async function getAuth() {
         decryptedRefreshToken
       );
       const profile = await fetchMicrosoftUser(refreshed.access_token);
-      const currentSession = await buildSession(profile, refreshed.expires_in);
+
+      const accountSetup = await getAccountSetup(profile.email);
+
+      const currentSession = await buildSession(
+        profile,
+        refreshed.expires_in,
+        accountSetup
+      );
       // console.log("verifiedSession", verifiedSession);
       // if (verifiedSession) {
       //   console.log("verifiedSession.email", verifiedSession.email);
       //   sessionEmail = verifiedSession.email;
       // }
-      sessionEmail = currentSession.email;
+      result = {
+        email: currentSession.email,
+        accountSetup: currentSession.accountSetup,
+      };
     }
   }
-  if (!sessionEmail) {
-    return null;
-  }
-  return {
-    email: sessionEmail,
-  };
+  return result;
 }
 
 export async function readSessionWithRefresh(
@@ -502,11 +544,30 @@ export async function readSessionWithRefresh(
     const refreshed = await refreshMicrosoftAccessToken(refreshToken);
     if (!currentSession) {
       const profile = await fetchMicrosoftUser(refreshed.access_token);
-      currentSession = await buildSession(profile, refreshed.expires_in);
+      const accountSetup = await getAccountSetup(profile.email);
+      currentSession = await buildSession(
+        profile,
+        refreshed.expires_in,
+        accountSetup
+      );
     } else {
-      currentSession = await buildSession(currentSession, refreshed.expires_in);
+      currentSession = await buildSession(
+        {
+          sub: currentSession.sub,
+          email: currentSession.email,
+          name: currentSession.name,
+          picture: currentSession.picture,
+        },
+        refreshed.expires_in,
+        currentSession.accountSetup
+      );
     }
     // const session = await buildSession(currentSession, refreshed.expires_in);
+
+    const email = currentSession.email;
+    if (email === null) {
+      throw new Error("No email found in session");
+    }
 
     await setSessionCookie(headers, request, currentSession);
     await setRefreshTokenCookie(
@@ -521,4 +582,10 @@ export async function readSessionWithRefresh(
     // clearRefreshTokenCookie(headers, request);
     return null;
   }
+}
+
+export async function getAccountSetup(email: string) {
+  return fetchQuery(api.tasks.getAccountSetup, {
+    email: email,
+  });
 }

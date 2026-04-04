@@ -11,6 +11,7 @@ import {
   serializeAccept,
   serializeDecline,
 } from "@/telegram/callbacks";
+import { getAccountSetupFromUser, getAuth } from "./utils";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -28,17 +29,11 @@ function resolveAcadYear(
 export const getSelf = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-
-    const email = identity.email ?? identity.subject;
-
-    return await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
+    const auth = await getAuth(ctx);
+    return {
+      ...auth.user,
+      accountSetup: auth.accountSetup,
+    };
   },
 });
 
@@ -54,13 +49,7 @@ export const getAccountSetup = query({
     if (!user) {
       return "not_setup" as const;
     }
-    if (!user.telegramUserId) {
-      return "telegram_not_setup" as const;
-    }
-    if (!user.school) {
-      return "school_not_setup" as const;
-    }
-    return "complete" as const;
+    return getAccountSetupFromUser(user);
   },
 });
 
@@ -85,20 +74,7 @@ export const getCourses = query({
 export const getAllRequests = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-
-    const email = identity.email ?? identity.subject;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!user) {
-      throw new ConvexError("User not found");
-    }
+    const { user } = await getAuth(ctx);
 
     const allMySwappers = await ctx.db
       .query("swapper")
@@ -332,20 +308,7 @@ export const getRequestForCourse = query({
     courseId: v.id("courses"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-
-    const email = identity.email ?? identity.subject;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!user) {
-      throw new ConvexError("User not found");
-    }
+    const { user } = await getAuth(ctx);
 
     const courseId = args.courseId;
 
@@ -385,24 +348,11 @@ export const setRequest = mutation({
     wantIndexes: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-
     if (args.wantIndexes.length > 16) {
       throw new ConvexError("At most 16 wanted indexes are allowed.");
     }
 
-    const email = identity.email ?? identity.subject;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!user) {
-      throw new ConvexError("User not found");
-    }
-
+    const { user } = await getAuth(ctx);
     const course = await ctx.db.get(args.courseId);
     if (!course) {
       throw new ConvexError("Course not found.");
@@ -470,19 +420,7 @@ export const getCourseRequestAndMatches = query({
     acadYear: v.optional(acadYearValidator),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-
-    const email = identity.email ?? identity.subject;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!user) {
-      throw new ConvexError("User not found");
-    }
+    const { user } = await getAuth(ctx);
 
     const resolvedAcadYear = resolveAcadYear(args.acadYear);
     const course = await ctx.db
@@ -829,17 +767,7 @@ export const toggleSwapRequest = mutation({
     hasSwapped: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Unauthorized");
-
-    const email = identity.email ?? identity.subject;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!user) {
-      throw new ConvexError("User not found");
-    }
+    const { user } = await getAuth(ctx);
 
     const mySwappers = await ctx.db
       .query("swapper")
@@ -861,17 +789,7 @@ export const requestSwap = internalMutation({
     middlemanSwapperId: v.optional(v.id("swapper")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Unauthorized");
-
-    const email = identity.email ?? identity.subject;
-    const meUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!meUser) {
-      throw new ConvexError("User not found");
-    }
+    const { user: meUser } = await getAuth(ctx);
 
     const targetSwapper = await ctx.db.get(args.targetSwapperId);
     if (!targetSwapper) {
@@ -1108,17 +1026,7 @@ export const handleSwapRequestCallback = internalMutation({
     action: v.union(v.literal("accept"), v.literal("already_swapped")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError("Unauthorized");
-
-    const email = identity.email ?? identity.subject;
-    const meUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!meUser) {
-      throw new ConvexError("User not found");
-    }
+    const { user: meUser } = await getAuth(ctx);
 
     const otherSwapper = await ctx.db.get(args.otherSwapperId);
     if (!otherSwapper || otherSwapper.courseId !== args.courseId) {
@@ -1360,23 +1268,9 @@ export const selectSchool = mutation({
     school: schoolValidator,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
+    const { user } = await getAuth(ctx, false);
 
-    // const telegramUserId = BigInt(identity.subject);
-    const email = identity.email ?? identity.subject;
-
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (!existing) {
-      throw new ConvexError("User not found.");
-    }
-
-    await ctx.db.patch("users", existing._id, {
+    await ctx.db.patch(user._id, {
       school: args.school,
     });
 
@@ -1398,19 +1292,12 @@ const VERIFICATION_CODE_EXPIRATION_TIME_MS = 10 * 60 * 1000;
 
 export const requestLinkTelegramAccount = internalMutation({
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-    const email = identity.email ?? identity.subject;
-    if (!email) {
-      throw new ConvexError("Email not found");
-    }
+    const { user } = await getAuth(ctx, false);
 
     // Get existing verification code for this email.
     const existing = await ctx.db
       .query("telegram_user_verification")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q) => q.eq("email", user.email))
       // Sort by creation time descending.
       .order("desc")
       .first();
@@ -1419,15 +1306,15 @@ export const requestLinkTelegramAccount = internalMutation({
       existing &&
       existing._creationTime > Date.now() - VERIFICATION_CODE_EXPIRATION_TIME_MS
     ) {
-      return { success: false, code: existing.code, email };
+      return { success: false, code: existing.code, email: user.email };
     }
 
     const code = generateCode();
     await ctx.db.insert("telegram_user_verification", {
-      email,
+      email: user.email,
       code,
     });
-    return { success: true, code, email };
+    return { success: true, code, email: user.email };
   },
 });
 
@@ -1500,22 +1387,10 @@ function nameMockEmail(email: string, number: number) {
   return `MOCK_${number}@fakemail.io`;
 }
 
-function isMockEmail(email: string) {
-  const mockEmailRegex = /^MOCK_[a-zA-Z0-9]+@fakemail\.io$/;
-  return mockEmailRegex.test(email);
-}
-
 export const getAllMockAccounts = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-    const email = identity.email ?? identity.subject;
-    if (!email) {
-      throw new ConvexError("Email not found");
-    }
+    await getAuth(ctx);
 
     const accounts = await ctx.db.query("users").collect();
     return accounts.sort((a, b) => a.email.localeCompare(b.email));
@@ -1525,30 +1400,15 @@ export const getAllMockAccounts = query({
 export const duplicateAccount = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Unauthorized");
-    }
-    const email = identity.email ?? identity.subject;
-    if (!email) {
-      throw new ConvexError("Email not found");
-    }
-
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .first();
-    if (!existing) {
-      throw new ConvexError("User not found");
-    }
+    const { user } = await getAuth(ctx, false);
 
     const countUsers = await ctx.db.query("users").collect();
-    const newEmail = nameMockEmail(email, countUsers.length + 1);
-    const newHandle = `${existing.handle} (${newEmail})`;
+    const newEmail = nameMockEmail(user.email, countUsers.length + 1);
+    const newHandle = `${user.handle} (${newEmail})`;
     await ctx.db.insert("users", {
       email: newEmail,
       handle: newHandle,
-      telegramUserId: existing.telegramUserId,
+      telegramUserId: user.telegramUserId,
       school: "CCDS",
     });
   },

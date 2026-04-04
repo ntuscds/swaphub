@@ -1,0 +1,43 @@
+import { GenericQueryCtx } from "convex/server";
+import { ConvexError } from "convex/values";
+import { QueryCtx } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
+
+export function getAccountSetupFromUser(user: Doc<"users">) {
+  if (!user.telegramUserId) {
+    return "telegram_not_setup" as const;
+  }
+  if (!user.school) {
+    return "school_not_setup" as const;
+  }
+  return "complete" as const;
+}
+
+export async function getAuth(ctx: QueryCtx, requiresComplete: boolean = true) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new ConvexError("Unauthorized");
+  }
+  const email = identity.email ?? identity.subject;
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_email", (q) => q.eq("email", email))
+    .unique();
+  if (!user) {
+    throw new ConvexError("User not found");
+  }
+
+  if (requiresComplete && !user.telegramUserId) {
+    throw new ConvexError("Telegram not setup");
+  }
+  if (requiresComplete && !user.school) {
+    throw new ConvexError("School not setup");
+  }
+
+  return {
+    email,
+    identity,
+    user,
+    accountSetup: getAccountSetupFromUser(user),
+  };
+}

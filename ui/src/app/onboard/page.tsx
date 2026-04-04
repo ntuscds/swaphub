@@ -1,19 +1,8 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  AUTH_ENCRYPTED_REFRESH_COOKIE as AUTH_ENCRYPTED_REFRESH_COOKIE,
-  AUTH_SESSION_COOKIE,
-  decryptValue,
-  getAuth,
-  refreshMicrosoftAccessToken,
-  verifySession,
-} from "@/lib/microsoft-auth";
-import { cookies } from "next/headers";
-import { Button } from "@/components/ui/button";
+import { getAccountSetup, getAuth } from "@/lib/microsoft-auth";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { SignInButton } from "@/components/sign-in-button";
 import { cn } from "@/lib/utils";
-import { OTPInput } from "input-otp";
-import { Input } from "@/components/ui/input";
 import {
   OnboardingForm,
   SelectSchoolForm,
@@ -177,10 +166,10 @@ export default async function Page({
     errorMessages.push(error);
   }
 
-  const sessionEmail = await getAuth();
-  if (sessionEmail?.email) {
+  const auth = await getAuth();
+  if (auth) {
     const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
-      sessionEmail.email.endsWith(domain)
+      auth.email.endsWith(domain)
     );
     if (!isAllowedDomain) {
       errorMessages.push(
@@ -189,7 +178,7 @@ export default async function Page({
     }
   }
 
-  if (!sessionEmail) {
+  if (!auth) {
     return (
       <main>
         <ScrollArea className="bg-background text-foreground h-screen p-4">
@@ -199,9 +188,7 @@ export default async function Page({
     );
   }
 
-  let accountSetup = await fetchQuery(api.tasks.getAccountSetup, {
-    email: sessionEmail.email,
-  });
+  let accountSetup = auth.accountSetup;
   if (accountSetup === "complete") {
     redirect("/swap");
   }

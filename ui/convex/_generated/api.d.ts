@@ -11,6 +11,7 @@
 import type * as actions from "../actions.js";
 import type * as http from "../http.js";
 import type * as tasks from "../tasks.js";
+import type * as utils from "../utils.js";
 
 import type {
   ApiFromModules,
@@ -22,6 +23,7 @@ declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   http: typeof http;
   tasks: typeof tasks;
+  utils: typeof utils;
 }>;
 
 /**

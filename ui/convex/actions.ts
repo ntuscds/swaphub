@@ -10,7 +10,6 @@ import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
 import { isValid, parse } from "@tma.js/init-data-node";
-import { es } from "zod/v4/locales";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
