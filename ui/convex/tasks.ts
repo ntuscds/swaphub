@@ -790,6 +790,191 @@ export const getCourseRequestAndMatches = query({
   },
 });
 
+export const getCourseRequestHistory = query({
+  args: {
+    courseCode: v.string(),
+    acadYear: v.optional(acadYearValidator),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await getAuth(ctx);
+    const resolvedAcadYear = resolveAcadYear(args.acadYear);
+
+    const course = await ctx.db
+      .query("courses")
+      .withIndex("by_code_ay_semester", (q) =>
+        q
+          .eq("code", args.courseCode)
+          .eq("ay", resolvedAcadYear.ay)
+          .eq("semester", resolvedAcadYear.semester)
+      )
+      .unique();
+    if (!course) {
+      throw new ConvexError("Course not found.");
+    }
+
+    const mySwapper = await ctx.db
+      .query("swapper")
+      .withIndex("by_userId_courseId", (q) =>
+        q.eq("userId", user._id).eq("courseId", course._id)
+      )
+      .unique();
+    if (!mySwapper) {
+      return {
+        course: {
+          id: course._id,
+          code: course.code,
+          name: course.name,
+        },
+        history: [],
+      };
+    }
+
+    const allRequests = await ctx.db
+      .query("swap_requests")
+      .withIndex("by_courseId", (q) => q.eq("courseId", course._id))
+      .collect();
+
+    const relevantRequests = allRequests.filter(
+      (request) =>
+        request.initiator === mySwapper._id ||
+        request.targetSwapper === mySwapper._id ||
+        request.middlemanSwapper === mySwapper._id
+    );
+
+    const now = Date.now();
+    const historyRaw = relevantRequests.map((request) => {
+      let status: "pending" | "accepted" | "cancelled" = "pending";
+      if (request.isCompleted) {
+        status =
+          request.acceptedByInitiator &&
+          request.acceptedByTargetSwapper &&
+          (request.acceptedByMiddlemanSwapper ||
+            request.middlemanSwapper === undefined)
+            ? "accepted"
+            : "cancelled";
+      }
+      const participants = [
+        request.initiator,
+        request.targetSwapper,
+        request.middlemanSwapper,
+      ].filter(
+        (participant) =>
+          participant !== mySwapper._id && participant !== undefined
+      );
+      return {
+        id: request._id,
+        participants,
+        status,
+        createdAt: request._creationTime,
+        ageMs: Math.max(0, now - request._creationTime),
+      };
+    });
+
+    const participantSwapperSet = new Set(
+      historyRaw.flatMap((h) => h.participants) as Id<"swapper">[]
+    );
+    const participantSwapperList = Array.from(participantSwapperSet);
+    const swappers = await ctx.db
+      .query("swapper")
+      .filter((q) =>
+        q.and(
+          q.or(...participantSwapperList.map((id) => q.eq(q.field("_id"), id))),
+          q.eq(q.field("courseId"), course._id)
+        )
+      )
+      .collect();
+    const users = await ctx.db
+      .query("users")
+      .filter((q) =>
+        q.or(...swappers.map((s) => q.eq(q.field("_id"), s.userId)))
+      )
+      .collect();
+    const swapperUserMap = new Map(swappers.map((s) => [s._id, s.userId]));
+    const userMap = new Map(users.map((u) => [u._id, u]));
+    const history = historyRaw.map((h) => {
+      const participants = h.participants
+        .map((id) => {
+          if (!id) return undefined;
+          const userId = swapperUserMap.get(id);
+          if (!userId) return undefined;
+          const user = userMap.get(userId);
+          if (!user) return undefined;
+          return user.handle;
+        })
+        .filter((handle) => handle !== undefined);
+      return {
+        ...h,
+        participants,
+      };
+    });
+    // const history = await Promise.all(
+    //   relevantRequests.map(async (request) => {
+    //     const [initiatorSwapper, targetSwapper, middlemanSwapper] =
+    //       await Promise.all([
+    //         ctx.db.get(request.initiator),
+    //         ctx.db.get(request.targetSwapper),
+    //         request.middlemanSwapper
+    //           ? ctx.db.get(request.middlemanSwapper)
+    //           : Promise.resolve(null),
+    //       ]);
+
+    //     if (!initiatorSwapper || !targetSwapper) {
+    //       throw new ConvexError("Invalid swap request participants.");
+    //     }
+
+    //     const [initiatorUser, targetUser, middlemanUser] = await Promise.all([
+    //       ctx.db.get(initiatorSwapper.userId),
+    //       ctx.db.get(targetSwapper.userId),
+    //       middlemanSwapper
+    //         ? ctx.db.get(middlemanSwapper.userId)
+    //         : Promise.resolve(null),
+    //     ]);
+    //     if (!initiatorUser || !targetUser) {
+    //       throw new ConvexError("Invalid swap request users.");
+    //     }
+
+    //     const participants = [initiatorUser, targetUser, middlemanUser]
+    //       .filter((participant) => participant && participant._id !== user._id)
+    //       .map((participant) => participant!.handle);
+
+    //     const isAccepted = request.middlemanSwapper
+    //       ? request.acceptedByInitiator &&
+    //         request.acceptedByTargetSwapper &&
+    //         request.acceptedByMiddlemanSwapper &&
+    //         request.isCompleted
+    //       : request.acceptedByInitiator &&
+    //         request.acceptedByTargetSwapper &&
+    //         request.isCompleted;
+
+    //     const status = request.isCompleted
+    //       ? isAccepted
+    //         ? "accepted"
+    //         : "cancelled"
+    //       : "pending";
+
+    //     return {
+    //       id: request._id,
+    //       participants,
+    //       status: status as "pending" | "accepted" | "cancelled",
+    //       createdAt: request._creationTime,
+    //       ageMs: Math.max(0, now - request._creationTime),
+    //     };
+    //   })
+    // );
+
+    history.sort((a, b) => b.createdAt - a.createdAt);
+
+    return {
+      course: {
+        id: course._id,
+        code: course.code,
+        name: course.name,
+      },
+      history,
+    };
+  },
+});
+
 export const toggleSwapRequest = mutation({
   args: {
     courseId: v.id("courses"),

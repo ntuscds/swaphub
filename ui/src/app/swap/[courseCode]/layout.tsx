@@ -64,9 +64,12 @@ export default async function Layout({
             <div className="flex flex-row gap-2 items-center justify-between">
               <DynBackToButton defaultBackTo="/swap" />
               <div className="flex flex-row gap-2 items-center">
-                <Button variant="outline" size="sm">
-                  History
-                </Button>
+                <Link href={`/swap/${courseCode}/history`}>
+                  <Button variant="outline" size="sm">
+                    History
+                  </Button>
+                </Link>
+
                 <Button variant="outline" size="sm">
                   Disable
                 </Button>
