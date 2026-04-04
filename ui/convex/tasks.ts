@@ -11,7 +11,7 @@ import {
   serializeAccept,
   serializeDecline,
 } from "@/telegram/callbacks";
-import { getAccountSetupFromUser, getAuth } from "./utils";
+import { getAccountSetupFromUser, getAuth, getIdentity } from "./utils";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -29,11 +29,15 @@ function resolveAcadYear(
 export const getSelf = query({
   args: {},
   handler: async (ctx) => {
-    const auth = await getAuth(ctx);
-    return {
-      ...auth.user,
-      accountSetup: auth.accountSetup,
-    };
+    try {
+      const auth = await getAuth(ctx, false);
+      return {
+        ...auth.user,
+        accountSetup: auth.accountSetup,
+      };
+    } catch (error) {
+      return null;
+    }
   },
 });
 
@@ -1291,12 +1295,12 @@ const VERIFICATION_CODE_EXPIRATION_TIME_MS = 10 * 60 * 1000;
 
 export const requestLinkTelegramAccount = internalMutation({
   handler: async (ctx) => {
-    const { user } = await getAuth(ctx, false);
+    const { email } = await getIdentity(ctx);
 
     // Get existing verification code for this email.
     const existing = await ctx.db
       .query("telegram_user_verification")
-      .withIndex("by_email", (q) => q.eq("email", user.email))
+      .withIndex("by_email", (q) => q.eq("email", email))
       // Sort by creation time descending.
       .order("desc")
       .first();
@@ -1305,15 +1309,15 @@ export const requestLinkTelegramAccount = internalMutation({
       existing &&
       existing._creationTime > Date.now() - VERIFICATION_CODE_EXPIRATION_TIME_MS
     ) {
-      return { success: false, code: existing.code, email: user.email };
+      return { success: false, code: existing.code, email };
     }
 
     const code = generateCode();
     await ctx.db.insert("telegram_user_verification", {
-      email: user.email,
+      email,
       code,
     });
-    return { success: true, code, email: user.email };
+    return { success: true, code, email };
   },
 });
 

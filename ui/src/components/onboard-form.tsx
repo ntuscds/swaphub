@@ -257,12 +257,8 @@ export function OnboardingForm({
   const router = useRouter();
   const getSelfQuery = useStableQuery(api.tasks.getSelf);
 
-  console.log("getSelfQuery", getSelfQuery);
   useEffect(() => {
-    const accountSetup = getSelfQuery?.accountSetup;
-    if (accountSetup === undefined) {
-      return;
-    }
+    const accountSetup = getSelfQuery?.accountSetup ?? "telegram_not_setup";
     (async () => {
       // Assume accountSetup in session to match latest backend state.
       await fetch("/api/assume-status", {

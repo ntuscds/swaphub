@@ -13,12 +13,17 @@ export function getAccountSetupFromUser(user: Doc<"users">) {
   return "complete" as const;
 }
 
-export async function getAuth(ctx: QueryCtx, requiresComplete: boolean = true) {
+export async function getIdentity(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     throw new ConvexError("Unauthorized");
   }
   const email = identity.email ?? identity.subject;
+  return { email, identity };
+}
+
+export async function getAuth(ctx: QueryCtx, requiresComplete: boolean = true) {
+  const { email, identity } = await getIdentity(ctx);
   const user = await ctx.db
     .query("users")
     .withIndex("by_email", (q) => q.eq("email", email))
