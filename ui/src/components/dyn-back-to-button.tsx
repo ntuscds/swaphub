@@ -2,6 +2,8 @@
 import { Button } from "./ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export function DynBackToButton({ defaultBackTo }: { defaultBackTo: string }) {
   const router = useRouter();
@@ -21,5 +23,28 @@ export function DynBackToButton({ defaultBackTo }: { defaultBackTo: string }) {
     >
       <ArrowLeft className="size-4" /> Back
     </Button>
+  );
+}
+
+export function DynLinkWithBackTo({
+  baseHref,
+  label,
+}: {
+  baseHref: string;
+  label: string;
+}) {
+  const [href, setHref] = useState(baseHref);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setHref(`${baseHref}?backTo=${encodeURIComponent(window.location.href)}`);
+  }, [baseHref]);
+
+  return (
+    <Link href={href}>
+      <Button variant="outline" size="sm">
+        {label}
+      </Button>
+    </Link>
   );
 }

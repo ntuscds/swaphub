@@ -2,7 +2,6 @@ import { PropsWithChildren } from "react";
 import { CourseSwapMatches } from "@/components/course-swaps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AcadYear, CurrentAcadYear } from "@/lib/acad";
 import { notFound } from "next/navigation";
@@ -10,7 +9,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../../convex/_generated/api";
 import { cache, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DynBackToButton } from "@/components/dyn-back-to-button";
+import { DynBackToButton, DynLinkWithBackTo } from "@/components/dyn-back-to-button";
 
 const loadCourseHeader = cache((courseCode: string, acadYear: AcadYear) =>
   fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode, acadYear })
@@ -64,11 +63,10 @@ export default async function Layout({
             <div className="flex flex-row gap-2 items-center justify-between">
               <DynBackToButton defaultBackTo="/swap" />
               <div className="flex flex-row gap-2 items-center">
-                <Link href={`/swap/${courseCode}/history`}>
-                  <Button variant="outline" size="sm">
-                    History
-                  </Button>
-                </Link>
+                <DynLinkWithBackTo
+                  baseHref={`/swap/${courseCode}/history`}
+                  label="History"
+                />
 
                 <Button variant="outline" size="sm">
                   Disable
