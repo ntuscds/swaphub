@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
 export function ThreeWayCycleArtboard({
   requestorIndex,
   targetIndex,
@@ -9,6 +13,183 @@ export function ThreeWayCycleArtboard({
   middleIndex: string;
   iam: "intiator" | "target" | "middleman";
 }) {
+  const requestorBadgeRef = useRef<SVGSVGElement | null>(null);
+  const middlemanBadgeRef = useRef<SVGSVGElement | null>(null);
+  const targetBadgeRef = useRef<SVGSVGElement | null>(null);
+
+  useEffect(() => {
+    const requestorBadge = requestorBadgeRef.current;
+    const middlemanBadge = middlemanBadgeRef.current;
+    const targetBadge = targetBadgeRef.current;
+    if (!requestorBadge || !middlemanBadge || !targetBadge) return;
+
+    const DURATION_MS = 5600;
+    const FADE_IN_END = 4.46;
+    const PHASE_1_END = 22.32;
+    const PHASE_2_END = 40.18;
+    const PHASE_3_END = 58.04;
+    const PHASE_4_END = 75.89;
+    const FADE_OUT_START = 93.75;
+    const FADE_OUT_END = 98.21;
+    const HOLD_RESET_START = 99.99;
+
+    const REQUESTOR_BASE = { x: 283, y: 51 };
+    const REQUESTOR_START_OFFSET = { x: -187, y: 78 };
+
+    const MIDDLEMAN_BASE = { x: 331, y: 162 };
+    const MIDDLEMAN_OFFSET_1 = { x: -189, y: 78 };
+    const MIDDLEMAN_OFFSET_2 = { x: 0, y: 156 };
+
+    const TARGET_BASE = { x: 94, y: 352 };
+    const TARGET_START_OFFSET = { x: 187, y: 78 };
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+    function requestorState(progressPct: number) {
+      let opacity = 1;
+      let dx = REQUESTOR_START_OFFSET.x;
+      let dy = REQUESTOR_START_OFFSET.y;
+
+      if (progressPct < FADE_IN_END) {
+        opacity = progressPct / FADE_IN_END;
+      } else if (progressPct < PHASE_1_END) {
+        opacity = 1;
+      } else if (progressPct < PHASE_2_END) {
+        const t = (progressPct - PHASE_1_END) / (PHASE_2_END - PHASE_1_END);
+        dx = lerp(REQUESTOR_START_OFFSET.x, 0, t);
+        dy = lerp(REQUESTOR_START_OFFSET.y, 0, t);
+      } else if (progressPct < FADE_OUT_START) {
+        dx = 0;
+        dy = 0;
+      } else if (progressPct < FADE_OUT_END) {
+        dx = 0;
+        dy = 0;
+        const t =
+          (progressPct - FADE_OUT_START) / (FADE_OUT_END - FADE_OUT_START);
+        opacity = lerp(1, 0, t);
+      } else if (progressPct < HOLD_RESET_START) {
+        dx = 0;
+        dy = 0;
+        opacity = 0;
+      } else {
+        opacity = 0;
+      }
+
+      return {
+        x: REQUESTOR_BASE.x + dx,
+        y: REQUESTOR_BASE.y + dy,
+        opacity,
+      };
+    }
+
+    function middlemanState(progressPct: number) {
+      let opacity = 1;
+      let dx = 0;
+      let dy = 0;
+
+      if (progressPct < FADE_IN_END) {
+        opacity = progressPct / FADE_IN_END;
+      } else if (progressPct < PHASE_1_END) {
+        // stay at start
+      } else if (progressPct < PHASE_2_END) {
+        const t = (progressPct - PHASE_1_END) / (PHASE_2_END - PHASE_1_END);
+        dx = lerp(0, MIDDLEMAN_OFFSET_1.x, t);
+        dy = lerp(0, MIDDLEMAN_OFFSET_1.y, t);
+      } else if (progressPct < PHASE_3_END) {
+        dx = MIDDLEMAN_OFFSET_1.x;
+        dy = MIDDLEMAN_OFFSET_1.y;
+      } else if (progressPct < PHASE_4_END) {
+        const t = (progressPct - PHASE_3_END) / (PHASE_4_END - PHASE_3_END);
+        dx = lerp(MIDDLEMAN_OFFSET_1.x, MIDDLEMAN_OFFSET_2.x, t);
+        dy = lerp(MIDDLEMAN_OFFSET_1.y, MIDDLEMAN_OFFSET_2.y, t);
+      } else if (progressPct < FADE_OUT_START) {
+        dx = MIDDLEMAN_OFFSET_2.x;
+        dy = MIDDLEMAN_OFFSET_2.y;
+      } else if (progressPct < FADE_OUT_END) {
+        dx = MIDDLEMAN_OFFSET_2.x;
+        dy = MIDDLEMAN_OFFSET_2.y;
+        const t =
+          (progressPct - FADE_OUT_START) / (FADE_OUT_END - FADE_OUT_START);
+        opacity = lerp(1, 0, t);
+      } else {
+        dx = MIDDLEMAN_OFFSET_2.x;
+        dy = MIDDLEMAN_OFFSET_2.y;
+        opacity = 0;
+      }
+
+      return {
+        x: MIDDLEMAN_BASE.x + dx,
+        y: MIDDLEMAN_BASE.y + dy,
+        opacity,
+      };
+    }
+
+    function targetState(progressPct: number) {
+      let opacity = 1;
+      let dx = TARGET_START_OFFSET.x;
+      let dy = TARGET_START_OFFSET.y;
+
+      if (progressPct < FADE_IN_END) {
+        opacity = progressPct / FADE_IN_END;
+      } else if (progressPct < PHASE_3_END) {
+        // stay at start
+      } else if (progressPct < PHASE_4_END) {
+        const t = (progressPct - PHASE_3_END) / (PHASE_4_END - PHASE_3_END);
+        dx = lerp(TARGET_START_OFFSET.x, 0, t);
+        dy = lerp(TARGET_START_OFFSET.y, 0, t);
+      } else if (progressPct < FADE_OUT_START) {
+        dx = 0;
+        dy = 0;
+      } else if (progressPct < FADE_OUT_END) {
+        dx = 0;
+        dy = 0;
+        const t =
+          (progressPct - FADE_OUT_START) / (FADE_OUT_END - FADE_OUT_START);
+        opacity = lerp(1, 0, t);
+      } else if (progressPct < HOLD_RESET_START) {
+        dx = 0;
+        dy = 0;
+        opacity = 0;
+      } else {
+        opacity = 0;
+      }
+
+      return {
+        x: TARGET_BASE.x + dx,
+        y: TARGET_BASE.y + dy,
+        opacity,
+      };
+    }
+
+    let rafId = 0;
+    const start = performance.now();
+
+    const frame = (now: number) => {
+      const elapsed = (now - start) % DURATION_MS;
+      const progressPct = (elapsed / DURATION_MS) * 100;
+
+      const requestor = requestorState(progressPct);
+      requestorBadge.setAttribute("x", String(requestor.x));
+      requestorBadge.setAttribute("y", String(requestor.y));
+      requestorBadge.style.opacity = String(requestor.opacity);
+
+      const middleman = middlemanState(progressPct);
+      middlemanBadge.setAttribute("x", String(middleman.x));
+      middlemanBadge.setAttribute("y", String(middleman.y));
+      middlemanBadge.style.opacity = String(middleman.opacity);
+
+      const target = targetState(progressPct);
+      targetBadge.setAttribute("x", String(target.x));
+      targetBadge.setAttribute("y", String(target.y));
+      targetBadge.style.opacity = String(target.opacity);
+
+      rafId = requestAnimationFrame(frame);
+    };
+
+    rafId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -112,12 +293,12 @@ export function ThreeWayCycleArtboard({
       />
 
       <svg
+        ref={requestorBadgeRef}
         x="283"
         y="51"
         width="96"
         height="34"
-        style={{ "--x": "-187px", "--y": "78px" } as React.CSSProperties}
-        className="three-cycle-arboard__slide-requestor"
+        style={{ willChange: "opacity" }}
       >
         <rect width="100%" height="100%" className="fill-primary-950" rx="12" />
         <text
@@ -134,19 +315,12 @@ export function ThreeWayCycleArtboard({
       </svg>
 
       <svg
+        ref={middlemanBadgeRef}
         x="331"
         y="162"
         width="96"
         height="34"
-        style={
-          {
-            "--x1": "-189px",
-            "--y1": "78px",
-            "--x2": "0",
-            "--y2": "156px",
-          } as React.CSSProperties
-        }
-        className="three-cycle-arboard__slide-middleman"
+        style={{ willChange: "opacity" }}
       >
         <rect
           width="100%"
@@ -163,17 +337,17 @@ export function ThreeWayCycleArtboard({
           className="text-secondary-300 font-medium"
           fontSize="20"
         >
-          {requestorIndex}
+          {middleIndex}
         </text>
       </svg>
 
       <svg
+        ref={targetBadgeRef}
         x="94"
         y="352"
         width="96"
         height="34"
-        style={{ "--x": "187px", "--y": "78px" } as React.CSSProperties}
-        className="three-cycle-arboard__slide-target"
+        style={{ willChange: "opacity" }}
       >
         <rect
           width="100%"
@@ -275,6 +449,81 @@ export function DirectSwapArtboard({
   otherIndex: string;
   iam: "intiator" | "target";
 }) {
+  const yourBadgeRef = useRef<SVGSVGElement | null>(null);
+  const otherBadgeRef = useRef<SVGSVGElement | null>(null);
+
+  useEffect(() => {
+    const yourBadge = yourBadgeRef.current;
+    const otherBadge = otherBadgeRef.current;
+    if (!yourBadge || !otherBadge) return;
+
+    const DURATION_MS = 3600;
+    const YOUR_BADGE_BASE_X = 296;
+    const OTHER_BADGE_BASE_X = 104;
+    const FADE_IN_END = 6.94;
+    const MOVE_START = 34.72;
+    const MOVE_END = 62.5;
+    const FADE_OUT_START = 90.28;
+    const FADE_OUT_END = 97.22;
+    const HOLD_RESET_START = 99.99;
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+    function computeState(progressPct: number, startX: number) {
+      let opacity = 1;
+      let x = startX;
+
+      if (progressPct < FADE_IN_END) {
+        opacity = progressPct / FADE_IN_END;
+      } else if (progressPct < MOVE_START) {
+        opacity = 1;
+        x = startX;
+      } else if (progressPct < MOVE_END) {
+        const t = (progressPct - MOVE_START) / (MOVE_END - MOVE_START);
+        x = lerp(startX, 0, t);
+        opacity = 1;
+      } else if (progressPct < FADE_OUT_START) {
+        x = 0;
+        opacity = 1;
+      } else if (progressPct < FADE_OUT_END) {
+        const t =
+          (progressPct - FADE_OUT_START) / (FADE_OUT_END - FADE_OUT_START);
+        x = 0;
+        opacity = lerp(1, 0, t);
+      } else if (progressPct < HOLD_RESET_START) {
+        x = 0;
+        opacity = 0;
+      } else {
+        x = startX;
+        opacity = 0;
+      }
+
+      return { x, opacity };
+    }
+
+    let rafId = 0;
+    const start = performance.now();
+
+    const frame = (now: number) => {
+      const elapsed = (now - start) % DURATION_MS;
+      const progressPct = (elapsed / DURATION_MS) * 100;
+
+      const yourState = computeState(progressPct, -202);
+      const otherState = computeState(progressPct, 202);
+
+      yourBadge.setAttribute("x", String(YOUR_BADGE_BASE_X + yourState.x));
+      yourBadge.style.opacity = `${yourState.opacity}`;
+
+      otherBadge.setAttribute("x", String(OTHER_BADGE_BASE_X + otherState.x));
+      otherBadge.style.opacity = `${otherState.opacity}`;
+
+      rafId = requestAnimationFrame(frame);
+    };
+
+    rafId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
   return (
     <svg
       className="w-full"
@@ -349,12 +598,12 @@ export function DirectSwapArtboard({
       />
 
       <svg
+        ref={yourBadgeRef}
         x="296"
         y="42"
         width="96"
         height="34"
-        style={{ "--x": "-202px" } as React.CSSProperties}
-        className="direct-arboard__slide"
+        style={{ willChange: "opacity" }}
       >
         <rect width="100%" height="100%" className="fill-primary-950" rx="12" />
         <text
@@ -370,13 +619,13 @@ export function DirectSwapArtboard({
       </svg>
 
       <svg
+        ref={otherBadgeRef}
         // x="200"
         x="104"
         y="145"
         width="96"
         height="34"
-        style={{ "--x": "202px" } as React.CSSProperties}
-        className="direct-arboard__slide"
+        style={{ willChange: "opacity" }}
       >
         <rect
           width="100%"

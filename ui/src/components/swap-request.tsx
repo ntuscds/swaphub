@@ -364,7 +364,7 @@ export function SwapRequestForm({
           return (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="form-rhf-school">
-                What index do you have?
+                What index do you have? {navigator.userAgent}
               </FieldLabel>
               <SelectCourseIndexCombobox
                 value={haveIndex ? [haveIndex] : []}

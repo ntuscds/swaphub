@@ -24,7 +24,6 @@ import { retrieveRawInitData } from "@tma.js/sdk-react";
 import { useStableQuery } from "./use-stable-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 const FormSchema = z.object({
   school: z.enum(schools, { message: "School is required" }),
