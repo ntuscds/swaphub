@@ -323,7 +323,6 @@ export const getRequestForCourse = query({
         haveIndex: undefined,
         wantIndexes: [],
       };
-      // throw new ConvexError("Swapper not found.");
     }
 
     const myWants = await ctx.db

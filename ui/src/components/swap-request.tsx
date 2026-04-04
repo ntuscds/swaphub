@@ -29,6 +29,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { useConvexMutationState } from "./use-convex-mutation-state";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Skeleton } from "./ui/skeleton";
+import { useStableQueryWithStatus } from "./use-stable-query";
 
 export type CourseIndex = {
   id: string;
@@ -271,11 +272,23 @@ export function SwapRequestFormWithPrefill({
   courseId: Id<"courses">;
   courseIndexes: CourseIndex[];
 }) {
-  const request = useQuery(convexApi.tasks.getRequestForCourse, { courseId });
-  if (request === undefined) {
+  const requestRes = useStableQueryWithStatus(
+    convexApi.tasks.getRequestForCourse,
+    { courseId }
+  );
+  if (requestRes.status === "pending") {
     return <Skeleton className="h-48 w-full" />;
   }
-  const defaultHave = request.haveIndex
+  if (requestRes.status === "error") {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{requestRes.error.message}</AlertDescription>
+      </Alert>
+    );
+  }
+  const request = requestRes.data;
+  const defaultHave = request?.haveIndex
     ? (courseIndexes.find((c) => c.index === request.haveIndex)?.id ?? "")
     : "";
   const defaultWants = request.wantIndexes

@@ -1,18 +1,18 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Skeleton } from "./ui/skeleton";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
-import { useStableQuery } from "./use-stable-query";
+import { useStableQueryWithStatus } from "./use-stable-query";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 export function MySwaps({ className }: { className?: string }) {
-  const data = useStableQuery(api.tasks.getAllRequests);
+  const res = useStableQueryWithStatus(api.tasks.getAllRequests);
 
-  if (data === undefined) {
+  if (res.status === "pending") {
     return (
       <div className={cn("w-full flex flex-col gap-2", className)}>
         <Skeleton className="h-10 w-full" />
@@ -23,6 +23,16 @@ export function MySwaps({ className }: { className?: string }) {
       </div>
     );
   }
+  if (res.status === "error") {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{res.error.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  const data = res.data;
   return (
     <div
       className={cn(

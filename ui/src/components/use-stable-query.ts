@@ -1,5 +1,6 @@
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { useRef } from "react";
+import { useQueryWithStatus } from "./use-convex-hooks";
 
 /**
  * Drop-in replacement for useQuery intended to be used with a parametrized query.
@@ -52,3 +53,22 @@ export const useStablePaginatedQuery = ((name, ...args) => {
 
   return stored.current;
 }) as typeof usePaginatedQuery;
+
+export const useStableQueryWithStatus = ((name, ...args) => {
+  const result = useQueryWithStatus(name, ...args);
+  const storedData = useRef(result.data);
+  const storedError = useRef(result.error);
+
+  if (result.status === "success") {
+    storedData.current = result.data;
+    storedError.current = undefined;
+  } else if (result.status === "error") {
+    storedError.current = result.error;
+  }
+
+  return {
+    ...result,
+    data: storedData.current,
+    error: storedError.current,
+  };
+}) as typeof useQueryWithStatus;

@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
-import { Alert, AlertTitle } from "./ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useConvexMutationState } from "./use-convex-mutation-state";
@@ -34,6 +34,7 @@ import {
   DirectSwapArtboard,
   ThreeWayCycleArtboard,
 } from "./course-swap-artboard";
+import { useStableQueryWithStatus } from "./use-stable-query";
 
 type CourseRequestAndMatches = FunctionReturnType<
   typeof api.tasks.getCourseRequestAndMatches
@@ -467,10 +468,13 @@ export function CourseSwapMatches({
   code: string;
   acadYear: AcadYear;
 }) {
-  const requestsQuery = useQuery(api.tasks.getCourseRequestAndMatches, {
-    courseCode: code,
-    acadYear,
-  });
+  const requestsQueryRes = useStableQueryWithStatus(
+    api.tasks.getCourseRequestAndMatches,
+    {
+      courseCode: code,
+      acadYear,
+    }
+  );
   const toggleSwapRequestMut = useMutation(api.tasks.toggleSwapRequest);
   const toggleSwapRequestState = useConvexMutationState(toggleSwapRequestMut);
   const [bottomSheetMatchItem, setBottomSheetMatchItem] = useState<{
@@ -533,6 +537,16 @@ export function CourseSwapMatches({
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  if (requestsQueryRes.status === "error") {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{requestsQueryRes.error.message}</AlertDescription>
+      </Alert>
+    );
+  }
+  const requestsQuery = requestsQueryRes.data;
 
   let directMatchElement = null;
   if (requestsQuery === undefined) {

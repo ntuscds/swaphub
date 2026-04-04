@@ -1,5 +1,4 @@
 import { api } from "../../../convex/_generated/api";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { fetchQuery } from "convex/nextjs";
 import { SwapRequestModal } from "@/components/swap-request-modal";
 import { MySwaps } from "@/components/my-swaps";
