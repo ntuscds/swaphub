@@ -1,4 +1,3 @@
-import { GenericQueryCtx } from "convex/server";
 import { ConvexError } from "convex/values";
 import { QueryCtx } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";

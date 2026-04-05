@@ -53,10 +53,11 @@ export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
   };
 
   const confirmDisable = async () => {
-    const result = await handle({ courseCode, hasSwapped: true });
-    if (result?.success) {
-      setIsDisableWarningOpen(false);
-    }
+    await handle({ courseCode, hasSwapped: true });
+
+    // if (result?.success) {
+    //   setIsDisableWarningOpen(false);
+    // }
   };
 
   return (
