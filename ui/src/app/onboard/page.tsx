@@ -1,5 +1,5 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAccountSetup, getAuth } from "@/lib/microsoft-auth";
+import { getAuth } from "@/lib/microsoft-auth";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { SignInButton } from "@/components/sign-in-button";
 import { cn } from "@/lib/utils";
@@ -9,8 +9,6 @@ import {
   VerifyTelegramForm,
 } from "@/components/onboard-form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "../../../convex/_generated/api";
-import { fetchQuery } from "convex/nextjs";
 import { redirect } from "next/navigation";
 
 const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
@@ -132,22 +130,6 @@ function SelectSchool() {
         </div>
 
         {/* <OnboardForm /> */}
-      </div>
-    </div>
-  );
-}
-
-function Loading() {
-  return (
-    <div className="relative flex flex-col items-center">
-      <div className="flex flex-col gap-12 py-12 max-w-2xl w-full">
-        {/* <div className="flex flex-col gap-2">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
-            Please wait...
-          </h1>
-        </div> */}
-        {/* <div className="absolute inset-0 bg-background/50 backdrop-blur-xs" /> */}
-        <Skeleton className="h-full w-full" />
       </div>
     </div>
   );

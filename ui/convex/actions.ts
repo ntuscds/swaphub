@@ -5,7 +5,7 @@ import { action, internalAction } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { bot } from "@/telegram/telegram";
 import { internal } from "./_generated/api";
-import { env } from "@/lib/env";
+import { env } from "@/lib/env-convex";
 import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";

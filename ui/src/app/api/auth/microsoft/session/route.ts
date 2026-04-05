@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { readSessionWithRefresh } from "@/lib/microsoft-auth";
+import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
-  const headers = new Headers();
-  const session = await readSessionWithRefresh(headers, request);
+  const _cookies = await cookies();
+  const session = await readSessionWithRefresh(_cookies);
 
-  return NextResponse.json(
-    {
-      authenticated: session !== null,
-      user: session,
-    },
-    { headers }
-  );
+  return NextResponse.json({
+    authenticated: session !== null,
+    user: session,
+  });
 }

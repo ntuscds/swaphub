@@ -194,93 +194,67 @@ export function getSafeCallbackUrl(input: string | null | undefined) {
   }
 }
 
-export function getAuthCookies(request: Request) {
-  const cookies = parseCookies(request.headers.get("cookie"));
+export function getAuthCookies(_cookies: Awaited<ReturnType<typeof cookies>>) {
   return {
-    state: cookies[AUTH_STATE_COOKIE] ?? null,
-    verifier: cookies[AUTH_VERIFIER_COOKIE] ?? null,
-    callback: cookies[AUTH_CALLBACK_COOKIE] ?? null,
-    session: cookies[AUTH_SESSION_COOKIE] ?? null,
-    refresh: cookies[AUTH_ENCRYPTED_REFRESH_COOKIE] ?? null,
+    state: _cookies.get(AUTH_STATE_COOKIE)?.value ?? null,
+    verifier: _cookies.get(AUTH_VERIFIER_COOKIE)?.value ?? null,
+    callback: _cookies.get(AUTH_CALLBACK_COOKIE)?.value ?? null,
+    session: _cookies.get(AUTH_SESSION_COOKIE)?.value ?? null,
+    refresh: _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE)?.value ?? null,
   };
 }
 
 export function setAuthFlowCookies(
-  headers: Headers,
-  request: Request,
+  _cookies: Awaited<ReturnType<typeof cookies>>,
   input: { state: string; verifier: string; callbackUrl: string }
 ) {
-  appendCookie(
-    headers,
-    AUTH_STATE_COOKIE,
-    input.state,
-    request,
-    SESSION_MAX_AGE_IN_SECONDS
-  );
-  appendCookie(
-    headers,
-    AUTH_VERIFIER_COOKIE,
-    input.verifier,
-    request,
-    SESSION_MAX_AGE_IN_SECONDS
-  );
-  appendCookie(
-    headers,
-    AUTH_CALLBACK_COOKIE,
-    input.callbackUrl,
-    request,
-    SESSION_MAX_AGE_IN_SECONDS
-  );
+  _cookies.set(AUTH_STATE_COOKIE, input.state, {
+    maxAge: SESSION_MAX_AGE_IN_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+  });
+  _cookies.set(AUTH_VERIFIER_COOKIE, input.verifier, {
+    maxAge: SESSION_MAX_AGE_IN_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+  });
+  _cookies.set(AUTH_CALLBACK_COOKIE, input.callbackUrl, {
+    maxAge: SESSION_MAX_AGE_IN_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+  });
 }
 
-export function clearAuthFlowCookies(headers: Headers, request: Request) {
-  appendCookie(headers, AUTH_STATE_COOKIE, "", request, 0);
-  appendCookie(headers, AUTH_VERIFIER_COOKIE, "", request, 0);
-  appendCookie(headers, AUTH_CALLBACK_COOKIE, "", request, 0);
+export function clearAuthFlowCookies(
+  _cookies: Awaited<ReturnType<typeof cookies>>
+) {
+  _cookies.delete(AUTH_STATE_COOKIE);
+  _cookies.delete(AUTH_VERIFIER_COOKIE);
+  _cookies.delete(AUTH_CALLBACK_COOKIE);
 }
 
 export async function setSessionCookie(
-  headers: Headers,
-  request: Request,
+  _cookies: Awaited<ReturnType<typeof cookies>>,
   session: MicrosoftSession
 ) {
   const signed = await signSession(session);
-  appendCookie(
-    headers,
-    AUTH_SESSION_COOKIE,
-    signed,
-    request,
-    SESSION_MAX_AGE_IN_SECONDS
-  );
+  _cookies.set(AUTH_SESSION_COOKIE, signed, {
+    maxAge: SESSION_MAX_AGE_IN_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+  });
 }
 
 export async function setRefreshTokenCookie(
-  headers: Headers,
-  request: Request,
+  _cookies: Awaited<ReturnType<typeof cookies>>,
   refreshToken: string
 ) {
   const encrypted = await encryptValue(refreshToken);
-  appendCookie(
-    headers,
-    AUTH_ENCRYPTED_REFRESH_COOKIE,
-    encrypted,
-    request,
-    REFRESH_TOKEN_MAX_AGE_IN_SECONDS
-  );
-}
-
-export function clearSessionCookie(headers: Headers, request: Request) {
-  appendCookie(headers, AUTH_SESSION_COOKIE, "", request, 0);
-}
-
-export function clearRefreshTokenCookie(headers: Headers, request: Request) {
-  appendCookie(headers, AUTH_ENCRYPTED_REFRESH_COOKIE, "", request, 0);
-}
-
-export async function readSession(request: Request) {
-  const raw = getAuthCookies(request).session;
-  if (!raw) return null;
-  return await verifySession(raw);
+  _cookies.set(AUTH_ENCRYPTED_REFRESH_COOKIE, encrypted, {
+    maxAge: REFRESH_TOKEN_MAX_AGE_IN_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+  });
 }
 
 export async function buildSession(
@@ -315,7 +289,7 @@ export async function createPkceChallenge(verifier: string) {
   return base64UrlEncode(new Uint8Array(digest));
 }
 
-async function signSession(session: MicrosoftSession) {
+export async function signSession(session: MicrosoftSession) {
   return jwtSign(session, env.ENCRYPTION_KEY, {
     algorithm: "HS256",
     expiresIn: ACCESS_TOKEN_MAX_AGE_IN_SECONDS,
@@ -329,24 +303,6 @@ function fromJwtPayloadToSession(
 
   const parsed = MicrosoftSessionSchema.parse(payload);
   return parsed;
-
-  // const sub = typeof payload.sub === "string" ? payload.sub : null;
-  // const email = typeof payload.email === "string" ? payload.email : null;
-  // const name = typeof payload.name === "string" ? payload.name : null;
-  // const picture = typeof payload.picture === "string" ? payload.picture : null;
-  // const expiresAt =
-  //   typeof payload.expiresAt === "number" ? payload.expiresAt : null;
-  // const accountSetup =
-  //   typeof payload.accountSetup === "string" ? payload.accountSetup : null;
-  // if (!sub || expiresAt === null) return null;
-  // return {
-  //   sub,
-  //   email,
-  //   name,
-  //   picture,
-  //   expiresAt,
-  //   accountSetup,
-  // };
 }
 
 export async function verifySession(
@@ -371,51 +327,6 @@ export async function verifySession(
     console.error(error);
     return null;
   }
-}
-
-function parseCookies(cookieHeader: string | null) {
-  const cookies: Record<string, string> = {};
-  if (!cookieHeader) return cookies;
-
-  for (const entry of cookieHeader.split(";")) {
-    const [rawName, ...rawValue] = entry.trim().split("=");
-    if (!rawName) continue;
-    cookies[rawName] = decodeURIComponent(rawValue.join("="));
-  }
-
-  return cookies;
-}
-
-function appendCookie(
-  headers: Headers,
-  name: string,
-  value: string,
-  request: Request,
-  maxAge: number
-) {
-  const secure = isSecureRequest(request);
-  const parts = [
-    `${name}=${encodeURIComponent(value)}`,
-    "Path=/",
-    "HttpOnly",
-    "SameSite=Lax",
-    `Max-Age=${maxAge}`,
-  ];
-
-  if (secure) {
-    parts.push("Secure");
-  }
-
-  headers.append("Set-Cookie", parts.join("; "));
-}
-
-function isSecureRequest(request: Request) {
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  if (forwardedProto) {
-    return forwardedProto === "https";
-  }
-
-  return new URL(request.url).protocol === "https:";
 }
 
 function base64UrlEncode(input: Uint8Array) {
@@ -481,6 +392,9 @@ export async function getAuth() {
     email: string;
     accountSetup: MicrosoftSession["accountSetup"];
   } | null = null;
+  if (!refreshTokenInCookie) {
+    return null;
+  }
   if (sessionInCookie) {
     const verifiedSession = await verifySession(sessionInCookie.value);
     if (verifiedSession) {
@@ -506,11 +420,6 @@ export async function getAuth() {
         refreshed.expires_in,
         accountSetup
       );
-      // console.log("verifiedSession", verifiedSession);
-      // if (verifiedSession) {
-      //   console.log("verifiedSession.email", verifiedSession.email);
-      //   sessionEmail = verifiedSession.email;
-      // }
       result = {
         email: currentSession.email,
         accountSetup: currentSession.accountSetup,
@@ -520,68 +429,62 @@ export async function getAuth() {
   return result;
 }
 
-export async function readSessionWithRefresh(
-  headers: Headers,
-  request: Request
+export async function refreshSession(
+  _cookies: Awaited<ReturnType<typeof cookies>>
 ) {
-  const authCookies = getAuthCookies(request);
-
-  let currentSession = await verifySession(authCookies.session, {
-    allowExpired: true,
-  });
-  if (currentSession && currentSession.expiresAt > Date.now()) {
-    return currentSession;
-  }
-
-  // No refresh, cant do anything.
+  const authCookies = getAuthCookies(_cookies);
   if (!authCookies.refresh) {
-    clearSessionCookie(headers, request);
+    _cookies.delete(AUTH_SESSION_COOKIE);
+    _cookies.delete(AUTH_ENCRYPTED_REFRESH_COOKIE);
     return null;
   }
-
   try {
-    const refreshToken = await decryptValue(authCookies.refresh);
-    const refreshed = await refreshMicrosoftAccessToken(refreshToken);
-    if (!currentSession) {
-      const profile = await fetchMicrosoftUser(refreshed.access_token);
-      const accountSetup = await getAccountSetup(profile.email);
-      currentSession = await buildSession(
-        profile,
-        refreshed.expires_in,
-        accountSetup
-      );
-    } else {
-      currentSession = await buildSession(
-        {
-          sub: currentSession.sub,
-          email: currentSession.email,
-          name: currentSession.name,
-          picture: currentSession.picture,
-        },
-        refreshed.expires_in,
-        currentSession.accountSetup
-      );
-    }
-    // const session = await buildSession(currentSession, refreshed.expires_in);
-
-    const email = currentSession.email;
-    if (email === null) {
-      throw new Error("No email found in session");
-    }
-
-    await setSessionCookie(headers, request, currentSession);
-    await setRefreshTokenCookie(
-      headers,
-      request,
-      refreshed.refresh_token ?? refreshToken
+    const decryptedRefreshToken = await decryptValue(authCookies.refresh);
+    const refreshed = await refreshMicrosoftAccessToken(decryptedRefreshToken);
+    const profile = await fetchMicrosoftUser(refreshed.access_token);
+    const accountSetup = await getAccountSetup(profile.email);
+    const currentSession = await buildSession(
+      profile,
+      refreshed.expires_in,
+      accountSetup
     );
+    setSessionCookie(_cookies, currentSession);
+    setRefreshTokenCookie(
+      _cookies,
+      refreshed.refresh_token ?? authCookies.refresh
+    );
+    // _cookies.set(AUTH_SESSION_COOKIE, await signSession(currentSession));
+    // _cookies.set(
+    //   AUTH_ENCRYPTED_REFRESH_COOKIE,
+    //   await encryptValue(refreshed.refresh_token ?? authCookies.refresh)
+    // );
     return currentSession;
   } catch (error) {
     console.error(error);
-    clearSessionCookie(headers, request);
-    // clearRefreshTokenCookie(headers, request);
+    _cookies.delete(AUTH_SESSION_COOKIE);
+    _cookies.delete(AUTH_ENCRYPTED_REFRESH_COOKIE);
     return null;
   }
+}
+
+export async function readSessionWithRefresh(
+  _cookies: Awaited<ReturnType<typeof cookies>>
+) {
+  const authCookies = getAuthCookies(_cookies);
+  if (!authCookies.refresh) {
+    _cookies.delete(AUTH_SESSION_COOKIE);
+    _cookies.delete(AUTH_ENCRYPTED_REFRESH_COOKIE);
+    return null;
+  }
+
+  if (authCookies.session) {
+    let currentSession = await verifySession(authCookies.session);
+    if (currentSession) {
+      return currentSession;
+    }
+  }
+
+  return await refreshSession(_cookies);
 }
 
 export async function getAccountSetup(email: string) {

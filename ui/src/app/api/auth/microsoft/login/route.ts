@@ -7,6 +7,7 @@ import {
   getSafeCallbackUrl,
   setAuthFlowCookies,
 } from "@/lib/microsoft-auth";
+import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -18,7 +19,8 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(
     getMicrosoftAuthorizeUrl(request, state, challenge)
   );
-  setAuthFlowCookies(response.headers, request, {
+  const _cookies = await cookies();
+  setAuthFlowCookies(_cookies, {
     state,
     verifier,
     callbackUrl,

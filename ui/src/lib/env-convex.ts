@@ -3,11 +3,11 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
-    ENCRYPTION_KEY: z.string(),
-
-    AZURE_AD_CLIENT_ID: z.string().default(""),
-    AZURE_AD_CLIENT_SECRET: z.string().default(""),
-    AZURE_AD_TENANT_ID: z.string().default(""),
+    BOT_KEY: z.string(),
+    /** Used to verify webhook POSTs are from Telegram. Set the same value in setWebhook(..., { secret_token }). */
+    TELEGRAM_WEBHOOK_SECRET: z.string().min(1),
+    UPSTASH_REDIS_REST_TOKEN: z.string(),
+    UPSTASH_REDIS_REST_URL: z.string(),
 
     CONVEX_JWT_AUDIENCE: z.string(),
     CONVEX_JWT_ISSUER: z.string(),
@@ -18,32 +18,23 @@ export const env = createEnv({
       .string()
       .transform((val) => val.replaceAll("\\\\n", "\n")),
     CONVEX_JWT_KID: z.string(),
+    CONVEX_JWT_JWKS_URL: z.string(),
   },
   clientPrefix: "NEXT_PUBLIC_",
-  client: {
-    NEXT_PUBLIC_POSTHOG_KEY: z.string(),
-    NEXT_PUBLIC_POSTHOG_HOST: z.string(),
-
-    NEXT_PUBLIC_CONVEX_URL: z.string(),
-    NEXT_PUBLIC_CONVEX_SITE_URL: z.string(),
-  },
+  client: {},
   runtimeEnv: {
-    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+    BOT_KEY: process.env.BOT_KEY,
 
-    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
-    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-    NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
-    NEXT_PUBLIC_CONVEX_SITE_URL: process.env.NEXT_PUBLIC_CONVEX_SITE_URL,
-
-    AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
-    AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
-    AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
+    TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
 
     CONVEX_JWT_AUDIENCE: process.env.CONVEX_JWT_AUDIENCE,
     CONVEX_JWT_ISSUER: process.env.CONVEX_JWT_ISSUER,
     CONVEX_JWT_PRIVATE_KEY: process.env.CONVEX_JWT_PRIVATE_KEY,
     CONVEX_JWT_PUBLIC_KEY: process.env.CONVEX_JWT_PUBLIC_KEY,
     CONVEX_JWT_KID: process.env.CONVEX_JWT_KID,
+    CONVEX_JWT_JWKS_URL: process.env.CONVEX_JWT_JWKS_URL,
   },
 
   /**

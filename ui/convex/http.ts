@@ -2,8 +2,6 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { z } from "zod";
-import { Lock } from "@upstash/lock";
-import { redis } from "@/db/upstash";
 
 const http = httpRouter();
 

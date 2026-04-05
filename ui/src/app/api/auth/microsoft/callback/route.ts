@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import {
+  AUTH_ENCRYPTED_REFRESH_COOKIE,
+  AUTH_SESSION_COOKIE,
+  AUTH_STATE_COOKIE,
+  AUTH_VERIFIER_COOKIE,
   buildSession,
   clearAuthFlowCookies,
-  clearRefreshTokenCookie,
-  clearSessionCookie,
   exchangeMicrosoftCode,
   fetchMicrosoftUser,
   getAccountSetup,
@@ -13,13 +15,15 @@ import {
   setRefreshTokenCookie,
   setSessionCookie,
 } from "@/lib/microsoft-auth";
+import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const state = requestUrl.searchParams.get("state");
   const error = requestUrl.searchParams.get("error");
-  const cookies = getAuthCookies(request);
+  const _cookies = await cookies();
+  const authCookies = getAuthCookies(_cookies);
 
   if (error) {
     const response = NextResponse.redirect(
@@ -28,25 +32,31 @@ export async function GET(request: Request) {
         getBaseUrl(request)
       )
     );
-    clearAuthFlowCookies(response.headers, request);
-    clearSessionCookie(response.headers, request);
-    clearRefreshTokenCookie(response.headers, request);
+    _cookies.delete(AUTH_STATE_COOKIE);
+    _cookies.delete(AUTH_VERIFIER_COOKIE);
+    _cookies.delete(AUTH_SESSION_COOKIE);
+    // clearAuthFlowCookies(response.headers, request);
+    // clearSessionCookie(response.headers, request);
+    // clearRefreshTokenCookie(response.headers, request);
     return response;
   }
 
   if (
     !code ||
     !state ||
-    !cookies.state ||
-    !cookies.verifier ||
-    state !== cookies.state
+    !authCookies.state ||
+    !authCookies.verifier ||
+    state !== authCookies.state
   ) {
     const response = NextResponse.redirect(
       new URL("/onboard?error=invalid_state", getBaseUrl(request))
     );
-    clearAuthFlowCookies(response.headers, request);
-    clearSessionCookie(response.headers, request);
-    clearRefreshTokenCookie(response.headers, request);
+    _cookies.delete(AUTH_STATE_COOKIE);
+    _cookies.delete(AUTH_VERIFIER_COOKIE);
+    _cookies.delete(AUTH_SESSION_COOKIE);
+    // clearAuthFlowCookies(response.headers, request);
+    // clearSessionCookie(response.headers, request);
+    // clearRefreshTokenCookie(response.headers, request);
     return response;
   }
 
@@ -54,7 +64,7 @@ export async function GET(request: Request) {
     const exchanged = await exchangeMicrosoftCode(
       request,
       code,
-      cookies.verifier
+      authCookies.verifier
     );
     const profile = await fetchMicrosoftUser(exchanged.access_token);
     const accountSetup = await getAccountSetup(profile.email);
@@ -63,30 +73,27 @@ export async function GET(request: Request) {
       exchanged.expires_in,
       accountSetup
     );
-    const callbackUrl = getSafeCallbackUrl(cookies.callback);
+    const callbackUrl = getSafeCallbackUrl(authCookies.callback);
 
     const response = NextResponse.redirect(
       new URL(callbackUrl, getBaseUrl(request))
     );
-    clearAuthFlowCookies(response.headers, request);
-    await setSessionCookie(response.headers, request, session);
+    clearAuthFlowCookies(_cookies);
+    setSessionCookie(_cookies, session);
     if (exchanged.refresh_token) {
-      await setRefreshTokenCookie(
-        response.headers,
-        request,
-        exchanged.refresh_token
-      );
+      await setRefreshTokenCookie(_cookies, exchanged.refresh_token);
     } else {
-      clearRefreshTokenCookie(response.headers, request);
+      _cookies.delete(AUTH_ENCRYPTED_REFRESH_COOKIE);
+      // clearRefreshTokenCookie(response.headers, request);
     }
     return response;
   } catch {
     const response = NextResponse.redirect(
       new URL("/onboard?error=auth_failed", getBaseUrl(request))
     );
-    clearAuthFlowCookies(response.headers, request);
-    clearSessionCookie(response.headers, request);
-    clearRefreshTokenCookie(response.headers, request);
+    _cookies.delete(AUTH_STATE_COOKIE);
+    _cookies.delete(AUTH_VERIFIER_COOKIE);
+    _cookies.delete(AUTH_SESSION_COOKIE);
     return response;
   }
 }

@@ -1,4 +1,5 @@
 import type { AuthConfig } from "convex/server";
+import { env } from "@/lib/env-convex";
 
 /**
  * Custom JWT auth for Telegram Mini App.
@@ -15,9 +16,9 @@ export default {
   providers: [
     {
       type: "customJwt",
-      applicationID: process.env.CONVEX_JWT_AUDIENCE!,
-      issuer: process.env.CONVEX_JWT_ISSUER!,
-      jwks: process.env.CONVEX_JWT_JWKS_URL!,
+      applicationID: env.CONVEX_JWT_AUDIENCE,
+      issuer: env.CONVEX_JWT_ISSUER,
+      jwks: env.CONVEX_JWT_JWKS_URL,
       algorithm: "RS256",
     },
   ],
