@@ -212,16 +212,19 @@ export function setAuthFlowCookies(
     maxAge: SESSION_MAX_AGE_IN_SECONDS,
     httpOnly: true,
     sameSite: "lax",
+    secure: env.SECURE_COOKIES,
   });
   _cookies.set(AUTH_VERIFIER_COOKIE, input.verifier, {
     maxAge: SESSION_MAX_AGE_IN_SECONDS,
     httpOnly: true,
     sameSite: "lax",
+    secure: env.SECURE_COOKIES,
   });
   _cookies.set(AUTH_CALLBACK_COOKIE, input.callbackUrl, {
     maxAge: SESSION_MAX_AGE_IN_SECONDS,
     httpOnly: true,
     sameSite: "lax",
+    secure: env.SECURE_COOKIES,
   });
 }
 
@@ -242,6 +245,7 @@ export async function setSessionCookie(
     maxAge: SESSION_MAX_AGE_IN_SECONDS,
     httpOnly: true,
     sameSite: "lax",
+    secure: env.SECURE_COOKIES,
   });
 }
 
@@ -254,6 +258,7 @@ export async function setRefreshTokenCookie(
     maxAge: REFRESH_TOKEN_MAX_AGE_IN_SECONDS,
     httpOnly: true,
     sameSite: "lax",
+    secure: env.SECURE_COOKIES,
   });
 }
 

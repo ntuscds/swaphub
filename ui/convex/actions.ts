@@ -28,6 +28,26 @@ function buildFStarsUrl(
   )}:${encodeURIComponent(index)}`;
 }
 
+type ToggleSwapRequestCancelledParticipant = {
+  handle: string;
+  telegramUserId: bigint;
+};
+
+type ToggleSwapRequestCancelledRequest = {
+  isDirectSwap: boolean;
+  iam: "initiator" | "targetSwapper" | "middlemanSwapper";
+  course: { code: string; name: string };
+  initiator: ToggleSwapRequestCancelledParticipant;
+  targetSwapper: ToggleSwapRequestCancelledParticipant;
+  middlemanSwapper: ToggleSwapRequestCancelledParticipant | null;
+};
+
+type ToggleSwapRequestResult = {
+  success: true;
+  toggledTo: boolean;
+  cancelledRequests: ToggleSwapRequestCancelledRequest[];
+};
+
 export const sendSwapRequest = action({
   args: {
     targetSwapperId: v.id("swapper"),
@@ -133,6 +153,110 @@ You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
           error
         );
       });
+  },
+});
+
+export const toggleSwapRequest = action({
+  args: {
+    courseCode: v.string(),
+    hasSwapped: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<ToggleSwapRequestResult> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Unauthorized");
+
+    const result = await ctx.runMutation(internal.tasks.toggleSwapRequest, {
+      courseCode: args.courseCode,
+      hasSwapped: args.hasSwapped,
+    });
+
+    if (!args.hasSwapped || result.cancelledRequests.length === 0) {
+      return result;
+    }
+
+    const sendMessage = async (userId: bigint, msg: string) => {
+      if (msg === "") return;
+      await bot.sendMessage(Number(userId), msg, {
+        parse_mode: "Markdown",
+      });
+    };
+
+    for (const request of result.cancelledRequests) {
+      const courseLabel = `${request.course.code} ${request.course.name}`;
+      let msgForInitiator = "";
+      let msgForTargetSwapper = "";
+      let msgForMiddlemanSwapper = "";
+
+      if (request.isDirectSwap) {
+        if (request.iam === "targetSwapper") {
+          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.targetSwapper.handle)} has declined to participate in your swap request.`;
+          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You declined to participate in @${escapeMarkdown(request.initiator.handle)}'s swap request.`;
+        } else {
+          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You are no longer looking to swap, and this request has been cancelled.`;
+          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.initiator.handle)} is no longer looking to swap and has cancelled this request.`;
+        }
+      } else if (request.middlemanSwapper) {
+        if (request.iam === "targetSwapper") {
+          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.targetSwapper.handle)} has declined to participate in your 3 way swap request.`;
+          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You declined to participate in @${escapeMarkdown(request.initiator.handle)}'s 3 way swap request.`;
+          msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.targetSwapper.handle)} has declined to participate in @${escapeMarkdown(request.initiator.handle)}'s 3 way swap request.`;
+        } else if (request.iam === "middlemanSwapper") {
+          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
+          msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You declined to participate in @${escapeMarkdown(request.initiator.handle)}'s 3 way swap request.`;
+          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
+        } else {
+          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+You are no longer looking to swap, and this 3 way request has been cancelled.`;
+          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.initiator.handle)} is no longer looking to swap and has cancelled this 3 way request.`;
+          msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+@${escapeMarkdown(request.initiator.handle)} is no longer looking to swap and has cancelled this 3 way request.`;
+        }
+      }
+
+      await Promise.all([
+        sendMessage(request.initiator.telegramUserId, msgForInitiator).catch(
+          (error) => {
+            console.error(
+              `Error sending toggle cancellation message to ${request.initiator.telegramUserId}:`,
+              error
+            );
+          }
+        ),
+        sendMessage(
+          request.targetSwapper.telegramUserId,
+          msgForTargetSwapper
+        ).catch((error) => {
+          console.error(
+            `Error sending toggle cancellation message to ${request.targetSwapper.telegramUserId}:`,
+            error
+          );
+        }),
+        request.middlemanSwapper
+          ? sendMessage(
+              request.middlemanSwapper.telegramUserId,
+              msgForMiddlemanSwapper
+            ).catch((error) => {
+              console.error(
+                `Error sending toggle cancellation message to ${request.middlemanSwapper?.telegramUserId}:`,
+                error
+              );
+            })
+          : Promise.resolve(),
+      ]);
+    }
+
+    return result;
   },
 });
 

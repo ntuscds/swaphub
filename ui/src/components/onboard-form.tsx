@@ -24,6 +24,7 @@ import { retrieveRawInitData } from "@tma.js/sdk-react";
 import { useStableQuery } from "./use-stable-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { env } from "@/lib/env";
 
 const FormSchema = z.object({
   school: z.enum(schools, { message: "School is required" }),
@@ -179,7 +180,7 @@ export function VerifyTelegramForm() {
             return;
           }
           const command = `/link ${result.email} ${result.code}`;
-          const url = `https://t.me/Findex_ntu_bot?text=${encodeURIComponent(command)}`;
+          const url = `https://t.me/${env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?text=${encodeURIComponent(command)}`;
           // Open in new tab
           /* https://t.me/Findex_ntu_bot?text=/hello%20world# */
           window.open(url, "_blank");
@@ -225,7 +226,7 @@ export function VerifyTelegramForm() {
                 rel="noopener noreferrer"
                 className="text-primary-500 no-underline"
               >
-                @Findex_ntu_bot
+                @{env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}
               </a>
             </AlertTitle>
           </Alert>

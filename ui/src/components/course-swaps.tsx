@@ -5,7 +5,7 @@ import { ArrowRight, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -475,8 +475,6 @@ export function CourseSwapMatches({
       acadYear,
     }
   );
-  const toggleSwapRequestMut = useMutation(api.tasks.toggleSwapRequest);
-  const toggleSwapRequestState = useConvexMutationState(toggleSwapRequestMut);
   const [bottomSheetMatchItem, setBottomSheetMatchItem] = useState<{
     match:
       | {
@@ -676,14 +674,6 @@ export function CourseSwapMatches({
 
   return (
     <div className="flex flex-col gap-4">
-      {toggleSwapRequestState.error && (
-        <Alert variant="destructive">
-          <AlertTitle>Error!</AlertTitle>
-          <p className="text-muted-foreground max-w-none">
-            {toggleSwapRequestState.error}
-          </p>
-        </Alert>
-      )}
       {hasSwappedEle}
       <div className="flex flex-col gap-2">
         <div className="flex flex-row gap-2 items-center justify-between">

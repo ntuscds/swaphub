@@ -28,10 +28,16 @@ export async function GET(request: Request) {
   const audience = env.CONVEX_JWT_AUDIENCE;
   const kid = env.CONVEX_JWT_KID;
   const privateKeyPem = env.CONVEX_JWT_PRIVATE_KEY;
-  const mockEmail = parseCookies(request.headers.get("cookie"))[
-    MOCK_USER_EMAIL_COOKIE
-  ];
-  const tokenSubject = mockEmail || session.email;
+
+  let tokenSubject = session.email;
+  if (env.NEXT_PUBLIC_ALLOW_MOCK_USER) {
+    const mockEmail = parseCookies(request.headers.get("cookie"))[
+      MOCK_USER_EMAIL_COOKIE
+    ];
+    if (!mockEmail) {
+      tokenSubject = mockEmail;
+    }
+  }
   if (!tokenSubject) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

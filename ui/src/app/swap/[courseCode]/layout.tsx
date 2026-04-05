@@ -1,15 +1,16 @@
 import { PropsWithChildren } from "react";
-import { CourseSwapMatches } from "@/components/course-swaps";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { AcadYear, CurrentAcadYear } from "@/lib/acad";
 import { notFound } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../../convex/_generated/api";
 import { cache, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DynBackToButton, DynLinkWithBackTo } from "@/components/dyn-back-to-button";
+import {
+  DynBackToButton,
+  DynLinkWithBackTo,
+} from "@/components/dyn-back-to-button";
+import { SwapRequestToggle } from "@/components/swap-request-toggle";
 
 const loadCourseHeader = cache((courseCode: string, acadYear: AcadYear) =>
   fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode, acadYear })
@@ -67,10 +68,7 @@ export default async function Layout({
                   baseHref={`/swap/${courseCode}/history`}
                   label="History"
                 />
-
-                <Button variant="outline" size="sm">
-                  Disable
-                </Button>
+                <SwapRequestToggle courseCode={courseCode} />
               </div>
             </div>
             <Suspense fallback={<EditCourseHeaderFallback />}>

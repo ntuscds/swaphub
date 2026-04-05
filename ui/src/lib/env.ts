@@ -18,6 +18,11 @@ export const env = createEnv({
       .string()
       .transform((val) => val.replaceAll("\\\\n", "\n")),
     CONVEX_JWT_KID: z.string(),
+
+    SECURE_COOKIES: z
+      .string()
+      .default("true")
+      .transform((val) => val === "true"),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {
@@ -26,6 +31,12 @@ export const env = createEnv({
 
     NEXT_PUBLIC_CONVEX_URL: z.string(),
     NEXT_PUBLIC_CONVEX_SITE_URL: z.string(),
+
+    NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().default("Findex_ntu_bot"),
+    NEXT_PUBLIC_ALLOW_MOCK_USER: z
+      .string()
+      .default("false")
+      .transform((val) => val === "true"),
   },
   runtimeEnv: {
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
@@ -34,6 +45,9 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
     NEXT_PUBLIC_CONVEX_SITE_URL: process.env.NEXT_PUBLIC_CONVEX_SITE_URL,
+    NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:
+      process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME,
+    NEXT_PUBLIC_ALLOW_MOCK_USER: process.env.NEXT_PUBLIC_ALLOW_MOCK_USER,
 
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
@@ -44,6 +58,8 @@ export const env = createEnv({
     CONVEX_JWT_PRIVATE_KEY: process.env.CONVEX_JWT_PRIVATE_KEY,
     CONVEX_JWT_PUBLIC_KEY: process.env.CONVEX_JWT_PUBLIC_KEY,
     CONVEX_JWT_KID: process.env.CONVEX_JWT_KID,
+
+    SECURE_COOKIES: process.env.SECURE_COOKIES,
   },
 
   /**
