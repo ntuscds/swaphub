@@ -8,7 +8,6 @@ import {
   SelectSchoolForm,
   VerifyTelegramForm,
 } from "@/components/onboard-form";
-import { Skeleton } from "@/components/ui/skeleton";
 import { redirect } from "next/navigation";
 
 const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];

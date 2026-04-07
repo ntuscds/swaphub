@@ -14,10 +14,10 @@ const nextConfig: NextConfig = {
         source: "/relay-AQvm/:path*",
         destination: "https://us.i.posthog.com/:path*",
       },
-      {
-        source: "/",
-        destination: "/swap",
-      },
+      // {
+      //   source: "/",
+      //   destination: "/swap",
+      // },
     ];
   },
   // This is required to support PostHog trailing slash API requests

@@ -42,13 +42,15 @@ export default async function Page() {
         </Suspense>
       </div>
       {/* Desktop View */}
-      <div className="hidden lg:flex flex-col xl:gap-1 h-64 p-20 items-center justify-center flex-1 border border-border rounded-md bg-card">
-        <h2 className="text-lg lg:text-xl xl:text-2xl text-primary-500">
-          No Course Selected
-        </h2>
-        <p className="text-sm lg:text-base xl:text-lg text-muted-foreground">
-          Please select a course to view its swaps.
-        </p>
+      <div className="py-4">
+        <div className="hidden lg:flex flex-col xl:gap-1 h-64 p-20 items-center justify-center flex-1 border border-border rounded-md bg-card">
+          <h2 className="text-lg lg:text-xl xl:text-2xl text-primary-500">
+            No Course Selected
+          </h2>
+          <p className="text-sm lg:text-base xl:text-lg text-muted-foreground">
+            Please select a course to view its swaps.
+          </p>
+        </div>
       </div>
     </>
   );

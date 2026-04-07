@@ -24,14 +24,14 @@ export default async function Layout({ children }: PropsWithChildren) {
   return (
     <main className="flex flex-col items-center">
       {/* Mobile View */}
-      <HydrationSafeScrollArea className="w-full lg:hidden bg-background text-foreground h-screen">
+      <HydrationSafeScrollArea className="w-full lg:hidden bg-background text-foreground h-screen-safe">
         <div className="w-full p-4">{children}</div>
       </HydrationSafeScrollArea>
       {/* Desktop View */}
       <div className="hidden lg:flex flex-row max-w-ui w-full min-h-0">
-        <HydrationSafeScrollArea className="w-full max-w-64 lg:max-w-80 xl:max-w-96 bg-background text-foreground h-screen min-h-0 p-4">
+        <HydrationSafeScrollArea className="w-full max-w-64 lg:max-w-80 xl:max-w-96 bg-background text-foreground h-screen-safe min-h-0 p-4">
           <div className="w-full max-w-64 lg:max-w-80 xl:max-w-96 flex flex-col gap-2">
-            <div className="pt-8 flex flex-row gap-2 items-center justify-between">
+            <div className="pt-8 lg:pt-0 flex flex-row gap-2 items-center justify-between">
               <h1 className="text-sm md:text-base lg:text-lg xl:text-xl text-primary-500">
                 My Swaps
               </h1>
@@ -46,7 +46,7 @@ export default async function Layout({ children }: PropsWithChildren) {
             </div>
           </div>
         </HydrationSafeScrollArea>
-        <HydrationSafeScrollArea className="flex-1 min-h-0 bg-background text-foreground h-screen p-4">
+        <HydrationSafeScrollArea className="flex-1 min-h-0 bg-background text-foreground h-screen-safe p-4 pt-0">
           <div className="w-full flex gap-4 items-center pb-24">
             <div className="w-full">{children}</div>
           </div>

@@ -8,6 +8,7 @@ import {
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../convex/_generated/api";
 import z from "zod";
+import { cache } from "react";
 
 export const MICROSOFT_AUTH_BASE_PATH = "/api/auth/microsoft";
 export const MICROSOFT_SCOPE = "openid profile email offline_access";
@@ -166,31 +167,51 @@ export async function refreshMicrosoftAccessToken(refreshToken: string) {
 }
 
 export async function fetchMicrosoftUser(accessToken: string) {
-  const response = await fetch("https://graph.microsoft.com/oidc/userinfo", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
+  // const [_userInfoResponse, _profilePictureResponse] = await Promise.allSettled(
+  //   [
+  //     fetch("https://graph.microsoft.com/oidc/userinfo", {
+  //       headers: {
+  //         Authorization: `Bearer ${accessToken}`,
+  //       },
+  //       cache: "no-store",
+  //     }),
+  //     fetch(`https://graph.microsoft.com/v1.0/me/photos/48x48`, {
+  //       headers: {
+  //         Authorization: `Bearer ${accessToken}`,
+  //       },
+  //       cache: "no-store",
+  //     }),
+  //   ]
+  // );
+  const userInfoResponse = await fetch(
+    "https://graph.microsoft.com/oidc/userinfo",
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    }
+  );
 
-  if (!response.ok) {
+  if (!userInfoResponse.ok) {
     throw new Error("Failed to fetch Microsoft user profile");
   }
 
-  const profile = await response.json();
+  const profile = await userInfoResponse.json();
   const parsed = MicrosoftUserInfoSchema.parse(profile);
+
   return parsed;
 }
 
 export function getSafeCallbackUrl(input: string | null | undefined) {
-  if (!input) return "/";
+  if (!input) return "/onboard";
   if (input.startsWith("/") && !input.startsWith("//")) return input;
 
   try {
     const url = new URL(input);
-    return `${url.pathname}${url.search}${url.hash}` || "/";
+    return `${url.pathname}${url.search}${url.hash}` || "/onboard";
   } catch {
-    return "/";
+    return "/onboard";
   }
 }
 
@@ -389,11 +410,12 @@ export async function decryptValue(input: string) {
   return new TextDecoder().decode(decrypted);
 }
 
-export async function getAuth() {
+export async function _getAuth() {
   const _cookies = await cookies();
   const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
   const refreshTokenInCookie = _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE);
   let result: {
+    name: string | null;
     email: string;
     accountSetup: MicrosoftSession["accountSetup"];
   } | null = null;
@@ -404,6 +426,7 @@ export async function getAuth() {
     const verifiedSession = await verifySession(sessionInCookie.value);
     if (verifiedSession) {
       result = {
+        name: verifiedSession.name,
         email: verifiedSession.email,
         accountSetup: verifiedSession.accountSetup,
       };
@@ -426,6 +449,7 @@ export async function getAuth() {
         accountSetup
       );
       result = {
+        name: currentSession.name,
         email: currentSession.email,
         accountSetup: currentSession.accountSetup,
       };
@@ -433,6 +457,8 @@ export async function getAuth() {
   }
   return result;
 }
+
+export const getAuth = cache(_getAuth);
 
 export async function refreshSession(
   _cookies: Awaited<ReturnType<typeof cookies>>

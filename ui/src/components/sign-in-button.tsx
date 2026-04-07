@@ -7,7 +7,7 @@ export function SignInButton({ callbackUrl }: { callbackUrl: string }) {
     <Button
       type="button"
       size="lg"
-      className="w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-200 dark:bg-background-800"
+      className="w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-300 dark:bg-background-800 text-foreground"
       onClick={() => {
         window.location.href = `/api/auth/microsoft/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
       }}

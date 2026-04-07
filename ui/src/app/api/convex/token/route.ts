@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const mockEmail = parseCookies(request.headers.get("cookie"))[
       MOCK_USER_EMAIL_COOKIE
     ];
-    if (!mockEmail) {
+    if (mockEmail) {
       tokenSubject = mockEmail;
     }
   }
@@ -48,8 +48,10 @@ export async function GET(request: Request) {
     issuer,
     audience,
     subject: tokenSubject,
-    expiresIn: 60,
+    expiresIn: 60 * 5,
   });
 
-  return NextResponse.json({ token });
+  return NextResponse.json({
+    token,
+  });
 }

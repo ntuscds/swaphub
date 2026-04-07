@@ -489,6 +489,7 @@ export function CourseSwapMatches({
   } | null>(null);
   const [editUrl, setEditUrl] = useState<string>("/swap");
   const [sheetSide, setSheetSide] = useState<"bottom" | "right">("bottom");
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     setEditUrl(

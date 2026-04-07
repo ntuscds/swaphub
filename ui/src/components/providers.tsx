@@ -10,25 +10,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
-import { useStableQuery } from "./use-stable-query";
-import { api } from "../../convex/_generated/api";
+import { ThemeProvider } from "./theme-provider";
+import z from "zod";
+import { env } from "@/lib/env";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL);
 
-const SelfContext = createContext<{
-  self: Awaited<
-    ReturnType<typeof useStableQuery<typeof api.tasks.getSelf>>
-  > | null;
-}>({
-  self: null,
+const ConvexTokenResponseSchema = z.object({
+  token: z.string().optional(),
 });
-
-export function useSelf() {
-  return useContext(SelfContext);
-}
 
 function useAuthFromProviderMicrosoft() {
   const refreshTokenQuery = useQuery({
@@ -39,7 +33,7 @@ function useAuthFromProviderMicrosoft() {
         cache: "no-store",
       });
       if (!res.ok) return null;
-      const data = (await res.json()) as { token?: string };
+      const data = ConvexTokenResponseSchema.parse(await res.json());
       return data.token ?? null;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes. Buffer 5mins to avoid race conditions.
@@ -48,8 +42,11 @@ function useAuthFromProviderMicrosoft() {
 
   const refetchAccessToken = useCallback(
     async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
-      const result = await refreshTokenQuery.refetch({});
-      return result.data ?? null;
+      if (forceRefreshToken) {
+        const result = await refreshTokenQuery.refetch();
+        return result.data ?? null;
+      }
+      return refreshTokenQuery.data ?? null;
     },
     []
   );
@@ -61,7 +58,13 @@ function useAuthFromProviderMicrosoft() {
   };
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  fontClass,
+}: {
+  children: React.ReactNode;
+  fontClass: string;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -82,7 +85,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         <QueryClientProvider client={queryClient}>
           {/* <SelfProvider>{children}</SelfProvider> */}
-          {children}
+          <ThemeProvider className={fontClass}>{children}</ThemeProvider>
         </QueryClientProvider>
       </ConvexProviderWithAuth>
     </QueryClientProvider>

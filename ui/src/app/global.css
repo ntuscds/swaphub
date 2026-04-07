@@ -215,3 +215,11 @@
 .auth-loader-bar {
   animation: auth-loader-fade 500ms linear infinite;
 }
+
+.navbar-height {
+  @apply h-0 lg:h-10 xl:h-12;
+}
+
+.h-screen-safe {
+  @apply h-svh lg:h-[calc(100vh-40px)] xl:h-[calc(100vh-48px)];
+}

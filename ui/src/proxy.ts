@@ -36,5 +36,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/onboard", "/swap/:path*", "/swap"],
+  matcher: ["/", "/onboard", "/swap/:path*", "/swap"],
 };
