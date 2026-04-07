@@ -417,10 +417,11 @@ export function SwapRequestForm({
           </Alert>
         )}
 
-        <div className="w-full flex justify-end">
+        <div className="w-full flex">
           <Button
             type="submit"
             disabled={form.formState.isSubmitting || isPending}
+            size="lg"
           >
             <Send className="size-4" /> Request
           </Button>

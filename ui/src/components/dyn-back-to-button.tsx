@@ -10,7 +10,7 @@ export function DynBackToButton({ defaultBackTo }: { defaultBackTo: string }) {
   return (
     <Button
       variant="link"
-      className="w-fit px-0 text-primary-500 flex items-center gap-0.5"
+      className="w-fit px-0 text-primary-700 dark:text-primary-500 flex items-center gap-0.5"
       onClick={() => {
         const queryParams = new URLSearchParams(window.location.search);
         const backTo = queryParams.get("backTo");
@@ -21,7 +21,8 @@ export function DynBackToButton({ defaultBackTo }: { defaultBackTo: string }) {
         }
       }}
     >
-      <ArrowLeft className="size-4" /> Back
+      <ArrowLeft className="size-4 text-primary-700 dark:text-primary-500" />{" "}
+      Back
     </Button>
   );
 }

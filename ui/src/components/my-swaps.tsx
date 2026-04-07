@@ -47,7 +47,7 @@ export function MySwaps({ className }: { className?: string }) {
             tag = (
               <Badge
                 variant="outline"
-                className="bg-green-500/15 text-green-500"
+                className="bg-green-100 dark:bg-green-500/15 text-green-900 dark:text-green-500 border-green-300 dark:border-none"
               >
                 Swapped!
               </Badge>
@@ -56,7 +56,7 @@ export function MySwaps({ className }: { className?: string }) {
             tag = (
               <Badge
                 variant="outline"
-                className="bg-yellow-500/15 text-yellow-500"
+                className="bg-yellow-100 dark:bg-yellow-500/15 text-yellow-900 dark:text-yellow-500 border-yellow-300 dark:border-none"
               >
                 {request.pendingRequestsCount} pending
               </Badge>
@@ -72,14 +72,18 @@ export function MySwaps({ className }: { className?: string }) {
                 </Badge>
               );
             } else {
-              tag = <p className="text-xs text-primary-500">Request</p>;
+              tag = (
+                <p className="text-xs text-primary-700 dark:text-primary-500">
+                  Request
+                </p>
+              );
             }
           }
           return (
             <Link href={`/swap/${request.course.code}`} key={request.course.id}>
               <div
                 className={cn(
-                  "flex flex-row gap-2 items-center justify-between px-2.5 py-2",
+                  "flex flex-row gap-0.5 items-center justify-between px-2.5 py-2",
                   {
                     "border-b border-border": index !== data.length - 1,
                   }
@@ -89,7 +93,7 @@ export function MySwaps({ className }: { className?: string }) {
                   {request.course.code} {request.course.name}
                 </span>
                 {tag}
-                <ArrowRight className="size-4 text-primary-500" />
+                <ArrowRight className="size-4 text-primary-700 dark:text-primary-500" />
               </div>
             </Link>
           );

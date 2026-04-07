@@ -1763,27 +1763,34 @@ export const verifyTelegramAccount = internalMutation({
 });
 
 function nameMockEmail(email: string, number: number) {
-  return `MOCK_${number}@fakemail.io`;
+  return `MOCK_${number}:${email}`;
 }
 
 export const getAllMockAccounts = query({
   args: {},
   handler: async (ctx) => {
-    await getAuth(ctx);
+    const { user } = await getAuth(ctx);
+    const realEmail = user.email.replaceAll(/^MOCK_\d+:/g, "");
 
     const accounts = await ctx.db.query("users").collect();
-    return accounts.sort((a, b) => a.email.localeCompare(b.email));
+    return accounts.filter(
+      (u) => u.email.startsWith("MOCK_") && u.email.endsWith(`:${realEmail}`)
+    );
   },
 });
 
 export const duplicateAccount = mutation({
   args: {},
   handler: async (ctx) => {
-    const { user } = await getAuth(ctx, false);
+    const { user } = await getAuth(ctx);
 
+    const realEmail = user.email.replaceAll(/^MOCK_\d+:/g, "");
     const countUsers = await ctx.db.query("users").collect();
-    const newEmail = nameMockEmail(user.email, countUsers.length + 1);
-    const newHandle = `${user.handle} (${newEmail})`;
+    const existingUsers = countUsers.filter(
+      (u) => u.email.startsWith("MOCK_") && u.email.endsWith(`:${realEmail}`)
+    );
+    const newEmail = nameMockEmail(realEmail, existingUsers.length + 1);
+    const newHandle = `${user.handle} (${existingUsers.length + 1})`;
     await ctx.db.insert("users", {
       email: newEmail,
       handle: newHandle,

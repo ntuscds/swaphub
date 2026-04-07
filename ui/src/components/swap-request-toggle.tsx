@@ -23,6 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useConvexActionState } from "./use-convex-mutation-state";
+import { cn } from "@/lib/utils";
 
 export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
   const [isDisableWarningOpen, setIsDisableWarningOpen] = useState(false);
@@ -71,7 +72,13 @@ export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
               className="flex flex-row gap-1 items-center"
               disabled={isPending}
             >
-              <span className={isEnabled ? "text-green-400" : "text-red-400"}>
+              <span
+                className={cn({
+                  "text-green-700 dark:text-green-500": isEnabled,
+                  "text-red-700 dark:text-red-500": !isEnabled,
+                  // isEnabled ? "text-green-400" : "text-red-400"
+                })}
+              >
                 {isEnabled ? "Enabled" : "Disabled"}
               </span>
               <ChevronsUpDown className="size-3.5 text-background-600 dark:text-background-400" />

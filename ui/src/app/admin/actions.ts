@@ -1,9 +1,11 @@
 "use server";
 
 import { cookies } from "next/headers";
-
-const MOCK_USER_EMAIL_COOKIE = "_MOCK_USER_EMAIL";
-const THIRTY_DAYS_IN_SECONDS = 60 * 60 * 24 * 30;
+import {
+  MOCK_USER_EMAIL_COOKIE,
+  setMockUserEmailCookie,
+} from "@/lib/mock-user";
+import { revalidatePath } from "next/cache";
 
 export async function setMockUserEmail(formData: FormData) {
   const selectedEmail = String(formData.get("mockUserEmail") ?? "").trim();
@@ -14,10 +16,5 @@ export async function setMockUserEmail(formData: FormData) {
     return;
   }
 
-  cookieStore.set(MOCK_USER_EMAIL_COOKIE, selectedEmail, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: THIRTY_DAYS_IN_SECONDS,
-  });
+  await setMockUserEmailCookie(cookieStore, selectedEmail);
 }

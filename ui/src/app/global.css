@@ -47,11 +47,11 @@
   /* Semantic defaults (light): background-50, primary-500, secondary-500 */
   --background: var(--background-50);
   --foreground: var(--background-900);
-  --card: var(--background-50);
+  --card: var(--background-100);
   --card-foreground: var(--background-900);
   --popover: var(--background-50);
   --popover-foreground: var(--background-900);
-  --primary: var(--primary-950);
+  --primary: var(--primary-800);
   --primary-foreground: var(--primary-50);
   --secondary: var(--secondary-500);
   --secondary-foreground: var(--secondary-50);
@@ -60,8 +60,8 @@
   --accent: var(--primary-500);
   --accent-foreground: var(--primary-50);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: var(--background-200);
-  --input: var(--background-200);
+  --border: var(--background-300);
+  --input: var(--background-300);
   --ring: var(--primary-400);
   --chart-1: var(--primary-300);
   --chart-2: var(--primary-400);

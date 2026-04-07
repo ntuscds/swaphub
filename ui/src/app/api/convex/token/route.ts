@@ -3,19 +3,7 @@ import { sign as jwtSign } from "jsonwebtoken";
 import { env } from "@/lib/env";
 import { readSessionWithRefresh } from "@/lib/microsoft-auth";
 import { cookies } from "next/headers";
-
-const MOCK_USER_EMAIL_COOKIE = "_MOCK_USER_EMAIL";
-
-function parseCookies(cookieHeader: string | null) {
-  const cookies: Record<string, string> = {};
-  if (!cookieHeader) return cookies;
-  for (const entry of cookieHeader.split(";")) {
-    const [name, ...value] = entry.trim().split("=");
-    if (!name) continue;
-    cookies[name] = decodeURIComponent(value.join("="));
-  }
-  return cookies;
-}
+import { getMockUserEmailFromCookieHeader } from "@/lib/mock-user";
 
 export async function GET(request: Request) {
   const _cookies = await cookies();
@@ -31,12 +19,10 @@ export async function GET(request: Request) {
 
   let tokenSubject = session.email;
   if (env.NEXT_PUBLIC_ALLOW_MOCK_USER) {
-    const mockEmail = parseCookies(request.headers.get("cookie"))[
-      MOCK_USER_EMAIL_COOKIE
-    ];
-    if (mockEmail) {
-      tokenSubject = mockEmail;
-    }
+    const mockEmail = await getMockUserEmailFromCookieHeader(
+      request.headers.get("cookie")
+    );
+    tokenSubject = mockEmail ?? session.email;
   }
   if (!tokenSubject) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

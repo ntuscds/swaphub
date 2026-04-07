@@ -32,7 +32,7 @@ export default async function Layout({ children }: PropsWithChildren) {
         <HydrationSafeScrollArea className="w-full max-w-64 lg:max-w-80 xl:max-w-96 bg-background text-foreground h-screen-safe min-h-0 p-4">
           <div className="w-full max-w-64 lg:max-w-80 xl:max-w-96 flex flex-col gap-2">
             <div className="pt-8 lg:pt-0 flex flex-row gap-2 items-center justify-between">
-              <h1 className="text-sm md:text-base lg:text-lg xl:text-xl text-primary-500">
+              <h1 className="text-sm md:text-base lg:text-lg xl:text-xl text-primary-800 dark:text-primary-500">
                 My Swaps
               </h1>
               <Suspense

@@ -631,7 +631,7 @@ export function CourseSwapMatches({
     yourRequestElement = <Skeleton className="h-48 w-full" />;
   } else {
     yourRequestElement = (
-      <div className="bg-card border border-collapse border-muted rounded-md">
+      <div className="bg-card border border-collapse border-border rounded-md">
         <Table className="w-full">
           <TableBody>
             <TableRow>
@@ -665,8 +665,8 @@ export function CourseSwapMatches({
   let hasSwappedEle = null;
   if (requestsQuery?.course.hasSwapped === true) {
     hasSwappedEle = (
-      <div className="flex flex-col gap-1 justify-center items-center w-full bg-green-950 border border-green-700 rounded-md p-2.5 lg:p-4">
-        <h2 className="text-base font-bold text-green-50">
+      <div className="flex flex-col gap-1 justify-center items-center w-full bg-green-100 dark:bg-green-950 border border-green-300 dark:border-green-700 rounded-md p-2.5 lg:p-4">
+        <h2 className="text-base font-bold text-green-800 dark:text-green-50">
           You have already Swapped!
         </h2>
       </div>

@@ -37,12 +37,12 @@ async function EditCourseHeader({ courseCode }: { courseCode: string }) {
     swappersText = `${data.swappersCount} swappers`;
   }
   return (
-    <>
+    <div className="flex flex-col gap-2">
       <h1 className="text-xl lg:text-2xl xl:text-3xl font-bold">
         {data.code} {data.name}
       </h1>
       {swappersText && <Badge variant="secondary">{swappersText}</Badge>}
-    </>
+    </div>
   );
 }
 
@@ -60,7 +60,7 @@ export default async function Layout({
     <div className="flex flex-col items-center">
       <div className="flex flex-col gap-12 pt-8 pb-8 xl:py-4 max-w-4xl w-full">
         <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             <div className="flex flex-row gap-2 items-center justify-between">
               <DynBackToButton defaultBackTo="/swap" />
               <div className="flex flex-row gap-2 items-center">

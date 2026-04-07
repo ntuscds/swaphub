@@ -1,15 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Moon, Sun, UserRound } from "lucide-react";
+import { LogOut, Moon, Plus, Sun, UserRound } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
-import z from "zod";
 import { useThemeStore } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -18,6 +15,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMemo } from "react";
+import { Badge } from "./ui/badge";
+import { env } from "@/lib/env";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useStableQueryWithStatus } from "./use-stable-query";
+import { setMockUserEmail } from "@/app/admin/actions";
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useThemeStore(
@@ -42,19 +45,63 @@ export function ThemeSwitcher() {
   );
 }
 
+export function MockAccountsMenu({ mockUser }: { mockUser?: string }) {
+  const mockAccounts = useStableQueryWithStatus(
+    api.tasks.getAllMockAccounts,
+    {}
+  );
+  const duplicateAccount = useMutation(api.tasks.duplicateAccount);
+  return (
+    <DropdownMenuGroup>
+      <DropdownMenuLabel className="font-normal">
+        Mock Accounts <Badge variant="secondary">Temporary</Badge>
+      </DropdownMenuLabel>
+      <DropdownMenuCheckboxItem
+        checked={mockUser === undefined}
+        onClick={async () => {
+          const formData = new FormData();
+          await setMockUserEmail(formData);
+          window.location.reload();
+        }}
+      >
+        Default Account
+      </DropdownMenuCheckboxItem>
+      {mockAccounts.data?.map((account) => (
+        <DropdownMenuCheckboxItem
+          key={account.email}
+          checked={account.email === mockUser}
+          onClick={async () => {
+            const formData = new FormData();
+            formData.set("mockUserEmail", account.email);
+            await setMockUserEmail(formData);
+            window.location.reload();
+          }}
+        >
+          {account.email}
+        </DropdownMenuCheckboxItem>
+      ))}
+      <DropdownMenuItem onClick={() => duplicateAccount({})}>
+        <Plus className="size-4" />
+        New Mock Account
+      </DropdownMenuItem>
+    </DropdownMenuGroup>
+  );
+}
+
 export function ProfileMenu({
   user,
+  mockUser,
 }: {
   user: {
     name: string | null;
     email: string;
   } | null;
+  mockUser?: string;
 }) {
-  if (!user) {
-    return <Button variant="outline">Get Started</Button>;
-  }
-
   const profileInitials = useMemo(() => {
+    if (!user) {
+      return null;
+    }
     let profileInitials = user.name;
     if (!profileInitials) {
       return null;
@@ -69,9 +116,11 @@ export function ProfileMenu({
       .map((part) => part[0])
       .join("")
       .toUpperCase();
-  }, [user.name]);
+  }, [user?.name]);
 
-  // const router = useRouter();
+  if (!user) {
+    return <Button variant="outline">Get Started</Button>;
+  }
 
   return (
     <DropdownMenu>
@@ -96,7 +145,7 @@ export function ProfileMenu({
           </Button>
         }
       />
-      <DropdownMenuContent align="end" className="min-w-48">
+      <DropdownMenuContent align="end" className="min-w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col gap-0.5">
@@ -106,18 +155,40 @@ export function ProfileMenu({
                 </span>
               )}
               <span className="text-xs text-muted-foreground break-all">
-                {user.email}
+                {env.NEXT_PUBLIC_ALLOW_MOCK_USER && mockUser
+                  ? mockUser
+                  : user.email}
               </span>
             </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        {env.NEXT_PUBLIC_ALLOW_MOCK_USER && (
+          <MockAccountsMenu mockUser={mockUser} />
+        )}
+        {/* <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            Mock Accounts
+            <Badge variant="secondary">Temporary</Badge>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>Email</DropdownMenuItem>
+              <DropdownMenuItem>Message</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>More...</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub> */}
+
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
             window.location.href = "/api/auth/microsoft/logout";
-            // router.push("/api/auth/microsoft/logout");
           }}
+          variant="destructive"
         >
+          <LogOut className="size-4" />
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
