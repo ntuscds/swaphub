@@ -6,6 +6,7 @@ import {
   setMockUserEmailCookie,
 } from "@/lib/mock-user";
 import { revalidatePath } from "next/cache";
+import { env } from "@/lib/env";
 
 export async function setMockUserEmail(formData: FormData) {
   const selectedEmail = String(formData.get("mockUserEmail") ?? "").trim();
@@ -16,5 +17,5 @@ export async function setMockUserEmail(formData: FormData) {
     return;
   }
 
-  await setMockUserEmailCookie(cookieStore, selectedEmail);
+  await setMockUserEmailCookie(cookieStore, selectedEmail, env.ENCRYPTION_KEY);
 }

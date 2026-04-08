@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { base64UrlEncode, decryptValue, encryptValue } from "@/lib/encrypt";
 import { cookies } from "next/headers";
 import {
   sign as jwtSign,
@@ -274,7 +275,7 @@ export async function setRefreshTokenCookie(
   _cookies: Awaited<ReturnType<typeof cookies>>,
   refreshToken: string
 ) {
-  const encrypted = await encryptValue(refreshToken);
+  const encrypted = await encryptValue(refreshToken, env.ENCRYPTION_KEY);
   _cookies.set(AUTH_ENCRYPTED_REFRESH_COOKIE, encrypted, {
     maxAge: REFRESH_TOKEN_MAX_AGE_IN_SECONDS,
     httpOnly: true,
@@ -355,61 +356,6 @@ export async function verifySession(
   }
 }
 
-function base64UrlEncode(input: Uint8Array) {
-  return Buffer.from(input)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function base64UrlDecodeToBytes(input: string) {
-  const padded = input.replace(/-/g, "+").replace(/_/g, "/");
-  const remainder = padded.length % 4;
-  const withPadding =
-    remainder === 0 ? padded : padded + "=".repeat(4 - remainder);
-  return new Uint8Array(Buffer.from(withPadding, "base64"));
-}
-
-async function getAesKey() {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(env.ENCRYPTION_KEY)
-  );
-  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, [
-    "encrypt",
-    "decrypt",
-  ]);
-}
-
-async function encryptValue(value: string) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await getAesKey();
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(value)
-  );
-  return `${base64UrlEncode(iv)}.${base64UrlEncode(new Uint8Array(encrypted))}`;
-}
-
-export async function decryptValue(input: string) {
-  const [rawIv, rawCiphertext] = input.split(".");
-  if (!rawIv || !rawCiphertext) {
-    throw new Error("Invalid encrypted value format");
-  }
-
-  const iv = base64UrlDecodeToBytes(rawIv);
-  const ciphertext = base64UrlDecodeToBytes(rawCiphertext);
-  const key = await getAesKey();
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    ciphertext
-  );
-  return new TextDecoder().decode(decrypted);
-}
-
 export async function _getAuth() {
   const _cookies = await cookies();
   const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
@@ -434,7 +380,8 @@ export async function _getAuth() {
   } else {
     if (refreshTokenInCookie) {
       const decryptedRefreshToken = await decryptValue(
-        refreshTokenInCookie.value
+        refreshTokenInCookie.value,
+        env.ENCRYPTION_KEY
       );
       const refreshed = await refreshMicrosoftAccessToken(
         decryptedRefreshToken
@@ -470,7 +417,10 @@ export async function refreshSession(
     return null;
   }
   try {
-    const decryptedRefreshToken = await decryptValue(authCookies.refresh);
+    const decryptedRefreshToken = await decryptValue(
+      authCookies.refresh,
+      env.ENCRYPTION_KEY
+    );
     const refreshed = await refreshMicrosoftAccessToken(decryptedRefreshToken);
     const profile = await fetchMicrosoftUser(refreshed.access_token);
     const accountSetup = await getAccountSetup(profile.email);

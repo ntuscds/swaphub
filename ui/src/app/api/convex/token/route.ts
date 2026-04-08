@@ -20,7 +20,8 @@ export async function GET(request: Request) {
   let tokenSubject = session.email;
   if (env.NEXT_PUBLIC_ALLOW_MOCK_USER) {
     const mockEmail = await getMockUserEmailFromCookieHeader(
-      request.headers.get("cookie")
+      request.headers.get("cookie"),
+      env.ENCRYPTION_KEY
     );
     tokenSubject = mockEmail ?? session.email;
   }

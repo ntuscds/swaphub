@@ -175,6 +175,7 @@ export function SwapItemMatchBottomSheet({
   match: matchObj,
   isAlreadySwapped,
   requestClose,
+  isSheet = true,
 }: {
   course: {
     id: Id<"courses">;
@@ -194,6 +195,7 @@ export function SwapItemMatchBottomSheet({
       };
   isAlreadySwapped: boolean;
   requestClose?: () => void;
+  isSheet?: boolean;
 }) {
   let statusElement = null;
   const { match } = matchObj;
@@ -295,12 +297,21 @@ export function SwapItemMatchBottomSheet({
   return (
     <>
       <div className="max-h-[calc(100vh-120px)] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>
-            {course.code} {course.name} Swap Request
-          </SheetTitle>
-          <div className="pt-2">{statusElement}</div>
-        </SheetHeader>
+        {isSheet ? (
+          <SheetHeader>
+            <SheetTitle>
+              {course.code} {course.name} Swap Request
+            </SheetTitle>
+            <div className="pt-2">{statusElement}</div>
+          </SheetHeader>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <h2 className="text-base lg:text-lg xl:text-xl font-bold">
+              {course.code} {course.name} Swap Request
+            </h2>
+            {statusElement}
+          </div>
+        )}
         <div className="flex flex-col items-center justify-center px-4">
           <div className="w-full max-w-72">
             {matchObj.type === "direct" ? (

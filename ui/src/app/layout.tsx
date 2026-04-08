@@ -14,6 +14,7 @@ import Link from "next/link";
 import { getAuth } from "@/lib/microsoft-auth";
 import { getMockUserEmailFromCookieStore } from "@/lib/mock-user";
 import { cookies } from "next/headers";
+import { env } from "@/lib/env";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -25,7 +26,10 @@ export const metadata: Metadata = {
 export async function Navbar({ isLoading }: { isLoading: boolean }) {
   const auth = isLoading ? null : await getAuth();
   const cookieStore = await cookies();
-  const mockUser = await getMockUserEmailFromCookieStore(cookieStore);
+  const mockUser = await getMockUserEmailFromCookieStore(
+    cookieStore,
+    env.ENCRYPTION_KEY
+  );
   return (
     <div className="hidden lg:flex navbar-height bg-background border-b border-border flex-col items-center justify-center">
       <div className="w-full max-w-ui px-4 flex flex-row items-center justify-between">
