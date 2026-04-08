@@ -10,22 +10,16 @@ import crypto from "crypto";
 import { redis } from "@/db/upstash";
 import { Lock } from "@upstash/lock";
 import { isValid, parse } from "@tma.js/init-data-node";
+import {
+  MESSAGE_TEMPLATES,
+  SwapRequestPayload,
+  template,
+} from "@/lib/swap-request";
+import { encryptValue } from "@/lib/encrypt";
+import { getAuth } from "@/lib/microsoft-auth";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
-}
-
-function buildFStarsUrl(
-  courseCode: string,
-  index: string,
-  ay: string,
-  semester: string
-) {
-  return `https://fstars.benapps.dev/preview?ay=${encodeURIComponent(
-    ay
-  )}&s=${encodeURIComponent(semester)}&c=${encodeURIComponent(
-    courseCode
-  )}:${encodeURIComponent(index)}`;
 }
 
 type ToggleSwapRequestCancelledParticipant = {
@@ -62,97 +56,136 @@ export const sendSwapRequest = action({
       middlemanSwapperId: args.middlemanSwapperId,
     });
 
-    const { course, initiator, target, middleman } = result;
-    const username = initiator.handle;
+    const { requestId, course, initiator, target, middleman } = result;
 
-    const myIndexUrl = buildFStarsUrl(
-      course.code,
-      initiator.index,
-      course.ay,
-      course.semester
-    );
-    const otherIndexUrl = buildFStarsUrl(
-      course.code,
-      target.index,
-      course.ay,
-      course.semester
-    );
-
-    // 3 way swap.
+    const templatePayload = {
+      courseCode: course.code,
+      courseName: course.name,
+      initiator: {
+        username: initiator.username,
+        telegram: initiator.telegramUserId.toString(),
+        index: initiator.index,
+      },
+      target: {
+        username: target.username,
+        telegram: target.telegramUserId.toString(),
+        index: target.index,
+      },
+      middleman: {
+        username: "",
+        telegram: "",
+        index: "",
+      },
+    };
+    const ay = {
+      ay: course.ay,
+      semester: course.semester,
+    };
     if (middleman) {
-      await bot.sendMessage(
-        Number(middleman.telegramUserId),
-        `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
-@${escapeMarkdown(username)} wants to do a 3 way swap with you!
-You only need to swap with them:
-They have: [${escapeMarkdown(initiator.index)}](${myIndexUrl})
-You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
-        {
-          parse_mode: "Markdown",
-          disable_web_page_preview: true,
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "Accept", callback_data: middleman.webhook.accept! },
-                { text: "Decline", callback_data: middleman.webhook.decline! },
-              ],
-            ],
-          },
-        }
+      templatePayload.middleman = {
+        username: middleman.username,
+        telegram: middleman.telegramUserId.toString(),
+        index: middleman.index,
+      };
+      const middlemanMessage = template(
+        MESSAGE_TEMPLATES.threeWay.initiator.request.target,
+        templatePayload,
+        ay
       );
-      await bot.sendMessage(
-        Number(target.telegramUserId),
-        `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
-@${escapeMarkdown(username)} wants to do a 3 way swap with you!
-After they swap with another party, you only need to swap with them:
-They will have: [${escapeMarkdown(initiator.index)}](${myIndexUrl})
-You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
-        {
-          parse_mode: "Markdown",
-          disable_web_page_preview: true,
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "Accept", callback_data: target.webhook.accept },
-                { text: "Decline", callback_data: target.webhook.decline },
-              ],
-            ],
-          },
-        }
+      const targetMessage = template(
+        MESSAGE_TEMPLATES.threeWay.initiator.request.target,
+        templatePayload,
+        ay
       );
-      return;
-    }
 
-    // Direct swap.
-    await bot
-      .sendMessage(
-        Number(target.telegramUserId),
-        `*${escapeMarkdown(course.code)} ${escapeMarkdown(course.name)} Swap Request*
-@${escapeMarkdown(username)} wants to swap with you!
-They have: [${escapeMarkdown(initiator.index)}](${myIndexUrl})
-You have: [${escapeMarkdown(target.index)}](${otherIndexUrl}).`,
-        {
+      const targetSwapPayload: SwapRequestPayload = {
+        requestId,
+        swapperId: target.id,
+      };
+      const middlemanSwapPayload: SwapRequestPayload = {
+        requestId,
+        swapperId: middleman.id,
+      };
+
+      const encryptedTargetSwapPayload = await encryptValue(
+        JSON.stringify(targetSwapPayload),
+        env.ENCRYPTION_KEY
+      );
+      const encryptedMiddlemanSwapPayload = await encryptValue(
+        JSON.stringify(middlemanSwapPayload),
+        env.ENCRYPTION_KEY
+      );
+      const targetRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
+        encryptedTargetSwapPayload
+      )}`;
+      const middlemanRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
+        encryptedMiddlemanSwapPayload
+      )}`;
+
+      await Promise.all([
+        bot
+          .sendMessage(Number(middleman.telegramUserId), middlemanMessage, {
+            parse_mode: "Markdown",
+            disable_web_page_preview: true,
+            reply_markup: {
+              inline_keyboard: [[{ text: "View", url: middlemanRequestUrl }]],
+            },
+          })
+          .catch((error) => {
+            console.error(
+              `Error sending message to ${middleman.telegramUserId}:`,
+              error
+            );
+          }),
+        bot
+          .sendMessage(Number(target.telegramUserId), targetMessage, {
+            parse_mode: "Markdown",
+            disable_web_page_preview: true,
+            reply_markup: {
+              inline_keyboard: [[{ text: "View", url: targetRequestUrl }]],
+            },
+          })
+          .catch((error) => {
+            console.error(
+              `Error sending message to ${target.telegramUserId}:`,
+              error
+            );
+          }),
+      ]);
+    } else {
+      const targetMessage = template(
+        MESSAGE_TEMPLATES.direct.initiator.request.target,
+        templatePayload,
+        ay
+      );
+
+      const targetSwapPayload: SwapRequestPayload = {
+        requestId,
+        swapperId: target.id,
+      };
+      const encryptedTargetSwapPayload = await encryptValue(
+        JSON.stringify(targetSwapPayload),
+        env.ENCRYPTION_KEY
+      );
+      const targetRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
+        encryptedTargetSwapPayload
+      )}`;
+
+      await bot
+        .sendMessage(Number(target.telegramUserId), targetMessage, {
           parse_mode: "Markdown",
           disable_web_page_preview: true,
           reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "Accept", callback_data: target.webhook.accept },
-                {
-                  text: "Decline",
-                  callback_data: target.webhook.decline,
-                },
-              ],
-            ],
+            inline_keyboard: [[{ text: "View", url: targetRequestUrl }]],
           },
-        }
-      )
-      .catch((error) => {
-        console.error(
-          `Error sending message to ${target.telegramUserId}:`,
-          error
-        );
-      });
+        })
+        .catch((error) => {
+          console.error(
+            `Error sending message to ${target.telegramUserId}:`,
+            error
+          );
+        });
+    }
   },
 });
 
@@ -553,7 +586,7 @@ export const handleTelegramWebhookCommand = internalAction({
 
     const email = params[0] ?? "";
     const code = params[1] ?? "";
-    const username = args.fromUsername ?? `user_${args.fromId}`;
+    const telegramHandle = args.fromUsername ?? `user_${args.fromId}`;
 
     try {
       const result = await ctx.runMutation(
@@ -562,7 +595,7 @@ export const handleTelegramWebhookCommand = internalAction({
           email,
           code,
           telegramUserId: BigInt(args.fromId),
-          username,
+          telegramHandle,
         }
       );
 
@@ -620,6 +653,18 @@ export const requestLinkTelegramAccount = action({
       throw new ConvexError("Email not found");
     }
 
+    let username = identity.username as string | undefined;
+    if (!username) {
+      throw new ConvexError("Username not found");
+    }
+    // Sanitize username.
+    // Make sure it's alphanumeric and not empty.
+    username = username.replace(/[^a-zA-Z0-9 ]/g, "");
+    // Truncate to 24 characters.
+    username = username.slice(0, 24);
+    // Trim whitespace.
+    username = username.trim();
+
     if (args.telegramRawInitData) {
       if (!isValid(args.telegramRawInitData, env.BOT_KEY)) {
         throw new ConvexError("Invalid Telegram init data");
@@ -630,8 +675,8 @@ export const requestLinkTelegramAccount = action({
       }
       const telegramUserId = BigInt(initData.user.id);
 
-      const username = initData.user.username;
-      if (!username) {
+      const telegramHandle = initData.user.username;
+      if (!telegramHandle) {
         throw new ConvexError("Invalid Telegram username");
       }
 
@@ -641,9 +686,11 @@ export const requestLinkTelegramAccount = action({
         {
           email,
           code: "",
+          directCreation: {
+            username,
+          },
           telegramUserId,
-          username,
-          bypassCodeCheck: true,
+          telegramHandle,
         }
       );
       if (!result.success) {
@@ -657,7 +704,9 @@ export const requestLinkTelegramAccount = action({
       };
     }
 
-    return await ctx.runMutation(internal.tasks.requestLinkTelegramAccount, {});
+    return await ctx.runMutation(internal.tasks.requestLinkTelegramAccount, {
+      username,
+    });
   },
 });
 

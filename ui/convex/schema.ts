@@ -100,6 +100,7 @@ export default defineSchema({
   // FIndex swap / matching tables
   users: defineTable({
     handle: v.string(),
+    username: v.string(),
     telegramUserId: v.int64(),
     email: v.string(),
     school: v.string(),

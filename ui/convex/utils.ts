@@ -2,8 +2,11 @@ import { ConvexError } from "convex/values";
 import { QueryCtx } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 
+const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
+
 export function getAccountSetupFromUser(user: Doc<"users">) {
-  if (!user.telegramUserId) {
+  // -1 means telegram not setup
+  if (user.telegramUserId < 0) {
     return "telegram_not_setup" as const;
   }
   if (!user.school) {
@@ -36,6 +39,13 @@ export async function getAuth(ctx: QueryCtx, requiresComplete: boolean = true) {
   }
   if (requiresComplete && !user.school) {
     throw new ConvexError("School not setup");
+  }
+
+  const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
+    email.endsWith(domain)
+  );
+  if (!isAllowedDomain) {
+    throw new ConvexError("Email not allowed");
   }
 
   return {

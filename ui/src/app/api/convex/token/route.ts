@@ -29,14 +29,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const token = jwtSign({}, privateKeyPem, {
-    algorithm: "RS256",
-    keyid: kid,
-    issuer,
-    audience,
-    subject: tokenSubject,
-    expiresIn: 60 * 5,
-  });
+  const token = jwtSign(
+    {
+      username: session.name ?? "",
+    },
+    privateKeyPem,
+    {
+      algorithm: "RS256",
+      keyid: kid,
+      issuer,
+      audience,
+      subject: tokenSubject,
+      expiresIn: 60 * 5,
+    }
+  );
 
   return NextResponse.json({
     token,

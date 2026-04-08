@@ -3,6 +3,7 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
+    ENCRYPTION_KEY: z.string(),
     BOT_KEY: z.string(),
     /** Used to verify webhook POSTs are from Telegram. Set the same value in setWebhook(..., { secret_token }). */
     TELEGRAM_WEBHOOK_SECRET: z.string().min(1),
@@ -19,10 +20,13 @@ export const env = createEnv({
       .transform((val) => val.replaceAll("\\\\n", "\n")),
     CONVEX_JWT_KID: z.string(),
     CONVEX_JWT_JWKS_URL: z.string(),
+
+    NEXT_APP_URL: z.string(),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {},
   runtimeEnv: {
+    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     BOT_KEY: process.env.BOT_KEY,
 
     TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
@@ -35,6 +39,8 @@ export const env = createEnv({
     CONVEX_JWT_PUBLIC_KEY: process.env.CONVEX_JWT_PUBLIC_KEY,
     CONVEX_JWT_KID: process.env.CONVEX_JWT_KID,
     CONVEX_JWT_JWKS_URL: process.env.CONVEX_JWT_JWKS_URL,
+
+    NEXT_APP_URL: process.env.NEXT_APP_URL,
   },
 
   /**

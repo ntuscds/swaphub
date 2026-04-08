@@ -67,6 +67,7 @@ export async function GET(request: Request) {
       authCookies.verifier
     );
     const profile = await fetchMicrosoftUser(exchanged.access_token);
+    console.log("TTTT: ", profile);
     const accountSetup = await getAccountSetup(profile.email);
     const session = await buildSession(
       profile,

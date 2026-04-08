@@ -5,7 +5,7 @@ import { SignInButton } from "@/components/sign-in-button";
 import { cn } from "@/lib/utils";
 import {
   OnboardingForm,
-  SelectSchoolForm,
+  SetProfileForm,
   VerifyTelegramForm,
 } from "@/components/onboard-form";
 import { redirect } from "next/navigation";
@@ -108,19 +108,19 @@ function VerifyTelegram() {
   );
 }
 
-function SelectSchool() {
+function SetProfile() {
   return (
     <div className="flex flex-col items-center">
       <div className="flex flex-col gap-12 py-12 max-w-2xl w-full">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
-            Lastly, select your school.
+            Lastly, tell us about yourself.
           </h1>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4">
-            <SelectSchoolForm />
+            <SetProfileForm />
           </div>
         </div>
 
@@ -183,7 +183,7 @@ export default async function Page({
       <ScrollArea className="bg-background text-foreground h-screen p-4">
         <OnboardingForm
           verifyTelegramNode={<VerifyTelegram />}
-          selectSchoolNode={<SelectSchool />}
+          selectSchoolNode={<SetProfile />}
           defaultAccountSetup={accountSetup}
         />
       </ScrollArea>

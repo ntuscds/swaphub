@@ -1299,7 +1299,7 @@ export const requestSwap = internalMutation({
       );
     }
 
-    await ctx.db.insert("swap_requests", {
+    const swapRequestId = await ctx.db.insert("swap_requests", {
       courseId: course._id,
       initiator: meSwapper._id,
       targetSwapper: targetSwapper._id,
@@ -1310,54 +1310,55 @@ export const requestSwap = internalMutation({
       isCompleted: false,
     });
 
-    const targetAcceptPayloadId = await ctx.db.insert(
-      "telegram_callback_data",
-      {
-        callbackData: serializeAccept(
-          targetUser._id,
-          meSwapper._id,
-          targetSwapper._id,
-          middlemanSwapper?._id
-        ),
-      }
-    );
-    const targetDeclinePayloadId = await ctx.db.insert(
-      "telegram_callback_data",
-      {
-        callbackData: serializeDecline(
-          targetUser._id,
-          meSwapper._id,
-          targetSwapper._id,
-          middlemanSwapper?._id
-        ),
-      }
-    );
+    // const targetAcceptPayloadId = await ctx.db.insert(
+    //   "telegram_callback_data",
+    //   {
+    //     callbackData: serializeAccept(
+    //       targetUser._id,
+    //       meSwapper._id,
+    //       targetSwapper._id,
+    //       middlemanSwapper?._id
+    //     ),
+    //   }
+    // );
+    // const targetDeclinePayloadId = await ctx.db.insert(
+    //   "telegram_callback_data",
+    //   {
+    //     callbackData: serializeDecline(
+    //       targetUser._id,
+    //       meSwapper._id,
+    //       targetSwapper._id,
+    //       middlemanSwapper?._id
+    //     ),
+    //   }
+    // );
 
-    let middlemanAcceptPayloadId: Id<"telegram_callback_data"> | null = null;
-    let middlemanDeclinePayloadId: Id<"telegram_callback_data"> | null = null;
-    if (middlemanSwapperUser) {
-      middlemanAcceptPayloadId = await ctx.db.insert("telegram_callback_data", {
-        callbackData: serializeAccept(
-          middlemanSwapperUser._id,
-          meSwapper._id,
-          targetSwapper._id,
-          middlemanSwapper?._id
-        ),
-      });
-      middlemanDeclinePayloadId = await ctx.db.insert(
-        "telegram_callback_data",
-        {
-          callbackData: serializeDecline(
-            middlemanSwapperUser._id,
-            meSwapper._id,
-            targetSwapper._id,
-            middlemanSwapper?._id
-          ),
-        }
-      );
-    }
+    // let middlemanAcceptPayloadId: Id<"telegram_callback_data"> | null = null;
+    // let middlemanDeclinePayloadId: Id<"telegram_callback_data"> | null = null;
+    // if (middlemanSwapperUser) {
+    //   middlemanAcceptPayloadId = await ctx.db.insert("telegram_callback_data", {
+    //     callbackData: serializeAccept(
+    //       middlemanSwapperUser._id,
+    //       meSwapper._id,
+    //       targetSwapper._id,
+    //       middlemanSwapper?._id
+    //     ),
+    //   });
+    //   middlemanDeclinePayloadId = await ctx.db.insert(
+    //     "telegram_callback_data",
+    //     {
+    //       callbackData: serializeDecline(
+    //         middlemanSwapperUser._id,
+    //         meSwapper._id,
+    //         targetSwapper._id,
+    //         middlemanSwapper?._id
+    //       ),
+    //     }
+    //   );
+    // }
 
     return {
+      requestId: swapRequestId,
       course: {
         id: course._id,
         code: course.code,
@@ -1370,16 +1371,18 @@ export const requestSwap = internalMutation({
         telegramUserId: meUser.telegramUserId,
         handle: meUser.handle,
         index: meSwapper.index,
+        username: meUser.username,
       },
       target: {
         id: targetSwapper._id,
         telegramUserId: targetUser.telegramUserId,
         handle: targetUser.handle,
         index: targetSwapper.index,
-        webhook: {
-          accept: targetAcceptPayloadId,
-          decline: targetDeclinePayloadId,
-        },
+        username: targetUser.username,
+        // webhook: {
+        //   accept: targetAcceptPayloadId,
+        //   decline: targetDeclinePayloadId,
+        // },
       },
       middleman:
         middlemanSwapper && middlemanSwapperUser
@@ -1388,10 +1391,11 @@ export const requestSwap = internalMutation({
               telegramUserId: middlemanSwapperUser.telegramUserId,
               handle: middlemanSwapperUser.handle,
               index: middlemanSwapper.index,
-              webhook: {
-                accept: middlemanAcceptPayloadId,
-                decline: middlemanDeclinePayloadId,
-              },
+              username: middlemanSwapperUser.username,
+              // webhook: {
+              //   accept: middlemanAcceptPayloadId,
+              //   decline: middlemanDeclinePayloadId,
+              // },
             }
           : null,
     };
@@ -1642,14 +1646,29 @@ export const handleSwapRequestWebhookCallback = internalMutation({
   },
 });
 
-export const selectSchool = mutation({
+export const setProfile = mutation({
   args: {
+    username: v.string(),
     school: schoolValidator,
   },
   handler: async (ctx, args) => {
+    // Make sure username is alphanumeric and not empty.
+    const username = args.username.trim();
+    if (!/^[a-zA-Z0-9 ]+$/.test(username)) {
+      throw new ConvexError("Username must be alphanumeric and not empty.");
+    }
+    if (username.length === 0) {
+      throw new ConvexError("Username must not be empty.");
+    }
+    // Must be less than 24 characters.
+    if (username.length > 24) {
+      throw new ConvexError("Username must be <= 24 characters.");
+    }
+
     const { user } = await getAuth(ctx, false);
 
     await ctx.db.patch(user._id, {
+      username,
       school: args.school,
     });
 
@@ -1670,7 +1689,10 @@ function generateCode() {
 const VERIFICATION_CODE_EXPIRATION_TIME_MS = 10 * 60 * 1000;
 
 export const requestLinkTelegramAccount = internalMutation({
-  handler: async (ctx) => {
+  args: {
+    username: v.string(),
+  },
+  handler: async (ctx, args) => {
     const { email } = await getIdentity(ctx);
 
     // Get existing verification code for this email.
@@ -1685,9 +1707,22 @@ export const requestLinkTelegramAccount = internalMutation({
       existing &&
       existing._creationTime > Date.now() - VERIFICATION_CODE_EXPIRATION_TIME_MS
     ) {
-      return { success: false, code: existing.code, email };
+      return { success: true, code: existing.code, email };
     }
 
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (!existingUser) {
+      await ctx.db.insert("users", {
+        email,
+        username: args.username,
+        handle: "",
+        telegramUserId: BigInt(-1),
+        school: "",
+      });
+    }
     const code = generateCode();
     await ctx.db.insert("telegram_user_verification", {
       email,
@@ -1702,11 +1737,15 @@ export const verifyTelegramAccount = internalMutation({
     email: v.string(),
     code: v.string(),
     telegramUserId: v.int64(),
-    username: v.string(),
-    bypassCodeCheck: v.optional(v.boolean()),
+    telegramHandle: v.string(),
+    directCreation: v.optional(
+      v.object({
+        username: v.string(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
-    if (args.bypassCodeCheck) {
+    if (args.directCreation) {
       const existingUser = await ctx.db
         .query("users")
         .withIndex("by_email", (q) => q.eq("email", args.email))
@@ -1715,13 +1754,14 @@ export const verifyTelegramAccount = internalMutation({
       if (existingUser) {
         await ctx.db.patch(existingUser._id, {
           telegramUserId: args.telegramUserId,
-          handle: args.username,
+          handle: args.telegramHandle,
           email: args.email,
         });
       } else {
         await ctx.db.insert("users", {
           telegramUserId: args.telegramUserId,
-          handle: args.username,
+          handle: args.telegramHandle,
+          username: args.directCreation.username,
           email: args.email,
           school: "",
         });
@@ -1742,21 +1782,30 @@ export const verifyTelegramAccount = internalMutation({
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
-
-    if (existingUser) {
-      await ctx.db.patch(existingUser._id, {
-        telegramUserId: args.telegramUserId,
-        handle: args.username,
-        email: args.email,
-      });
-    } else {
-      await ctx.db.insert("users", {
-        telegramUserId: args.telegramUserId,
-        handle: args.username,
-        email: args.email,
-        school: "",
-      });
+    if (!existingUser) {
+      throw new ConvexError("User not found");
     }
+
+    await ctx.db.patch(existingUser._id, {
+      telegramUserId: args.telegramUserId,
+      handle: args.telegramHandle,
+      email: args.email,
+    });
+    // if (existingUser) {
+    //   await ctx.db.patch(existingUser._id, {
+    //     telegramUserId: args.telegramUserId,
+    //     handle: args.telegramHandle,
+    //     email: args.email,
+    //   });
+    // } else {
+    //   await ctx.db.insert("users", {
+    //     telegramUserId: args.telegramUserId,
+    //     handle: args.telegramHandle,
+    //     username: args.username,
+    //     email: args.email,
+    //     school: "",
+    //   });
+    // }
 
     return { success: true };
   },
@@ -1785,16 +1834,26 @@ export const duplicateAccount = mutation({
     const { user } = await getAuth(ctx);
 
     const realEmail = user.email.replaceAll(/^MOCK_\d+:/g, "");
+    const realUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", realEmail))
+      .first();
+    if (!realUser) {
+      throw new ConvexError("Real user not found");
+    }
+
     const countUsers = await ctx.db.query("users").collect();
     const existingUsers = countUsers.filter(
       (u) => u.email.startsWith("MOCK_") && u.email.endsWith(`:${realEmail}`)
     );
     const newEmail = nameMockEmail(realEmail, existingUsers.length + 1);
-    const newHandle = `${user.handle} (${existingUsers.length + 1})`;
+    const newHandle = `${realUser.handle} (${existingUsers.length + 1})`;
+    const newUsername = `${realUser.username} (${existingUsers.length + 1})`;
     await ctx.db.insert("users", {
       email: newEmail,
       handle: newHandle,
-      telegramUserId: user.telegramUserId,
+      username: newUsername,
+      telegramUserId: realUser.telegramUserId,
       school: "CCDS",
     });
   },

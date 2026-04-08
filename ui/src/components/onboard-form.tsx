@@ -25,16 +25,29 @@ import { useStableQuery } from "./use-stable-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { env } from "@/lib/env";
+import { Input } from "./ui/input";
 
 const FormSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(1, { message: "Username must not be empty" })
+    .max(24, { message: "Username must be <= 24 characters" })
+    .regex(/^[a-zA-Z0-9 ]+$/, {
+      message: "Username must be alphanumeric and not empty",
+    }),
   school: z.enum(schools, { message: "School is required" }),
 });
 
-export function SelectSchoolForm() {
-  const selectSchool = useMutation(api.tasks.selectSchool);
+export function SetProfileForm({
+  defaultUsername,
+}: {
+  defaultUsername?: string;
+}) {
+  const setProfile = useMutation(api.tasks.setProfile);
   const router = useRouter();
   const { handle, error, isSuccess, isPending } = useConvexMutationState(
-    selectSchool,
+    setProfile,
     {
       onSuccess: async () => {
         await fetch("/api/assume-status", {
@@ -53,12 +66,13 @@ export function SelectSchoolForm() {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
+      username: defaultUsername ?? "",
       school: schools[0],
     },
   });
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
-    void handle({ school: data.school });
+    void handle({ username: data.username, school: data.school });
   }
 
   return (
@@ -66,6 +80,24 @@ export function SelectSchoolForm() {
       onSubmit={form.handleSubmit(onSubmit)}
       className="flex flex-col gap-8"
     >
+      <Controller
+        name="username"
+        control={form.control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <FieldLabel htmlFor="form-rhf-username">
+              How should we call you?
+            </FieldLabel>
+            <Input
+              id="form-rhf-username"
+              placeholder="Enter your username"
+              className="h-10"
+              value={field.value}
+              onChange={field.onChange}
+            />
+          </Field>
+        )}
+      />
       <Controller
         name="school"
         control={form.control}
