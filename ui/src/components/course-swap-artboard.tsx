@@ -104,9 +104,63 @@ export function ThreeWayCycleArtboard({
     status?: "accepted" | "declined" | "pending" | null;
   };
 }) {
+  const THREE_WAY_BASE_VIEWBOX_WIDTH = 512;
+  const THREE_WAY_VIEWBOX_HEIGHT = 580;
+  const THREE_WAY_BASE_ASPECT_RATIO =
+    THREE_WAY_BASE_VIEWBOX_WIDTH / THREE_WAY_VIEWBOX_HEIGHT;
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const requestorBadgeRef = useRef<SVGSVGElement | null>(null);
   const middlemanBadgeRef = useRef<SVGSVGElement | null>(null);
   const targetBadgeRef = useRef<SVGSVGElement | null>(null);
+  const [viewBoxConfig, setViewBoxConfig] = useState({
+    x: 0,
+    width: THREE_WAY_BASE_VIEWBOX_WIDTH,
+  });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateViewBoxWidth = () => {
+      const measuredWidth = container.clientWidth;
+      const measuredHeight = container.clientHeight;
+      if (!measuredWidth || !measuredHeight) return;
+
+      const containerAspectRatio = measuredWidth / measuredHeight;
+      setViewBoxConfig((currentViewBoxConfig) => {
+        if (containerAspectRatio <= THREE_WAY_BASE_ASPECT_RATIO) {
+          if (
+            currentViewBoxConfig.x === 0 &&
+            currentViewBoxConfig.width === THREE_WAY_BASE_VIEWBOX_WIDTH
+          ) {
+            return currentViewBoxConfig;
+          }
+          return { x: 0, width: THREE_WAY_BASE_VIEWBOX_WIDTH };
+        }
+
+        const pad = (containerAspectRatio - THREE_WAY_BASE_ASPECT_RATIO) / 2;
+        const nextX = pad * -THREE_WAY_BASE_VIEWBOX_WIDTH;
+        const nextWidth =
+          pad * 2 * THREE_WAY_BASE_VIEWBOX_WIDTH + THREE_WAY_BASE_VIEWBOX_WIDTH;
+
+        if (
+          currentViewBoxConfig.x === nextX &&
+          currentViewBoxConfig.width === nextWidth
+        ) {
+          return currentViewBoxConfig;
+        }
+
+        return { x: nextX, width: nextWidth };
+      });
+    };
+
+    updateViewBoxWidth();
+    const resizeObserver = new ResizeObserver(updateViewBoxWidth);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     const requestorBadge = requestorBadgeRef.current;
@@ -281,260 +335,269 @@ export function ThreeWayCycleArtboard({
     return () => cancelAnimationFrame(rafId);
   }, []);
 
+  const computedViewBox = `${viewBoxConfig.x} 0 ${viewBoxConfig.width} ${THREE_WAY_VIEWBOX_HEIGHT}`;
+
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      // width={512}
-      // height={479}
-      className="w-full"
-      viewBox="0 0 512 580"
-      fill="none"
-      // {...props}
-    >
-      <path
-        fill="url(#a)"
-        d="M0 291c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H0v-40Z"
-      />
-      <circle cx={64} cy={227} r={64} fill="url(#b)" />
-      {iam === "initiator" ? (
-        <text
-          x="64"
-          y="363"
-          className="fill-primary-500 font-extrabold"
-          fontSize="32"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          YOU
-        </text>
-      ) : (
-        <text
-          x="64"
-          y="363"
-          className="fill-primary-600 dark:fill-primary-400 font-light"
-          fontSize="24"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          {initiator.username}
-        </text>
-      )}
-      {initiator.status && (
-        <SvgBadge cx={64} cy={412} type={initiator.status} />
-      )}
-      <path
-        fill="url(#c)"
-        d="M384 128c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H384v-40Z"
-      />
-      <circle cx={448} cy={64} r={64} fill="url(#d)" />
-
-      {iam === "middleman" ? (
-        <text
-          x="448"
-          y="200"
-          className="fill-secondary-500 font-extrabold"
-          fontSize="32"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          YOU
-        </text>
-      ) : (
-        <text
-          x="448"
-          y="200"
-          className="fill-secondary-600 dark:fill-secondary-400 font-light"
-          fontSize="24"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          {middleman.username}
-        </text>
-      )}
-      {middleman.status && (
-        <SvgBadge cx={448} cy={249} type={middleman.status} />
-      )}
-
-      <path
-        fill="url(#e)"
-        d="M384 439c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H384v-40Z"
-      />
-      <circle cx={448} cy={375} r={64} fill="url(#f)" />
-
-      {iam === "target" ? (
-        <text
-          x="448"
-          y="512"
-          className="fill-white font-extrabold"
-          fontSize="32"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          YOU
-        </text>
-      ) : (
-        <text
-          x="448"
-          y="512"
-          className="fill-background-600 dark:fill-background-400 font-light"
-          fontSize="24"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          {target.username}
-        </text>
-      )}
-      {target.status && <SvgBadge cx={448} cy={561} type={target.status} />}
-      <path
-        fill="#334155"
-        d="M327.222 117.802a1 1 0 0 0-.541-1.307l-8.315-3.444a1 1 0 1 0-.765 1.848l7.391 3.061-3.062 7.391a1 1 0 0 0 1.848.766l3.444-8.315ZM160 186.302l.383.924 166.298-68.883-.383-.924-.382-.924-166.299 68.883.383.924ZM193.178 210.76c-.211.51.031 1.095.541 1.307l8.315 3.444a1.001 1.001 0 0 0 .766-1.848l-7.391-3.061 3.061-7.391a1 1 0 0 0-1.848-.766l-3.444 8.315Zm167.222-68.5-.382-.924-166.299 68.883.383.924.383.924 166.298-68.883-.383-.924ZM340.458 368.807a1 1 0 0 0 .541-1.307l-3.444-8.315a1.001 1.001 0 0 0-1.848.766l3.061 7.391-7.391 3.061a1.001 1.001 0 0 0 .766 1.848l8.315-3.444ZM173.777 299l-.383.924 166.298 68.883.383-.924.383-.924-166.299-68.883-.382.924ZM179.943 339.755a1 1 0 0 0-.542 1.306l3.445 8.315a.999.999 0 1 0 1.847-.765l-3.061-7.391 7.391-3.062a1 1 0 0 0-.765-1.848l-8.315 3.445Zm166.681 69.807.382-.924-166.298-68.883-.383.924-.382.923 166.298 68.883.383-.923Z"
-      />
-
+    <div className="w-full" ref={containerRef}>
       <svg
-        ref={requestorBadgeRef}
-        x="283"
-        y="51"
-        width="96"
-        height="34"
-        style={{ willChange: "opacity" }}
+        xmlns="http://www.w3.org/2000/svg"
+        // width={512}
+        // height={479}
+        className="w-full"
+        viewBox={computedViewBox}
+        fill="none"
+        // {...props}
       >
-        <rect width="100%" height="100%" className="fill-primary-950" rx="12" />
-        <text
-          x="50%"
-          y="50%"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          fill="currentColor"
-          className="text-primary-300 font-medium"
-          fontSize="20"
-        >
-          {initiator.index}
-        </text>
-      </svg>
-
-      <svg
-        ref={middlemanBadgeRef}
-        x="331"
-        y="162"
-        width="96"
-        height="34"
-        style={{ willChange: "opacity" }}
-      >
-        <rect
-          width="100%"
-          height="100%"
-          className="fill-secondary-950"
-          rx="12"
+        <path
+          fill="url(#a)"
+          d="M0 291c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H0v-40Z"
         />
-        <text
-          x="50%"
-          y="50%"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          fill="currentColor"
-          className="text-secondary-300 font-medium"
-          fontSize="20"
-        >
-          {middleman.index}
-        </text>
-      </svg>
-
-      <svg
-        ref={targetBadgeRef}
-        x="94"
-        y="352"
-        width="96"
-        height="34"
-        style={{ willChange: "opacity" }}
-      >
-        <rect
-          width="100%"
-          height="100%"
-          className="fill-background-900"
-          rx="12"
+        <circle cx={64} cy={227} r={64} fill="url(#b)" />
+        {iam === "initiator" ? (
+          <text
+            x="64"
+            y="363"
+            className="fill-primary-500 font-extrabold"
+            fontSize="32"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            YOU
+          </text>
+        ) : (
+          <text
+            x="64"
+            y="363"
+            className="fill-primary-600 dark:fill-primary-400 font-light"
+            fontSize="24"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            {initiator.username}
+          </text>
+        )}
+        {initiator.status && (
+          <SvgBadge cx={64} cy={412} type={initiator.status} />
+        )}
+        <path
+          fill="url(#c)"
+          d="M384 128c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H384v-40Z"
         />
-        <text
-          x="50%"
-          y="50%"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          fill="currentColor"
-          className="text-white font-medium"
-          fontSize="20"
-        >
-          {target.index}
-        </text>
-      </svg>
+        <circle cx={448} cy={64} r={64} fill="url(#d)" />
 
-      <defs>
-        <linearGradient
-          id="a"
-          x1={64}
-          x2={64}
-          y1={251}
-          y2={331}
-          gradientUnits="userSpaceOnUse"
+        {iam === "middleman" ? (
+          <text
+            x="448"
+            y="200"
+            className="fill-secondary-500 font-extrabold"
+            fontSize="32"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            YOU
+          </text>
+        ) : (
+          <text
+            x="448"
+            y="200"
+            className="fill-secondary-600 dark:fill-secondary-400 font-light"
+            fontSize="24"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            {middleman.username}
+          </text>
+        )}
+        {middleman.status && (
+          <SvgBadge cx={448} cy={249} type={middleman.status} />
+        )}
+
+        <path
+          fill="url(#e)"
+          d="M384 439c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H384v-40Z"
+        />
+        <circle cx={448} cy={375} r={64} fill="url(#f)" />
+
+        {iam === "target" ? (
+          <text
+            x="448"
+            y="512"
+            className="fill-white font-extrabold"
+            fontSize="32"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            YOU
+          </text>
+        ) : (
+          <text
+            x="448"
+            y="512"
+            className="fill-background-600 dark:fill-background-400 font-light"
+            fontSize="24"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            {target.username}
+          </text>
+        )}
+        {target.status && <SvgBadge cx={448} cy={561} type={target.status} />}
+        <path
+          fill="#334155"
+          d="M327.222 117.802a1 1 0 0 0-.541-1.307l-8.315-3.444a1 1 0 1 0-.765 1.848l7.391 3.061-3.062 7.391a1 1 0 0 0 1.848.766l3.444-8.315ZM160 186.302l.383.924 166.298-68.883-.383-.924-.382-.924-166.299 68.883.383.924ZM193.178 210.76c-.211.51.031 1.095.541 1.307l8.315 3.444a1.001 1.001 0 0 0 .766-1.848l-7.391-3.061 3.061-7.391a1 1 0 0 0-1.848-.766l-3.444 8.315Zm167.222-68.5-.382-.924-166.299 68.883.383.924.383.924 166.298-68.883-.383-.924ZM340.458 368.807a1 1 0 0 0 .541-1.307l-3.444-8.315a1.001 1.001 0 0 0-1.848.766l3.061 7.391-7.391 3.061a1.001 1.001 0 0 0 .766 1.848l8.315-3.444ZM173.777 299l-.383.924 166.298 68.883.383-.924.383-.924-166.299-68.883-.382.924ZM179.943 339.755a1 1 0 0 0-.542 1.306l3.445 8.315a.999.999 0 1 0 1.847-.765l-3.061-7.391 7.391-3.062a1 1 0 0 0-.765-1.848l-8.315 3.445Zm166.681 69.807.382-.924-166.298-68.883-.383.924-.382.923 166.298 68.883.383-.923Z"
+        />
+
+        <svg
+          ref={requestorBadgeRef}
+          x="283"
+          y="51"
+          width="96"
+          height="34"
+          style={{ willChange: "opacity" }}
         >
-          <stop stopColor="#1D4ED8" />
-          <stop offset={1} stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="b"
-          x1={64}
-          x2={64}
-          y1={163}
-          y2={291}
-          gradientUnits="userSpaceOnUse"
+          <rect
+            width="100%"
+            height="100%"
+            className="fill-primary-950"
+            rx="12"
+          />
+          <text
+            x="50%"
+            y="50%"
+            dominantBaseline="middle"
+            textAnchor="middle"
+            fill="currentColor"
+            className="text-primary-300 font-medium"
+            fontSize="20"
+          >
+            {initiator.index}
+          </text>
+        </svg>
+
+        <svg
+          ref={middlemanBadgeRef}
+          x="331"
+          y="162"
+          width="96"
+          height="34"
+          style={{ willChange: "opacity" }}
         >
-          <stop stopColor="#1D4ED8" />
-          <stop offset={1} stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="c"
-          x1={448}
-          x2={448}
-          y1={88}
-          y2={168}
-          gradientUnits="userSpaceOnUse"
+          <rect
+            width="100%"
+            height="100%"
+            className="fill-secondary-950"
+            rx="12"
+          />
+          <text
+            x="50%"
+            y="50%"
+            dominantBaseline="middle"
+            textAnchor="middle"
+            fill="currentColor"
+            className="text-secondary-300 font-medium"
+            fontSize="20"
+          >
+            {middleman.index}
+          </text>
+        </svg>
+
+        <svg
+          ref={targetBadgeRef}
+          x="94"
+          y="352"
+          width="96"
+          height="34"
+          style={{ willChange: "opacity" }}
         >
-          <stop stopColor="#E21D48" />
-          <stop offset={1} stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="d"
-          x1={448}
-          x2={448}
-          y1={0}
-          y2={128}
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#E21D48" />
-          <stop offset={1} stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="e"
-          x1={448}
-          x2={448}
-          y1={399}
-          y2={479}
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#94A3B8" />
-          <stop offset={1} stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="f"
-          x1={448}
-          x2={448}
-          y1={311}
-          y2={439}
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#94A3B8" />
-          <stop offset={1} stopColor="#020617" />
-        </linearGradient>
-      </defs>
-    </svg>
+          <rect
+            width="100%"
+            height="100%"
+            className="fill-background-900"
+            rx="12"
+          />
+          <text
+            x="50%"
+            y="50%"
+            dominantBaseline="middle"
+            textAnchor="middle"
+            fill="currentColor"
+            className="text-white font-medium"
+            fontSize="20"
+          >
+            {target.index}
+          </text>
+        </svg>
+
+        <defs>
+          <linearGradient
+            id="a"
+            x1={64}
+            x2={64}
+            y1={251}
+            y2={331}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#1D4ED8" />
+            <stop offset={1} stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="b"
+            x1={64}
+            x2={64}
+            y1={163}
+            y2={291}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#1D4ED8" />
+            <stop offset={1} stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="c"
+            x1={448}
+            x2={448}
+            y1={88}
+            y2={168}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#E21D48" />
+            <stop offset={1} stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="d"
+            x1={448}
+            x2={448}
+            y1={0}
+            y2={128}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#E21D48" />
+            <stop offset={1} stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="e"
+            x1={448}
+            x2={448}
+            y1={399}
+            y2={479}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#94A3B8" />
+            <stop offset={1} stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="f"
+            x1={448}
+            x2={448}
+            y1={311}
+            y2={439}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#94A3B8" />
+            <stop offset={1} stopColor="#020617" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
   );
 }
 
