@@ -1,7 +1,13 @@
 "use client";
 
 import { Skeleton } from "./ui/skeleton";
-import { ArrowRight, Loader2, Pencil } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  ArrowRight,
+  Loader2,
+  Pencil,
+  TriangleAlert,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import Link from "next/link";
@@ -26,7 +32,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useConvexMutationState } from "./use-convex-mutation-state";
 import { AcadYear } from "@/lib/acad";
@@ -35,6 +41,7 @@ import {
   ThreeWayCycleArtboard,
 } from "./course-swap-artboard";
 import { useStableQueryWithStatus } from "./use-stable-query";
+import { getProfileImageUrl } from "@/lib/user";
 
 type CourseRequestAndMatches = FunctionReturnType<
   typeof api.tasks.getCourseRequestAndMatches
@@ -200,15 +207,16 @@ export function SwapItemMatchBottomSheet({
   let statusElement = null;
   const { match } = matchObj;
   if (match.status === "pending") {
-    statusElement = match.isSelfInitiated ? (
-      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-        Pending
-      </Badge>
-    ) : (
-      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-        Requested by Someone!
-      </Badge>
-    );
+    statusElement =
+      match.iam === "initiator" ? (
+        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+          Pending
+        </Badge>
+      ) : (
+        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+          Requested by Someone!
+        </Badge>
+      );
   } else if (match.status === "swapped") {
     statusElement = (
       <Badge variant="default" className="text-gray-400 bg-gray-600/30">
@@ -218,10 +226,6 @@ export function SwapItemMatchBottomSheet({
   } else {
     statusElement = <span className="text-sm text-primary-500">Request</span>;
   }
-
-  // if (true) {
-
-  // }
 
   const disabled = match.status === "swapped" || match.status === "pending";
   let hintElement = null;
@@ -238,7 +242,7 @@ export function SwapItemMatchBottomSheet({
     />
   );
   if (match.status === "pending") {
-    if (match.isSelfInitiated) {
+    if (match.iam === "initiator") {
       if (isAlreadySwapped) {
         hintElement = (
           <div className="flex flex-col p-2.5 gap-1 border border-border rounded-md bg-card">
@@ -294,6 +298,33 @@ export function SwapItemMatchBottomSheet({
     }
   }
 
+  let warningElement = null;
+  if (matchObj.type === "direct") {
+    if (
+      matchObj.match.iam === "initiator" &&
+      !matchObj.match.iHaveWhatTheyWant
+    ) {
+      warningElement = (
+        <Alert variant="warning">
+          <AlertTitle>You don't have what they want!</AlertTitle>
+          <AlertDescription className="text-muted-foreground dark:text-muted-foreground max-w-none text-sm">
+            You may still request a swap with them, but they may not accept it.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    if (matchObj.match.iam === "target" && !matchObj.match.theyHaveWhatIWant) {
+      warningElement = (
+        <Alert variant="warning">
+          <AlertTitle>They don't have what you want!</AlertTitle>
+          <AlertDescription className="text-muted-foreground dark:text-muted-foreground max-w-none text-sm">
+            You can still accept their swap, but it may not be ideal.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+  }
+
   return (
     <>
       <div className="max-h-[calc(100vh-120px)] overflow-y-auto">
@@ -312,31 +343,40 @@ export function SwapItemMatchBottomSheet({
             {statusElement}
           </div>
         )}
-        <div className="flex flex-col items-center justify-center px-4">
+        <div className="flex flex-col gap-4 items-center justify-center px-4">
           <div className="w-full max-w-72">
             {matchObj.type === "direct" ? (
               <DirectSwapArtboard
-                yourIndex={course.haveIndex}
-                otherIndex={match.target.index}
-                iam={
-                  (match.status === "pending" || match.status === "swapped") &&
-                  !match.isSelfInitiated
-                    ? "target"
-                    : "intiator"
-                }
-                initiatorUsername={match.initiator.username}
-                targetUsername={match.target.username}
+                initiator={{
+                  index: matchObj.match.initiator.index,
+                  username: matchObj.match.initiator.username,
+                }}
+                target={{
+                  index: matchObj.match.target.index,
+                  username: matchObj.match.target.username,
+                }}
+                iam={matchObj.match.iam}
                 // iam="intiator"
               />
             ) : (
               <ThreeWayCycleArtboard
-                requestorIndex={course.haveIndex}
-                targetIndex={match.target.index}
-                middleIndex={matchObj.match.middleman.index}
+                initiator={{
+                  index: matchObj.match.initiator.index,
+                  username: matchObj.match.initiator.username,
+                }}
+                target={{
+                  index: matchObj.match.target.index,
+                  username: matchObj.match.target.username,
+                }}
+                middleman={{
+                  index: matchObj.match.middleman.index,
+                  username: matchObj.match.middleman.username,
+                }}
                 iam={matchObj.match.iam}
               />
             )}
           </div>
+          {warningElement}
         </div>
       </div>
       <SheetFooter className="flex flex-col gap-4 border-t border-border">
@@ -347,38 +387,27 @@ export function SwapItemMatchBottomSheet({
   );
 }
 
-export function SwapItemMatch({
+export function SwapDirectMatchRow({
   match,
-  initiator,
-  target,
   className,
   onRequestOpen,
 }: {
   match: DirectMatch;
-  initiator: {
-    id: Id<"swapper">;
-    username: string;
-    index: string;
-  };
-  target: {
-    id: Id<"swapper">;
-    username: string;
-    index: string;
-  };
   className?: string;
   onRequestOpen?: (id: Id<"swapper">) => void;
 }) {
   let statusElement = null;
   if (match.status === "pending") {
-    statusElement = match.isSelfInitiated ? (
-      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-        Pending
-      </Badge>
-    ) : (
-      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-        Requested by Someone!
-      </Badge>
-    );
+    statusElement =
+      match.iam === "initiator" ? (
+        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+          Pending
+        </Badge>
+      ) : (
+        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+          Requested by Someone!
+        </Badge>
+      );
   } else if (match.status === "swapped") {
     statusElement = (
       <Badge variant="default" className="text-gray-400 bg-gray-600/30">
@@ -403,48 +432,73 @@ export function SwapItemMatch({
       )}
     >
       <TableCell
-        className={cn("font-medium text-sm lg:text-base text-foreground", {
-          "text-destructive": !match.haveWhatIWant,
+        className={cn("h-12 font-medium text-sm lg:text-base text-foreground", {
+          "text-destructive": !match.theyHaveWhatIWant,
         })}
       >
-        {match.target.index}
-      </TableCell>
-      <TableCell className="text-foreground text-sm lg:text-base">
-        {match.haveWhatTheyWant ? (
-          <span className="text-primary-500">{myIndex}</span>
+        {match.iam === "initiator" ? (
+          <div className="flex flex-row gap-2 items-center">
+            <img
+              src={getProfileImageUrl(match.target.username)}
+              alt={match.target.username}
+              className="size-8 rounded-full"
+            />
+
+            {!match.iHaveWhatTheyWant ? (
+              <div className="flex flex-row items-center gap-1">
+                <span className="text-yellow-500">{match.target.index}</span>
+                <AlertTriangleIcon className="size-4.5 text-card fill-yellow-500" />
+              </div>
+            ) : (
+              match.target.index
+            )}
+          </div>
         ) : (
-          <Badge variant="destructive">Don't have {"):"}</Badge>
+          <div className="flex flex-row gap-2 items-center">
+            <img
+              src={getProfileImageUrl(match.initiator.username)}
+              alt={match.initiator.username}
+              className="size-8 rounded-full"
+            />
+            {!match.theyHaveWhatIWant ? (
+              <div className="flex flex-row items-center gap-1">
+                <span className="text-yellow-500">{match.target.index}</span>
+                <AlertTriangleIcon className="size-4.5 text-card fill-yellow-500" />
+              </div>
+            ) : (
+              match.initiator.index
+            )}
+          </div>
         )}
       </TableCell>
-      <TableCell className="flex flex-row gap-2 items-center justify-end text-right text-sm lg:text-base">
+      <TableCell className="h-12 flex flex-row gap-2 items-center justify-end text-right text-sm lg:text-base">
         {statusElement} <ArrowRight className="size-4 text-primary-500" />
       </TableCell>
     </TableRow>
   );
 }
 
-export function SwapItemThreeWayCycleMatch({
+export function SwapThreeWayRow({
   match,
-  myIndex,
   className,
   onRequestOpen,
 }: {
   match: ThreeWayCycleMatch;
-  myIndex: string;
   className?: string;
   onRequestOpen?: (id: Id<"swapper">, middlemanId: Id<"swapper">) => void;
 }) {
   let statusElement = null;
   if (match.status === "pending") {
-    statusElement = match.isSelfInitiated ? (
-      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-        Pending
-      </Badge>
-    ) : (
-      <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-        Requested by Someone!
-      </Badge>
-    );
+    statusElement =
+      match.iam === "initiator" ? (
+        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+          Pending
+        </Badge>
+      ) : (
+        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
+          Requested by Someone!
+        </Badge>
+      );
   } else if (match.status === "swapped") {
     statusElement = (
       <Badge variant="default" className="text-gray-400 bg-gray-600/30">
@@ -455,23 +509,43 @@ export function SwapItemThreeWayCycleMatch({
     statusElement = <span className="text-sm text-primary-500">Request</span>;
   }
 
+  const otherParticipants = useMemo(() => {
+    const participants = [];
+    if (match.iam !== "initiator") {
+      participants.push(match.initiator);
+    }
+    if (match.iam !== "target") {
+      participants.push(match.target);
+    }
+    if (match.iam !== "middleman") {
+      participants.push(match.middleman);
+    }
+    return participants;
+  }, [match]);
+
   return (
     <TableRow
       onClick={() => onRequestOpen?.(match.target.id, match.middleman.id)}
       className={className}
     >
-      <TableCell className="font-medium text-sm lg:text-base text-foreground">
-        <span className="text-muted-foreground">First swap</span>{" "}
-        <span className="text-primary-500"> {myIndex}</span>
-        <span className="text-muted-foreground">{" <-> "}</span>
-        <span className="text-secondary-500">{match.middleman.index}</span>{" "}
-        <br />
-        <span className="text-muted-foreground">Then swap</span>{" "}
-        <span className="text-secondary-500"> {match.middleman.index}</span>
-        <span className="text-muted-foreground">{" <-> "}</span>
-        {match.target.index}
+      <TableCell className="h-12 font-medium text-sm lg:text-base text-foreground">
+        <div className="flex flex-row gap-4 items-center">
+          {otherParticipants.map((participant) => (
+            <div
+              className="flex flex-row gap-2 items-center"
+              key={participant.id}
+            >
+              <img
+                src={getProfileImageUrl(participant.username)}
+                alt={participant.username}
+                className="size-8 rounded-full"
+              />
+              {participant.index}
+            </div>
+          ))}
+        </div>
       </TableCell>
-      <TableCell className="flex flex-row gap-2 items-center justify-end text-right text-sm lg:text-base">
+      <TableCell className="h-12 flex flex-row gap-2 items-center justify-end text-right text-sm lg:text-base">
         {statusElement} <ArrowRight className="size-4 text-primary-500" />
       </TableCell>
     </TableRow>
@@ -550,9 +624,9 @@ export function CourseSwapMatches({
               <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
                 Their Index
               </TableHead>
-              <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
+              {/* <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
                 They Want
-              </TableHead>
+              </TableHead> */}
               <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
                 Status
               </TableHead>
@@ -561,10 +635,10 @@ export function CourseSwapMatches({
           <TableBody>
             {requestsQuery.directMatches.map((rawMatch, index) => {
               return (
-                <SwapItemMatch
+                <SwapDirectMatchRow
                   key={rawMatch.target.id}
                   match={rawMatch}
-                  myIndex={requestsQuery.course.haveIndex ?? ""}
+                  // myIndex={requestsQuery.course.haveIndex ?? ""}
                   className={cn({
                     "opacity-50": disabled,
                     "border-b border-border":
@@ -607,7 +681,7 @@ export function CourseSwapMatches({
           <TableHeader>
             <TableRow>
               <TableHead className="font-medium text-sm lg:text-base text-muted-foreground uppercase">
-                Swap Sequence
+                Their Indexes
               </TableHead>
               <TableHead className="font-medium text-sm lg:text-base text-muted-foreground text-right uppercase">
                 Status
@@ -617,10 +691,10 @@ export function CourseSwapMatches({
           <TableBody>
             {requestsQuery.threeWayCycleMatches.map((rawMatch, index) => {
               return (
-                <SwapItemThreeWayCycleMatch
+                <SwapThreeWayRow
                   key={`${rawMatch.target.id}-${rawMatch.middleman.id}-${index}`}
                   match={rawMatch}
-                  myIndex={requestsQuery.course.haveIndex ?? ""}
+                  // myIndex={requestsQuery.course.haveIndex ?? ""}
                   onRequestOpen={() => {
                     setBottomSheetMatchItem({
                       match: {

@@ -3,15 +3,24 @@
 import { useEffect, useRef } from "react";
 
 export function ThreeWayCycleArtboard({
-  requestorIndex,
-  targetIndex,
-  middleIndex,
+  initiator,
+  target,
+  middleman,
   iam,
 }: {
-  requestorIndex: string;
-  targetIndex: string;
-  middleIndex: string;
-  iam: "intiator" | "target" | "middleman";
+  iam: "initiator" | "target" | "middleman";
+  initiator: {
+    index: string;
+    username: string;
+  };
+  target: {
+    index: string;
+    username: string;
+  };
+  middleman: {
+    index: string;
+    username: string;
+  };
 }) {
   const requestorBadgeRef = useRef<SVGSVGElement | null>(null);
   const middlemanBadgeRef = useRef<SVGSVGElement | null>(null);
@@ -205,7 +214,7 @@ export function ThreeWayCycleArtboard({
         d="M0 291c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H0v-40Z"
       />
       <circle cx={64} cy={227} r={64} fill="url(#b)" />
-      {iam === "intiator" ? (
+      {iam === "initiator" ? (
         <text
           x="64"
           y="363"
@@ -225,7 +234,7 @@ export function ThreeWayCycleArtboard({
           dominantBaseline="middle"
           textAnchor="middle"
         >
-          Requestor
+          {initiator.username}
         </text>
       )}
       <path
@@ -254,7 +263,7 @@ export function ThreeWayCycleArtboard({
           dominantBaseline="middle"
           textAnchor="middle"
         >
-          Middleman
+          {middleman.username}
         </text>
       )}
 
@@ -284,7 +293,7 @@ export function ThreeWayCycleArtboard({
           dominantBaseline="middle"
           textAnchor="middle"
         >
-          Target
+          {target.username}
         </text>
       )}
       <path
@@ -310,7 +319,7 @@ export function ThreeWayCycleArtboard({
           className="text-primary-300 font-medium"
           fontSize="20"
         >
-          {requestorIndex}
+          {initiator.index}
         </text>
       </svg>
 
@@ -337,7 +346,7 @@ export function ThreeWayCycleArtboard({
           className="text-secondary-300 font-medium"
           fontSize="20"
         >
-          {middleIndex}
+          {middleman.index}
         </text>
       </svg>
 
@@ -364,7 +373,7 @@ export function ThreeWayCycleArtboard({
           className="text-white font-medium"
           fontSize="20"
         >
-          {targetIndex}
+          {target.index}
         </text>
       </svg>
 
@@ -441,17 +450,19 @@ export function ThreeWayCycleArtboard({
 }
 
 export function DirectSwapArtboard({
-  yourIndex,
-  otherIndex,
   iam,
-  initiatorUsername,
-  targetUsername,
+  initiator,
+  target,
 }: {
-  yourIndex: string;
-  otherIndex: string;
-  iam: "intiator" | "target";
-  initiatorUsername: string;
-  targetUsername: string;
+  iam: "initiator" | "target";
+  initiator: {
+    index: string;
+    username: string;
+  };
+  target: {
+    index: string;
+    username: string;
+  };
 }) {
   const yourBadgeRef = useRef<SVGSVGElement | null>(null);
   const otherBadgeRef = useRef<SVGSVGElement | null>(null);
@@ -540,7 +551,7 @@ export function DirectSwapArtboard({
         fill="url(#paint0_linear_42_168)"
       />
       <circle cx="64" cy="64" r="64" fill="url(#paint1_linear_42_168)" />
-      {iam === "intiator" ? (
+      {iam === "initiator" ? (
         <text
           x="64"
           y="200"
@@ -560,7 +571,7 @@ export function DirectSwapArtboard({
           dominantBaseline="middle"
           textAnchor="middle"
         >
-          {initiatorUsername}
+          {initiator.username}
         </text>
       )}
 
@@ -589,7 +600,7 @@ export function DirectSwapArtboard({
           dominantBaseline="middle"
           textAnchor="middle"
         >
-          {targetUsername}
+          {target.username}
         </text>
       )}
       <path
@@ -618,7 +629,7 @@ export function DirectSwapArtboard({
           className="fill-primary-300 font-medium"
           fontSize="20"
         >
-          {yourIndex}
+          {initiator.index}
         </text>
       </svg>
 
@@ -646,7 +657,7 @@ export function DirectSwapArtboard({
           className="text-white font-medium"
           fontSize="20"
         >
-          {otherIndex}
+          {target.index}
         </text>
       </svg>
 

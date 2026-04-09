@@ -16,7 +16,6 @@ import {
   template,
 } from "@/lib/swap-request";
 import { encryptValue } from "@/lib/encrypt";
-import { getAuth } from "@/lib/microsoft-auth";
 import { getDefaultUsername } from "@/lib/user";
 
 function escapeMarkdown(text: string): string {

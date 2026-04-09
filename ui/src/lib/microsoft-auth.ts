@@ -345,7 +345,6 @@ function fromJwtPayloadToSession(
 ): MicrosoftSession | null {
   if (!payload || typeof payload === "string") return null;
 
-  console.log(payload);
   const parsed = MicrosoftSessionSchema.parse(payload);
   return parsed;
 }

@@ -29,11 +29,12 @@ export default async function Page({
     const payload = SwapRequestPayloadSchema.parse(
       JSON.parse(decryptedPayload)
     );
+    console.log(payload);
     return (
       <HydrationSafeScrollArea>
         <div className="flex flex-col items-center">
           <div className="flex flex-col gap-2 w-full max-w-7xl">
-            <SwapItemMatchBottomSheet
+            {/* <SwapItemMatchBottomSheet
               isSheet={false}
               course={{
                 id: "1" as any,
@@ -49,13 +50,13 @@ export default async function Page({
                   otherSwapperId: "1" as any,
                   index: "1",
                   isPerfectMatch: false,
-                  haveWhatTheyWant: false,
-                  haveWhatIWant: false,
+                  iHaveWhatTheyWant: false,
+                  theyHaveWhatIWant: false,
                 },
               }}
               isAlreadySwapped={false}
               requestClose={() => {}}
-            />
+            /> */}
           </div>
         </div>
       </HydrationSafeScrollArea>

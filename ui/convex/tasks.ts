@@ -553,17 +553,16 @@ export const getCourseRequestAndMatches = query({
         }
       | {
           status: "pending";
-          isSelfInitiated: boolean;
         }
       | {
           status: "swapped";
-          isSelfInitiated: boolean;
         }
     );
     const directMatches: (BaseMatch & {
       isPerfectMatch: boolean;
-      haveWhatTheyWant: boolean;
-      haveWhatIWant: boolean;
+      iHaveWhatTheyWant: boolean;
+      theyHaveWhatIWant: boolean;
+      iam: "initiator" | "target";
     })[] = [];
     const threeWayCycleMatches: (BaseMatch & {
       middleman: {
@@ -571,7 +570,7 @@ export const getCourseRequestAndMatches = query({
         username: string;
         index: string;
       };
-      iam: "intiator" | "target" | "middleman";
+      iam: "initiator" | "target" | "middleman";
     })[] = [];
 
     const swapperById = new Map(
@@ -624,7 +623,11 @@ export const getCourseRequestAndMatches = query({
         myMatchRequestWithOther === undefined ||
         myMatchRequestWithOther.initiator === mySwapper._id;
       let initiator, target;
+      // let initiatorWantsTarget = false;
+      // let targetWantsInitiator = false;
       if (isSelfInitiated) {
+        // initiatorWantsTarget = haveWhatIWant;
+        // targetWantsInitiator = haveWhatTheyWant;
         initiator = {
           id: mySwapper._id,
           username: user.username,
@@ -636,6 +639,8 @@ export const getCourseRequestAndMatches = query({
           index: otherSwapper.index,
         };
       } else {
+        // initiatorWantsTarget = haveWhatTheyWant;
+        // targetWantsInitiator = haveWhatIWant;
         initiator = {
           id: otherSwapper._id,
           username: otherUser.username,
@@ -654,10 +659,10 @@ export const getCourseRequestAndMatches = query({
             initiator,
             target,
             isPerfectMatch: isPerfectMatchWithOther,
-            haveWhatTheyWant,
-            haveWhatIWant,
+            iHaveWhatTheyWant: haveWhatTheyWant,
+            theyHaveWhatIWant: haveWhatIWant,
             status: "pending",
-            isSelfInitiated,
+            iam: isSelfInitiated ? "initiator" : "target",
             // requestedAt: myMatchRequestWithOther._creationTime,
           });
         } else {
@@ -665,9 +670,10 @@ export const getCourseRequestAndMatches = query({
             initiator,
             target,
             isPerfectMatch: isPerfectMatchWithOther,
-            haveWhatTheyWant,
-            haveWhatIWant,
+            iHaveWhatTheyWant: haveWhatTheyWant,
+            theyHaveWhatIWant: haveWhatIWant,
             status: undefined,
+            iam: isSelfInitiated ? "initiator" : "target",
           });
         }
       }
@@ -678,10 +684,10 @@ export const getCourseRequestAndMatches = query({
             initiator,
             target,
             isPerfectMatch: isPerfectMatchWithOther,
-            haveWhatTheyWant,
-            haveWhatIWant,
+            iHaveWhatTheyWant: haveWhatTheyWant,
+            theyHaveWhatIWant: haveWhatIWant,
             status: "swapped",
-            isSelfInitiated,
+            iam: isSelfInitiated ? "initiator" : "target",
           });
         } else {
           // This should not happen.
@@ -694,7 +700,7 @@ export const getCourseRequestAndMatches = query({
 
     // Three-way cycle matches.
     const threeWayConsideredMatches = directMatches.filter(
-      (m) => m.haveWhatIWant
+      (m) => m.theyHaveWhatIWant
     );
     // Find a middleman who wants what you have
     // and has an index that can be given to
@@ -748,12 +754,12 @@ export const getCourseRequestAndMatches = query({
           myMatchRequestWithBothOthers === undefined ||
           myMatchRequestWithBothOthers.initiator === mySwapper._id;
 
-        let iam: "intiator" | "target" | "middleman" = "intiator";
+        let iam: "initiator" | "target" | "middleman" = "initiator";
         if (
           myMatchRequestWithBothOthers === undefined ||
           myMatchRequestWithBothOthers.initiator === mySwapper._id
         ) {
-          iam = "intiator";
+          iam = "initiator";
         } else if (
           myMatchRequestWithBothOthers.targetSwapper === mySwapper._id
         ) {
@@ -846,7 +852,6 @@ export const getCourseRequestAndMatches = query({
               target,
               middleman,
               status: "pending",
-              isSelfInitiated,
               iam,
             });
           } else {
@@ -865,7 +870,6 @@ export const getCourseRequestAndMatches = query({
               target,
               middleman,
               status: "swapped",
-              isSelfInitiated,
               iam,
             });
           } else {
@@ -922,6 +926,7 @@ export const getCourseRequestAndMatches = query({
         id: courseId,
         name: course.name,
         hasSwapped: mySwapper.hasSwapped,
+        haveIndex: mySwapper.index,
       },
       wantIndexes: Array.from(wantIndexesSet),
       directMatches,

@@ -99,16 +99,16 @@ export function ProfileMenu({
   } | null;
   mockUser?: string;
 }) {
-  const profileInitials = useMemo(() => {
-    if (!user) {
-      return null;
-    }
-    let profileInitials = user.username;
-    if (!profileInitials) {
-      return null;
-    }
-    return getProfileInitials(profileInitials);
-  }, [user?.username]);
+  // const profileInitials = useMemo(() => {
+  //   if (!user) {
+  //     return null;
+  //   }
+  //   let profileInitials = user.username;
+  //   if (!profileInitials) {
+  //     return null;
+  //   }
+  //   return getProfileInitials(profileInitials);
+  // }, [user?.username]);
 
   if (!user) {
     return <Button variant="outline">Get Started</Button>;
@@ -124,9 +124,9 @@ export function ProfileMenu({
             className="size-9 rounded-full p-0 overflow-hidden ring-offset-background"
             aria-label="Account menu"
           >
-            {profileInitials ? (
+            {user.username ? (
               <img
-                src={getProfileImageUrl(profileInitials)}
+                src={getProfileImageUrl(user.username)}
                 alt={user.username ?? ""}
                 className="object-cover w-full h-full"
               />
