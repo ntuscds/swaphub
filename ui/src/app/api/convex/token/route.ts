@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const token = jwtSign(
     {
-      username: session.name ?? "",
+      microsoftName: session.name ?? "",
     },
     privateKeyPem,
     {

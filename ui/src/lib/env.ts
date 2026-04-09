@@ -3,6 +3,7 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
+    API_KEY: z.string(),
     ENCRYPTION_KEY: z.string(),
 
     AZURE_AD_CLIENT_ID: z.string().default(""),
@@ -39,6 +40,7 @@ export const env = createEnv({
       .transform((val) => val === "true"),
   },
   runtimeEnv: {
+    API_KEY: process.env.API_KEY,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,

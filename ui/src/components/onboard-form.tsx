@@ -55,9 +55,6 @@ export function SetProfileForm({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            role: "complete",
-          }),
         });
         router.push("/swap");
       },
@@ -95,6 +92,7 @@ export function SetProfileForm({
               value={field.value}
               onChange={field.onChange}
             />
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}
       />
@@ -298,9 +296,6 @@ export function OnboardingForm({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          role: accountSetup,
-        }),
       });
 
       if (accountSetup === "complete") {

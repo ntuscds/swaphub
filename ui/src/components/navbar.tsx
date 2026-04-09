@@ -21,6 +21,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { setMockUserEmail } from "@/app/admin/actions";
+import { getProfileInitials } from "@/lib/user";
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useThemeStore(
@@ -93,7 +94,7 @@ export function ProfileMenu({
   mockUser,
 }: {
   user: {
-    name: string | null;
+    username: string | null;
     email: string;
   } | null;
   mockUser?: string;
@@ -102,21 +103,12 @@ export function ProfileMenu({
     if (!user) {
       return null;
     }
-    let profileInitials = user.name;
+    let profileInitials = user.username;
     if (!profileInitials) {
       return null;
     }
-    // Only get a-zA-Z0-9 characters
-    profileInitials = profileInitials?.replace(/[^a-zA-Z0-9] /g, "");
-    if (profileInitials.length === 0) {
-      return null;
-    }
-    const parts = profileInitials.split(" ");
-    return parts
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase();
-  }, [user?.name]);
+    return getProfileInitials(profileInitials);
+  }, [user?.username]);
 
   if (!user) {
     return <Button variant="outline">Get Started</Button>;
@@ -135,7 +127,7 @@ export function ProfileMenu({
             {profileInitials ? (
               <img
                 src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileInitials)}&size=128&backgroundColor=4f46e5%2C7c3aed%2C2563eb%2C0891b2%2C0d9488&backgroundType=gradientLinear&backgroundRotation=45&textColor=ffffff&fontSize=45`}
-                alt={user.name ?? ""}
+                alt={user.username ?? ""}
                 className="size- object-cover"
               />
             ) : (
@@ -149,9 +141,9 @@ export function ProfileMenu({
         <DropdownMenuGroup>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col gap-0.5">
-              {user.name && (
+              {user.username && (
                 <span className="text-sm font-medium text-foreground">
-                  {user.name}
+                  {user.username}
                 </span>
               )}
               <span className="text-xs text-muted-foreground break-all">

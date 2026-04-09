@@ -12,6 +12,8 @@ import {
   serializeDecline,
 } from "@/telegram/callbacks";
 import { getAccountSetupFromUser, getAuth, getIdentity } from "./utils";
+import { env } from "@/lib/env-convex";
+import { isAllowedUsername } from "@/lib/user";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -44,16 +46,25 @@ export const getSelf = query({
 export const getAccountSetup = query({
   args: {
     email: v.string(),
+    apiKey: v.string(),
   },
   handler: async (ctx, args) => {
+    if (args.apiKey !== env.API_KEY) {
+      throw new ConvexError("Invalid API key");
+    }
     const user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
     if (!user) {
-      return "not_setup" as const;
+      return {
+        type: "not_setup" as const,
+      };
     }
-    return getAccountSetupFromUser(user);
+    return {
+      type: getAccountSetupFromUser(user),
+      username: user.username,
+    };
   },
 });
 
@@ -1653,17 +1664,11 @@ export const setProfile = mutation({
   },
   handler: async (ctx, args) => {
     // Make sure username is alphanumeric and not empty.
-    const username = args.username.trim();
-    if (!/^[a-zA-Z0-9 ]+$/.test(username)) {
-      throw new ConvexError("Username must be alphanumeric and not empty.");
+    const usernameResult = isAllowedUsername(args.username);
+    if (usernameResult.type === "error") {
+      throw new ConvexError(usernameResult.message);
     }
-    if (username.length === 0) {
-      throw new ConvexError("Username must not be empty.");
-    }
-    // Must be less than 24 characters.
-    if (username.length > 24) {
-      throw new ConvexError("Username must be <= 24 characters.");
-    }
+    const username = usernameResult.username;
 
     const { user } = await getAuth(ctx, false);
 

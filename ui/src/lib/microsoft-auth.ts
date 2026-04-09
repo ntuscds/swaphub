@@ -48,12 +48,26 @@ const MicrosoftSessionSchema = z.object({
   name: z.string().nullable(),
   picture: z.string().nullable(),
   expiresAt: z.number(),
-  accountSetup: z.enum([
-    "not_setup",
-    "telegram_not_setup",
-    "school_not_setup",
-    "complete",
+  accountSetup: z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal("not_setup"),
+    }),
+    z.object({
+      type: z.union([
+        z.literal("telegram_not_setup"),
+        z.literal("school_not_setup"),
+        z.literal("complete"),
+      ]),
+      username: z.string(),
+    }),
   ]),
+  // username: z.string(),
+  // accountSetup: z.enum([
+  //   "not_setup",
+  //   "telegram_not_setup",
+  //   "school_not_setup",
+  //   "complete",
+  // ]),
 });
 
 export type MicrosoftSession = z.infer<typeof MicrosoftSessionSchema>;
@@ -289,6 +303,9 @@ export async function buildSession(
   expiresIn: number,
   accountSetup: MicrosoftSession["accountSetup"]
 ) {
+  if (typeof accountSetup === "string") {
+    throw new Error("THE FUCK");
+  }
   return {
     sub: profile.sub!,
     email: profile.email,
@@ -328,6 +345,7 @@ function fromJwtPayloadToSession(
 ): MicrosoftSession | null {
   if (!payload || typeof payload === "string") return null;
 
+  console.log(payload);
   const parsed = MicrosoftSessionSchema.parse(payload);
   return parsed;
 }
@@ -361,7 +379,7 @@ export async function _getAuth() {
   const sessionInCookie = _cookies.get(AUTH_SESSION_COOKIE);
   const refreshTokenInCookie = _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE);
   let result: {
-    name: string | null;
+    microsoftUsername: string | null;
     email: string;
     accountSetup: MicrosoftSession["accountSetup"];
   } | null = null;
@@ -372,7 +390,7 @@ export async function _getAuth() {
     const verifiedSession = await verifySession(sessionInCookie.value);
     if (verifiedSession) {
       result = {
-        name: verifiedSession.name,
+        microsoftUsername: verifiedSession.name,
         email: verifiedSession.email,
         accountSetup: verifiedSession.accountSetup,
       };
@@ -396,7 +414,7 @@ export async function _getAuth() {
         accountSetup
       );
       result = {
-        name: currentSession.name,
+        microsoftUsername: currentSession.name,
         email: currentSession.email,
         accountSetup: currentSession.accountSetup,
       };
@@ -471,5 +489,6 @@ export async function readSessionWithRefresh(
 export async function getAccountSetup(email: string) {
   return fetchQuery(api.tasks.getAccountSetup, {
     email: email,
+    apiKey: env.API_KEY,
   });
 }

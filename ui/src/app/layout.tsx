@@ -58,7 +58,17 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
   </svg>
 </a> */}
           <ThemeSwitcher />
-          <ProfileMenu user={auth} mockUser={mockUser ?? undefined} />
+          <ProfileMenu
+            user={
+              auth && auth.accountSetup.type === "complete"
+                ? {
+                    username: auth.accountSetup.username,
+                    email: auth.email,
+                  }
+                : null
+            }
+            mockUser={mockUser ?? undefined}
+          />
         </div>
       </div>
     </div>

@@ -67,7 +67,6 @@ export async function GET(request: Request) {
       authCookies.verifier
     );
     const profile = await fetchMicrosoftUser(exchanged.access_token);
-    console.log("TTTT: ", profile);
     const accountSetup = await getAccountSetup(profile.email);
     const session = await buildSession(
       profile,
@@ -88,7 +87,8 @@ export async function GET(request: Request) {
       // clearRefreshTokenCookie(response.headers, request);
     }
     return response;
-  } catch {
+  } catch (error) {
+    console.error(error);
     const response = NextResponse.redirect(
       new URL("/onboard?error=auth_failed", getBaseUrl(request))
     );

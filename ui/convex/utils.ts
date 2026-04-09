@@ -1,8 +1,7 @@
 import { ConvexError } from "convex/values";
 import { QueryCtx } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
-
-const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
+import { ALLOWED_DOMAINS } from "@/lib/user";
 
 export function getAccountSetupFromUser(user: Doc<"users">) {
   // -1 means telegram not setup

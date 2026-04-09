@@ -17,6 +17,7 @@ import {
 } from "@/lib/swap-request";
 import { encryptValue } from "@/lib/encrypt";
 import { getAuth } from "@/lib/microsoft-auth";
+import { getDefaultUsername } from "@/lib/user";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
@@ -653,17 +654,12 @@ export const requestLinkTelegramAccount = action({
       throw new ConvexError("Email not found");
     }
 
-    let username = identity.username as string | undefined;
+    // Microsoft username generated.
+    let username = identity.microsoftName as string | undefined;
     if (!username) {
       throw new ConvexError("Username not found");
     }
-    // Sanitize username.
-    // Make sure it's alphanumeric and not empty.
-    username = username.replace(/[^a-zA-Z0-9 ]/g, "");
-    // Truncate to 24 characters.
-    username = username.slice(0, 24);
-    // Trim whitespace.
-    username = username.trim();
+    username = getDefaultUsername(username);
 
     if (args.telegramRawInitData) {
       if (!isValid(args.telegramRawInitData, env.BOT_KEY)) {

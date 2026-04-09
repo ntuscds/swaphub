@@ -9,6 +9,7 @@ import {
   VerifyTelegramForm,
 } from "@/components/onboard-form";
 import { redirect } from "next/navigation";
+import { getDefaultUsername } from "@/lib/user";
 
 const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
 
@@ -108,7 +109,7 @@ function VerifyTelegram() {
   );
 }
 
-function SetProfile() {
+function SetProfile({ defaultUsername }: { defaultUsername?: string }) {
   return (
     <div className="flex flex-col items-center">
       <div className="flex flex-col gap-12 py-12 max-w-2xl w-full">
@@ -120,7 +121,7 @@ function SetProfile() {
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4">
-            <SetProfileForm />
+            <SetProfileForm defaultUsername={defaultUsername} />
           </div>
         </div>
 
@@ -169,7 +170,7 @@ export default async function Page({
     );
   }
 
-  let accountSetup = auth.accountSetup;
+  let accountSetup = auth.accountSetup.type;
   if (accountSetup === "complete") {
     redirect("/swap");
   }
@@ -183,7 +184,15 @@ export default async function Page({
       <ScrollArea className="bg-background text-foreground h-screen p-4">
         <OnboardingForm
           verifyTelegramNode={<VerifyTelegram />}
-          selectSchoolNode={<SetProfile />}
+          selectSchoolNode={
+            <SetProfile
+              defaultUsername={
+                auth.accountSetup.type === "not_setup"
+                  ? getDefaultUsername(auth.microsoftUsername ?? "")
+                  : auth.accountSetup.username
+              }
+            />
+          }
           defaultAccountSetup={accountSetup}
         />
       </ScrollArea>
