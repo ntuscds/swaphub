@@ -5,7 +5,7 @@ import { ArrowRight, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -228,10 +228,10 @@ export function SwapItemMatchBottomSheet({
   let footer = (
     <RequestSwapBottomSheetFooter
       disabled={disabled}
-      targetSwapperId={match.otherSwapperId}
+      targetSwapperId={match.target.id}
       middlemanSwapperId={
         matchObj.type === "three-way-cycle"
-          ? matchObj.match.middlemanSwapperId
+          ? matchObj.match.middleman.id
           : undefined
       }
       requestClose={requestClose}
@@ -281,10 +281,10 @@ export function SwapItemMatchBottomSheet({
       } else {
         footer = (
           <SwapConfirmationBottomSheetFooter
-            targetSwapperId={match.otherSwapperId}
+            targetSwapperId={match.target.id}
             middlemanSwapperId={
               matchObj.type === "three-way-cycle"
-                ? matchObj.match.middlemanSwapperId
+                ? matchObj.match.middleman.id
                 : undefined
             }
             // match={match}
@@ -317,20 +317,22 @@ export function SwapItemMatchBottomSheet({
             {matchObj.type === "direct" ? (
               <DirectSwapArtboard
                 yourIndex={course.haveIndex}
-                otherIndex={match.index}
+                otherIndex={match.target.index}
                 iam={
                   (match.status === "pending" || match.status === "swapped") &&
                   !match.isSelfInitiated
                     ? "target"
                     : "intiator"
                 }
+                initiatorUsername={match.initiator.username}
+                targetUsername={match.target.username}
                 // iam="intiator"
               />
             ) : (
               <ThreeWayCycleArtboard
                 requestorIndex={course.haveIndex}
-                targetIndex={match.index}
-                middleIndex={matchObj.match.middlemanIndex}
+                targetIndex={match.target.index}
+                middleIndex={matchObj.match.middleman.index}
                 iam={matchObj.match.iam}
               />
             )}
@@ -347,12 +349,22 @@ export function SwapItemMatchBottomSheet({
 
 export function SwapItemMatch({
   match,
-  myIndex,
+  initiator,
+  target,
   className,
   onRequestOpen,
 }: {
   match: DirectMatch;
-  myIndex: string;
+  initiator: {
+    id: Id<"swapper">;
+    username: string;
+    index: string;
+  };
+  target: {
+    id: Id<"swapper">;
+    username: string;
+    index: string;
+  };
   className?: string;
   onRequestOpen?: (id: Id<"swapper">) => void;
 }) {
@@ -381,7 +393,7 @@ export function SwapItemMatch({
 
   return (
     <TableRow
-      onClick={() => onRequestOpen?.(match.otherSwapperId)}
+      onClick={() => onRequestOpen?.(match.target.id)}
       className={cn(
         {
           "bg-primary-500/10": match.isPerfectMatch,
@@ -395,7 +407,7 @@ export function SwapItemMatch({
           "text-destructive": !match.haveWhatIWant,
         })}
       >
-        {match.index}
+        {match.target.index}
       </TableCell>
       <TableCell className="text-foreground text-sm lg:text-base">
         {match.haveWhatTheyWant ? (
@@ -445,21 +457,19 @@ export function SwapItemThreeWayCycleMatch({
 
   return (
     <TableRow
-      onClick={() =>
-        onRequestOpen?.(match.otherSwapperId, match.middlemanSwapperId)
-      }
+      onClick={() => onRequestOpen?.(match.target.id, match.middleman.id)}
       className={className}
     >
       <TableCell className="font-medium text-sm lg:text-base text-foreground">
         <span className="text-muted-foreground">First swap</span>{" "}
         <span className="text-primary-500"> {myIndex}</span>
         <span className="text-muted-foreground">{" <-> "}</span>
-        <span className="text-secondary-500">{match.middlemanIndex}</span>{" "}
+        <span className="text-secondary-500">{match.middleman.index}</span>{" "}
         <br />
         <span className="text-muted-foreground">Then swap</span>{" "}
-        <span className="text-secondary-500"> {match.middlemanIndex}</span>
+        <span className="text-secondary-500"> {match.middleman.index}</span>
         <span className="text-muted-foreground">{" <-> "}</span>
-        {match.index}
+        {match.target.index}
       </TableCell>
       <TableCell className="flex flex-row gap-2 items-center justify-end text-right text-sm lg:text-base">
         {statusElement} <ArrowRight className="size-4 text-primary-500" />
@@ -552,7 +562,7 @@ export function CourseSwapMatches({
             {requestsQuery.directMatches.map((rawMatch, index) => {
               return (
                 <SwapItemMatch
-                  key={rawMatch.otherSwapperId}
+                  key={rawMatch.target.id}
                   match={rawMatch}
                   myIndex={requestsQuery.course.haveIndex ?? ""}
                   className={cn({
@@ -608,7 +618,7 @@ export function CourseSwapMatches({
             {requestsQuery.threeWayCycleMatches.map((rawMatch, index) => {
               return (
                 <SwapItemThreeWayCycleMatch
-                  key={`${rawMatch.otherSwapperId}-${rawMatch.middlemanSwapperId}-${index}`}
+                  key={`${rawMatch.target.id}-${rawMatch.middleman.id}-${index}`}
                   match={rawMatch}
                   myIndex={requestsQuery.course.haveIndex ?? ""}
                   onRequestOpen={() => {

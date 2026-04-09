@@ -499,12 +499,21 @@ export const getCourseRequestAndMatches = query({
 
     const haveIndex = mySwapper.index;
 
-    const allSwapperWants = await ctx.db
-      .query("swapper_wants")
-      .filter((q) =>
-        q.or(...allSwappers.map((s) => q.eq(q.field("swapperId"), s._id)))
-      )
-      .collect();
+    const userIds = Array.from(new Set(allSwappers.map((s) => s.userId)));
+
+    const [allSwapperWants, users] = await Promise.all([
+      ctx.db
+        .query("swapper_wants")
+        .filter((q) =>
+          q.or(...allSwappers.map((s) => q.eq(q.field("swapperId"), s._id)))
+        )
+        .collect(),
+      ctx.db
+        .query("users")
+        .filter((q) => q.or(...userIds.map((id) => q.eq(q.field("_id"), id))))
+        .collect(),
+    ]);
+    const userMap = new Map(users.map((u) => [u._id, u]));
 
     const wantIndexesSet = new Set(
       allSwapperWants
@@ -528,8 +537,16 @@ export const getCourseRequestAndMatches = query({
       .collect();
 
     type BaseMatch = {
-      otherSwapperId: Id<"swapper">;
-      index: string;
+      initiator: {
+        id: Id<"swapper">;
+        username: string;
+        index: string;
+      };
+      target: {
+        id: Id<"swapper">;
+        username: string;
+        index: string;
+      };
     } & (
       | {
           status: undefined;
@@ -549,8 +566,11 @@ export const getCourseRequestAndMatches = query({
       haveWhatIWant: boolean;
     })[] = [];
     const threeWayCycleMatches: (BaseMatch & {
-      middlemanSwapperId: Id<"swapper">;
-      middlemanIndex: string;
+      middleman: {
+        id: Id<"swapper">;
+        username: string;
+        index: string;
+      };
       iam: "intiator" | "target" | "middleman";
     })[] = [];
 
@@ -566,6 +586,8 @@ export const getCourseRequestAndMatches = query({
 
     // Direct matches.
     for (const otherSwapper of allSwappers) {
+      const otherUser = userMap.get(otherSwapper.userId);
+      if (!otherUser) continue;
       // TAG: Personal check
       if (otherSwapper.userId === user._id) continue;
 
@@ -599,26 +621,52 @@ export const getCourseRequestAndMatches = query({
 
       // Finally, we deducce the status of the match.
       const isSelfInitiated =
-        myMatchRequestWithOther?.initiator === mySwapper._id;
+        myMatchRequestWithOther === undefined ||
+        myMatchRequestWithOther.initiator === mySwapper._id;
+      let initiator, target;
+      if (isSelfInitiated) {
+        initiator = {
+          id: mySwapper._id,
+          username: user.username,
+          index: mySwapper.index,
+        };
+        target = {
+          id: otherSwapper._id,
+          username: otherUser.username,
+          index: otherSwapper.index,
+        };
+      } else {
+        initiator = {
+          id: otherSwapper._id,
+          username: otherUser.username,
+          index: otherSwapper.index,
+        };
+        target = {
+          id: mySwapper._id,
+          username: user.username,
+          index: mySwapper.index,
+        };
+      }
+
       if (isAvailable) {
         if (myMatchRequestWithOther) {
           directMatches.push({
-            otherSwapperId: otherSwapper._id,
+            initiator,
+            target,
             isPerfectMatch: isPerfectMatchWithOther,
             haveWhatTheyWant,
             haveWhatIWant,
-            index: otherSwapper.index,
             status: "pending",
             isSelfInitiated,
             // requestedAt: myMatchRequestWithOther._creationTime,
           });
         } else {
           directMatches.push({
-            otherSwapperId: otherSwapper._id,
+            initiator,
+            target,
             isPerfectMatch: isPerfectMatchWithOther,
             haveWhatTheyWant,
             haveWhatIWant,
-            index: otherSwapper.index,
             status: undefined,
           });
         }
@@ -627,11 +675,11 @@ export const getCourseRequestAndMatches = query({
       else {
         if (myMatchRequestWithOther) {
           directMatches.push({
-            otherSwapperId: otherSwapper._id,
+            initiator,
+            target,
             isPerfectMatch: isPerfectMatchWithOther,
             haveWhatTheyWant,
             haveWhatIWant,
-            index: otherSwapper.index,
             status: "swapped",
             isSelfInitiated,
           });
@@ -653,25 +701,31 @@ export const getCourseRequestAndMatches = query({
     // someone else who has what you want.
 
     for (const mainTargetSwapper of threeWayConsideredMatches) {
-      const otherSwapper = swapperById.get(mainTargetSwapper.otherSwapperId);
+      const otherSwapper = swapperById.get(mainTargetSwapper.target.id);
       if (!otherSwapper) continue;
+
+      const otherUser = userMap.get(otherSwapper.userId);
+      if (!otherUser) continue;
 
       const otherWants = wantsBySwapperId.get(otherSwapper._id);
       if (!otherWants || otherWants.size === 0) continue;
 
       // Find the middleman.
-      for (const middleman of allSwappers) {
-        if (middleman._id === mySwapper._id) continue;
-        if (middleman._id === otherSwapper._id) continue;
+      for (const _middleman of allSwappers) {
+        if (_middleman._id === mySwapper._id) continue;
+        if (_middleman._id === otherSwapper._id) continue;
 
-        const middlemanWants = wantsBySwapperId.get(middleman._id);
+        const middlemanUser = userMap.get(_middleman.userId);
+        if (!middlemanUser) continue;
+
+        const middlemanWants = wantsBySwapperId.get(_middleman._id);
         if (!middlemanWants?.has(haveIndex)) continue;
-        if (!otherWants.has(middleman.index)) continue;
+        if (!otherWants.has(_middleman.index)) continue;
 
         const canonicalId = [
           mySwapper._id,
           otherSwapper._id,
-          middleman._id,
+          _middleman._id,
         ].sort();
         const myMatchRequestWithBothOthers = allMyRequests.find((r) => {
           const requestCanonicalId = [
@@ -686,43 +740,120 @@ export const getCourseRequestAndMatches = query({
         const isAvailable =
           !mySwapper.hasSwapped &&
           !otherSwapper.hasSwapped &&
-          !middleman.hasSwapped;
+          !_middleman.hasSwapped;
         if (!myMatchRequestWithBothOthers && !isAvailable) continue;
 
         // Deduce the status of the match.
         const isSelfInitiated =
-          myMatchRequestWithBothOthers?.initiator === mySwapper._id;
+          myMatchRequestWithBothOthers === undefined ||
+          myMatchRequestWithBothOthers.initiator === mySwapper._id;
 
         let iam: "intiator" | "target" | "middleman" = "intiator";
-        if (myMatchRequestWithBothOthers?.initiator === mySwapper._id) {
+        if (
+          myMatchRequestWithBothOthers === undefined ||
+          myMatchRequestWithBothOthers.initiator === mySwapper._id
+        ) {
           iam = "intiator";
         } else if (
-          myMatchRequestWithBothOthers?.targetSwapper === mySwapper._id
+          myMatchRequestWithBothOthers.targetSwapper === mySwapper._id
         ) {
           iam = "target";
         } else if (
-          myMatchRequestWithBothOthers?.middlemanSwapper === mySwapper._id
+          myMatchRequestWithBothOthers.middlemanSwapper === mySwapper._id
         ) {
           iam = "middleman";
+        }
+
+        let initiator, middleman, target;
+        if (myMatchRequestWithBothOthers) {
+          if (myMatchRequestWithBothOthers.middlemanSwapper === undefined) {
+            throw new ConvexError("Middleman swapper not found.");
+          }
+          const initiatorSwapper = swapperById.get(
+            myMatchRequestWithBothOthers.initiator
+          );
+          const middlemanSwapper = swapperById.get(
+            myMatchRequestWithBothOthers.middlemanSwapper
+          );
+          const targetSwapper = swapperById.get(
+            myMatchRequestWithBothOthers.targetSwapper
+          );
+
+          if (!initiatorSwapper || !middlemanSwapper || !targetSwapper) {
+            console.warn(
+              `Swapper not found while trying to pair existing matches: ${initiatorSwapper}, ${middlemanSwapper}, ${targetSwapper}`
+            );
+            continue;
+          }
+
+          const initiatorUsername = userMap.get(
+            initiatorSwapper.userId
+          )?.username;
+          const middlemanUsername = userMap.get(
+            middlemanSwapper.userId
+          )?.username;
+          const targetUsername = userMap.get(targetSwapper.userId)?.username;
+          if (!initiatorUsername || !middlemanUsername || !targetUsername) {
+            console.warn(
+              `Username not found while trying to pair existing matches: ${initiatorUsername}, ${middlemanUsername}, ${targetUsername}`
+            );
+            continue;
+          }
+          initiator = {
+            id: myMatchRequestWithBothOthers.initiator,
+            username: initiatorUsername,
+            index: initiatorSwapper.index,
+          };
+          middleman = {
+            id: myMatchRequestWithBothOthers.middlemanSwapper,
+            username: middlemanUsername,
+            index: middlemanSwapper.index,
+          };
+          target = {
+            id: myMatchRequestWithBothOthers.targetSwapper,
+            username: targetUsername,
+            index: targetSwapper.index,
+          };
+        } else {
+          const initiatorSwapper = mySwapper;
+          const middlemanSwapper = _middleman;
+          const targetSwapper = otherSwapper;
+
+          const initiatorUsername = user.username;
+          const middlemanUsername = middlemanUser.username;
+          const targetUsername = otherUser.username;
+          initiator = {
+            id: initiatorSwapper._id,
+            username: initiatorUsername,
+            index: initiatorSwapper.index,
+          };
+          middleman = {
+            id: middlemanSwapper._id,
+            username: middlemanUsername,
+            index: middlemanSwapper.index,
+          };
+          target = {
+            id: targetSwapper._id,
+            username: targetUsername,
+            index: targetSwapper.index,
+          };
         }
 
         if (isAvailable) {
           if (myMatchRequestWithBothOthers) {
             threeWayCycleMatches.push({
-              otherSwapperId: otherSwapper._id,
-              index: mainTargetSwapper.index,
-              middlemanSwapperId: middleman._id,
-              middlemanIndex: middleman.index,
+              initiator,
+              target,
+              middleman,
               status: "pending",
               isSelfInitiated,
               iam,
             });
           } else {
             threeWayCycleMatches.push({
-              otherSwapperId: otherSwapper._id,
-              index: mainTargetSwapper.index,
-              middlemanSwapperId: middleman._id,
-              middlemanIndex: middleman.index,
+              initiator,
+              target,
+              middleman,
               status: undefined,
               iam,
             });
@@ -730,10 +861,9 @@ export const getCourseRequestAndMatches = query({
         } else {
           if (myMatchRequestWithBothOthers) {
             threeWayCycleMatches.push({
-              otherSwapperId: otherSwapper._id,
-              index: mainTargetSwapper.index,
-              middlemanSwapperId: middleman._id,
-              middlemanIndex: middleman.index,
+              initiator,
+              target,
+              middleman,
               status: "swapped",
               isSelfInitiated,
               iam,
@@ -791,7 +921,6 @@ export const getCourseRequestAndMatches = query({
       course: {
         id: courseId,
         name: course.name,
-        haveIndex,
         hasSwapped: mySwapper.hasSwapped,
       },
       wantIndexes: Array.from(wantIndexesSet),

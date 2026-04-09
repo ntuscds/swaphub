@@ -21,7 +21,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { setMockUserEmail } from "@/app/admin/actions";
-import { getProfileInitials } from "@/lib/user";
+import { getProfileImageUrl, getProfileInitials } from "@/lib/user";
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useThemeStore(
@@ -126,9 +126,9 @@ export function ProfileMenu({
           >
             {profileInitials ? (
               <img
-                src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileInitials)}&size=128&backgroundColor=4f46e5%2C7c3aed%2C2563eb%2C0891b2%2C0d9488&backgroundType=gradientLinear&backgroundRotation=45&textColor=ffffff&fontSize=45`}
+                src={getProfileImageUrl(profileInitials)}
                 alt={user.username ?? ""}
-                className="size- object-cover"
+                className="object-cover w-full h-full"
               />
             ) : (
               <UserRound className="size-6 text-muted-foreground" />

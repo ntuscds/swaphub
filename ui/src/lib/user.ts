@@ -50,3 +50,7 @@ export function getProfileInitials(username: string) {
     .join("")
     .toUpperCase();
 }
+
+export function getProfileImageUrl(username: string, fontSize: number = 45) {
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(username)}&size=128&backgroundColor=4f46e5%2C7c3aed%2C2563eb%2C0891b2%2C0d9488&backgroundType=gradientLinear&backgroundRotation=45&textColor=ffffff&fontSize=${fontSize}`;
+}

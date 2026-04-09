@@ -5,7 +5,6 @@ import {
   MOCK_USER_EMAIL_COOKIE,
   setMockUserEmailCookie,
 } from "@/lib/mock-user";
-import { revalidatePath } from "next/cache";
 import { env } from "@/lib/env";
 
 export async function setMockUserEmail(formData: FormData) {

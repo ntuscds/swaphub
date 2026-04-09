@@ -444,10 +444,14 @@ export function DirectSwapArtboard({
   yourIndex,
   otherIndex,
   iam,
+  initiatorUsername,
+  targetUsername,
 }: {
   yourIndex: string;
   otherIndex: string;
   iam: "intiator" | "target";
+  initiatorUsername: string;
+  targetUsername: string;
 }) {
   const yourBadgeRef = useRef<SVGSVGElement | null>(null);
   const otherBadgeRef = useRef<SVGSVGElement | null>(null);
@@ -556,7 +560,7 @@ export function DirectSwapArtboard({
           dominantBaseline="middle"
           textAnchor="middle"
         >
-          Requestor
+          {initiatorUsername}
         </text>
       )}
 
@@ -585,7 +589,7 @@ export function DirectSwapArtboard({
           dominantBaseline="middle"
           textAnchor="middle"
         >
-          Target
+          {targetUsername}
         </text>
       )}
       <path
