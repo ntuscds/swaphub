@@ -82,11 +82,13 @@ export function SvgBadge({
 }
 
 export function ThreeWayCycleArtboard({
+  className,
   initiator,
   target,
   middleman,
   iam,
 }: {
+  className?: string;
   iam: "initiator" | "target" | "middleman";
   initiator: {
     index: string;
@@ -338,7 +340,7 @@ export function ThreeWayCycleArtboard({
   const computedViewBox = `${viewBoxConfig.x} 0 ${viewBoxConfig.width} ${THREE_WAY_VIEWBOX_HEIGHT}`;
 
   return (
-    <div className="w-full" ref={containerRef}>
+    <div className={cn("w-full", className)} ref={containerRef}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         // width={512}

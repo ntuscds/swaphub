@@ -57,6 +57,7 @@ export async function Request({
         <div className="w-full">
           {request.middleman ? (
             <ThreeWayCycleArtboard
+              className="h-80 md:h-88 lg:h-96 xl:h-112 2xl:h-144"
               iam={request.iam}
               initiator={{
                 index: request.initiator.index,
