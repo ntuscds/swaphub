@@ -350,21 +350,21 @@ export function SwapItemMatchBottomSheet({
               />
             ) : (
               <ThreeWayCycleArtboard
-                initiator={{
-                  ...matchObj.match.initiator,
-                  status: "accepted",
-                }}
-                target={{
-                  ...matchObj.match.target,
-                  status: "pending",
-                }}
-                middleman={{
-                  ...matchObj.match.middleman,
-                  status: "declined",
-                }}
-                // initiator={matchObj.match.initiator}
-                // target={matchObj.match.target}
-                // middleman={matchObj.match.middleman}
+                // initiator={{
+                //   ...matchObj.match.initiator,
+                //   status: "accepted",
+                // }}
+                // target={{
+                //   ...matchObj.match.target,
+                //   status: "pending",
+                // }}
+                // middleman={{
+                //   ...matchObj.match.middleman,
+                //   status: "declined",
+                // }}
+                initiator={matchObj.match.initiator}
+                target={matchObj.match.target}
+                middleman={matchObj.match.middleman}
                 iam={matchObj.match.iam}
               />
             )}
