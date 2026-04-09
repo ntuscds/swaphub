@@ -1,6 +1,85 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+
+export function SvgBadge({
+  cx,
+  cy,
+  type,
+}: {
+  cx: number;
+  cy: number;
+  type: "accepted" | "declined" | "pending";
+}) {
+  if (type === "accepted") {
+    return (
+      <svg
+        x={cx - 64}
+        y={cy - 17}
+        width="128"
+        height="34"
+        style={{ willChange: "opacity" }}
+      >
+        <rect width="100%" height="100%" className="fill-green-950" rx="12" />
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="middle"
+          textAnchor="middle"
+          className="fill-green-300 font-medium"
+          fontSize="20"
+        >
+          Accepted
+        </text>
+      </svg>
+    );
+  }
+  if (type === "pending") {
+    return (
+      <svg
+        x={cx - 64}
+        y={cy - 17}
+        width="128"
+        height="34"
+        style={{ willChange: "opacity" }}
+      >
+        <rect width="100%" height="100%" className="fill-yellow-950" rx="12" />
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="middle"
+          textAnchor="middle"
+          className="fill-yellow-300 font-medium"
+          fontSize="20"
+        >
+          Pending
+        </text>
+      </svg>
+    );
+  }
+  return (
+    <svg
+      x={cx - 64}
+      y={cy - 17}
+      width="128"
+      height="34"
+      style={{ willChange: "opacity" }}
+    >
+      <rect width="100%" height="100%" className="fill-red-950" rx="12" />
+      <text
+        x="50%"
+        y="50%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        className="fill-red-300 font-medium"
+        fontSize="20"
+      >
+        Declined
+      </text>
+    </svg>
+  );
+}
 
 export function ThreeWayCycleArtboard({
   initiator,
@@ -12,14 +91,17 @@ export function ThreeWayCycleArtboard({
   initiator: {
     index: string;
     username: string;
+    status?: "accepted" | "declined" | "pending" | null;
   };
   target: {
     index: string;
     username: string;
+    status?: "accepted" | "declined" | "pending" | null;
   };
   middleman: {
     index: string;
     username: string;
+    status?: "accepted" | "declined" | "pending" | null;
   };
 }) {
   const requestorBadgeRef = useRef<SVGSVGElement | null>(null);
@@ -205,7 +287,7 @@ export function ThreeWayCycleArtboard({
       // width={512}
       // height={479}
       className="w-full"
-      viewBox="0 0 512 540"
+      viewBox="0 0 512 580"
       fill="none"
       // {...props}
     >
@@ -237,6 +319,9 @@ export function ThreeWayCycleArtboard({
           {initiator.username}
         </text>
       )}
+      {initiator.status && (
+        <SvgBadge cx={64} cy={412} type={initiator.status} />
+      )}
       <path
         fill="url(#c)"
         d="M384 128c0-22.091 17.909-40 40-40h48c22.091 0 40 17.909 40 40v40H384v-40Z"
@@ -265,6 +350,9 @@ export function ThreeWayCycleArtboard({
         >
           {middleman.username}
         </text>
+      )}
+      {middleman.status && (
+        <SvgBadge cx={448} cy={249} type={middleman.status} />
       )}
 
       <path
@@ -296,6 +384,7 @@ export function ThreeWayCycleArtboard({
           {target.username}
         </text>
       )}
+      {target.status && <SvgBadge cx={448} cy={561} type={target.status} />}
       <path
         fill="#334155"
         d="M327.222 117.802a1 1 0 0 0-.541-1.307l-8.315-3.444a1 1 0 1 0-.765 1.848l7.391 3.061-3.062 7.391a1 1 0 0 0 1.848.766l3.444-8.315ZM160 186.302l.383.924 166.298-68.883-.383-.924-.382-.924-166.299 68.883.383.924ZM193.178 210.76c-.211.51.031 1.095.541 1.307l8.315 3.444a1.001 1.001 0 0 0 .766-1.848l-7.391-3.061 3.061-7.391a1 1 0 0 0-1.848-.766l-3.444 8.315Zm167.222-68.5-.382-.924-166.299 68.883.383.924.383.924 166.298-68.883-.383-.924ZM340.458 368.807a1 1 0 0 0 .541-1.307l-3.444-8.315a1.001 1.001 0 0 0-1.848.766l3.061 7.391-7.391 3.061a1.001 1.001 0 0 0 .766 1.848l8.315-3.444ZM173.777 299l-.383.924 166.298 68.883.383-.924.383-.924-166.299-68.883-.382.924ZM179.943 339.755a1 1 0 0 0-.542 1.306l3.445 8.315a.999.999 0 1 0 1.847-.765l-3.061-7.391 7.391-3.062a1 1 0 0 0-.765-1.848l-8.315 3.445Zm166.681 69.807.382-.924-166.298-68.883-.383.924-.382.923 166.298 68.883.383-.923Z"
@@ -450,22 +539,81 @@ export function ThreeWayCycleArtboard({
 }
 
 export function DirectSwapArtboard({
+  className,
   iam,
   initiator,
   target,
 }: {
+  className?: string;
   iam: "initiator" | "target";
   initiator: {
     index: string;
     username: string;
+    status?: "accepted" | "declined" | "pending" | null;
   };
   target: {
     index: string;
     username: string;
+    status?: "accepted" | "declined" | "pending" | null;
   };
 }) {
+  const DIRECT_SWAP_BASE_VIEWBOX_WIDTH = 512;
+  const DIRECT_SWAP_VIEWBOX_HEIGHT = 256;
+  const DIRECT_SWAP_BASE_ASPECT_RATIO =
+    DIRECT_SWAP_BASE_VIEWBOX_WIDTH / DIRECT_SWAP_VIEWBOX_HEIGHT;
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const yourBadgeRef = useRef<SVGSVGElement | null>(null);
   const otherBadgeRef = useRef<SVGSVGElement | null>(null);
+  const [viewBoxConfig, setViewBoxConfig] = useState({
+    x: 0,
+    width: DIRECT_SWAP_BASE_VIEWBOX_WIDTH,
+  });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateViewBoxWidth = () => {
+      const measuredWidth = container.clientWidth;
+      const measuredHeight = container.clientHeight;
+      if (!measuredWidth || !measuredHeight) return;
+
+      const containerAspectRatio = measuredWidth / measuredHeight;
+      setViewBoxConfig((currentViewBoxConfig) => {
+        if (containerAspectRatio <= DIRECT_SWAP_BASE_ASPECT_RATIO) {
+          if (
+            currentViewBoxConfig.x === 0 &&
+            currentViewBoxConfig.width === DIRECT_SWAP_BASE_VIEWBOX_WIDTH
+          ) {
+            return currentViewBoxConfig;
+          }
+          return { x: 0, width: DIRECT_SWAP_BASE_VIEWBOX_WIDTH };
+        }
+
+        const pad = (containerAspectRatio - DIRECT_SWAP_BASE_ASPECT_RATIO) / 2;
+        const nextX = pad * -DIRECT_SWAP_BASE_VIEWBOX_WIDTH;
+        const nextWidth =
+          pad * 2 * DIRECT_SWAP_BASE_VIEWBOX_WIDTH +
+          DIRECT_SWAP_BASE_VIEWBOX_WIDTH;
+
+        if (
+          currentViewBoxConfig.x === nextX &&
+          currentViewBoxConfig.width === nextWidth
+        ) {
+          return currentViewBoxConfig;
+        }
+
+        return { x: nextX, width: nextWidth };
+      });
+    };
+
+    updateViewBoxWidth();
+    const resizeObserver = new ResizeObserver(updateViewBoxWidth);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     const yourBadge = yourBadgeRef.current;
@@ -539,174 +687,188 @@ export function DirectSwapArtboard({
     return () => cancelAnimationFrame(rafId);
   }, []);
 
+  const computedViewBox = `${viewBoxConfig.x} 0 ${viewBoxConfig.width} ${DIRECT_SWAP_VIEWBOX_HEIGHT}`;
+
   return (
-    <svg
-      className="w-full"
-      viewBox="0 0 512 220"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M0 128C0 105.909 17.9086 88 40 88H88C110.091 88 128 105.909 128 128V168H0V128Z"
-        fill="url(#paint0_linear_42_168)"
-      />
-      <circle cx="64" cy="64" r="64" fill="url(#paint1_linear_42_168)" />
-      {iam === "initiator" ? (
-        <text
-          x="64"
-          y="200"
-          className="fill-primary-500 font-extrabold"
-          fontSize="32"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          YOU
-        </text>
-      ) : (
-        <text
-          x="64"
-          y="200"
-          className="fill-primary-300 dark:fill-primary-600 font-light"
-          fontSize="24"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          {initiator.username}
-        </text>
-      )}
-
-      <path
-        d="M384 129C384 106.909 401.909 89 424 89H472C494.091 89 512 106.909 512 129V169H384V129Z"
-        fill="url(#paint2_linear_42_168)"
-      />
-      <circle cx="448" cy="65" r="64" fill="url(#paint3_linear_42_168)" />
-      {iam === "target" ? (
-        <text
-          x="448"
-          y="200"
-          className="fill-white font-extrabold"
-          fontSize="32"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          YOU
-        </text>
-      ) : (
-        <text
-          x="448"
-          y="200"
-          className="fill-background-600 dark:fill-background-400 font-light"
-          fontSize="24"
-          dominantBaseline="middle"
-          textAnchor="middle"
-        >
-          {target.username}
-        </text>
-      )}
-      <path
-        d="M335.707 93.7071C336.098 93.3166 336.098 92.6834 335.707 92.2929L329.343 85.9289C328.953 85.5384 328.319 85.5384 327.929 85.9289C327.538 86.3195 327.538 86.9526 327.929 87.3431L333.586 93L327.929 98.6569C327.538 99.0474 327.538 99.6805 327.929 100.071C328.319 100.462 328.953 100.462 329.343 100.071L335.707 93.7071ZM155 93V94L335 94V93V92L155 92V93Z"
-        fill="#334155"
-      />
-      <path
-        d="M176.293 128.293C175.902 128.683 175.902 129.317 176.293 129.707L182.657 136.071C183.047 136.462 183.681 136.462 184.071 136.071C184.462 135.681 184.462 135.047 184.071 134.657L178.414 129L184.071 123.343C184.462 122.953 184.462 122.319 184.071 121.929C183.681 121.538 183.047 121.538 182.657 121.929L176.293 128.293ZM357 129V128L177 128V129V130L357 130V129Z"
-        fill="#334155"
-      />
-
+    <div className={cn("w-full", className)} ref={containerRef}>
       <svg
-        ref={yourBadgeRef}
-        x="296"
-        y="42"
-        width="96"
-        height="34"
-        style={{ willChange: "opacity" }}
+        className="w-full h-full"
+        viewBox={computedViewBox}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        <rect width="100%" height="100%" className="fill-primary-950" rx="12" />
-        <text
-          x="50%"
-          y="50%"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          className="fill-primary-300 font-medium"
-          fontSize="20"
-        >
-          {initiator.index}
-        </text>
-      </svg>
-
-      <svg
-        ref={otherBadgeRef}
-        // x="200"
-        x="104"
-        y="145"
-        width="96"
-        height="34"
-        style={{ willChange: "opacity" }}
-      >
-        <rect
-          width="100%"
-          height="100%"
-          className="fill-background-900"
-          rx="12"
+        <path
+          d="M0 128C0 105.909 17.9086 88 40 88H88C110.091 88 128 105.909 128 128V168H0V128Z"
+          fill="url(#paint0_linear_42_168)"
         />
-        <text
-          x="50%"
-          y="50%"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          fill="currentColor"
-          className="text-white font-medium"
-          fontSize="20"
-        >
-          {target.index}
-        </text>
-      </svg>
+        <circle cx="64" cy="64" r="64" fill="url(#paint1_linear_42_168)" />
+        {iam === "initiator" ? (
+          <text
+            x="64"
+            y="200"
+            className="fill-primary-500 font-extrabold"
+            fontSize="32"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            YOU
+          </text>
+        ) : (
+          <text
+            x="64"
+            y="200"
+            className="fill-primary-300 dark:fill-primary-600 font-light"
+            fontSize="24"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            {initiator.username}
+          </text>
+        )}
+        {initiator.status && (
+          <SvgBadge cx={64} cy={249} type={initiator.status} />
+        )}
 
-      <defs>
-        <linearGradient
-          id="paint0_linear_42_168"
-          x1="64"
-          y1="88"
-          x2="64"
-          y2="168"
-          gradientUnits="userSpaceOnUse"
+        <path
+          d="M384 129C384 106.909 401.909 89 424 89H472C494.091 89 512 106.909 512 129V169H384V129Z"
+          fill="url(#paint2_linear_42_168)"
+        />
+        <circle cx="448" cy="65" r="64" fill="url(#paint3_linear_42_168)" />
+        {iam === "target" ? (
+          <text
+            x="448"
+            y="200"
+            className="fill-white font-extrabold"
+            fontSize="32"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            YOU
+          </text>
+        ) : (
+          <text
+            x="448"
+            y="200"
+            className="fill-background-600 dark:fill-background-400 font-light"
+            fontSize="24"
+            dominantBaseline="middle"
+            textAnchor="middle"
+          >
+            {target.username}
+          </text>
+        )}
+        {target.status && <SvgBadge cx={448} cy={249} type={target.status} />}
+
+        <path
+          d="M335.707 93.7071C336.098 93.3166 336.098 92.6834 335.707 92.2929L329.343 85.9289C328.953 85.5384 328.319 85.5384 327.929 85.9289C327.538 86.3195 327.538 86.9526 327.929 87.3431L333.586 93L327.929 98.6569C327.538 99.0474 327.538 99.6805 327.929 100.071C328.319 100.462 328.953 100.462 329.343 100.071L335.707 93.7071ZM155 93V94L335 94V93V92L155 92V93Z"
+          fill="#334155"
+        />
+        <path
+          d="M176.293 128.293C175.902 128.683 175.902 129.317 176.293 129.707L182.657 136.071C183.047 136.462 183.681 136.462 184.071 136.071C184.462 135.681 184.462 135.047 184.071 134.657L178.414 129L184.071 123.343C184.462 122.953 184.462 122.319 184.071 121.929C183.681 121.538 183.047 121.538 182.657 121.929L176.293 128.293ZM357 129V128L177 128V129V130L357 130V129Z"
+          fill="#334155"
+        />
+
+        <svg
+          ref={yourBadgeRef}
+          x="296"
+          y="42"
+          width="96"
+          height="34"
+          style={{ willChange: "opacity" }}
         >
-          <stop stopColor="#1D4ED8" />
-          <stop offset="1" stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="paint1_linear_42_168"
-          x1="64"
-          y1="0"
-          x2="64"
-          y2="128"
-          gradientUnits="userSpaceOnUse"
+          <rect
+            width="100%"
+            height="100%"
+            className="fill-primary-950"
+            rx="12"
+          />
+          <text
+            x="50%"
+            y="50%"
+            dominantBaseline="middle"
+            textAnchor="middle"
+            className="fill-primary-300 font-medium"
+            fontSize="20"
+          >
+            {initiator.index}
+          </text>
+        </svg>
+
+        <svg
+          ref={otherBadgeRef}
+          // x="200"
+          x="104"
+          y="145"
+          width="96"
+          height="34"
+          style={{ willChange: "opacity" }}
         >
-          <stop stopColor="#1D4ED8" />
-          <stop offset="1" stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="paint2_linear_42_168"
-          x1="448"
-          y1="89"
-          x2="448"
-          y2="169"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#94A3B8" />
-          <stop offset="1" stopColor="#020617" />
-        </linearGradient>
-        <linearGradient
-          id="paint3_linear_42_168"
-          x1="448"
-          y1="1"
-          x2="448"
-          y2="129"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#94A3B8" />
-          <stop offset="1" stopColor="#020617" />
-        </linearGradient>
-      </defs>
-    </svg>
+          <rect
+            width="100%"
+            height="100%"
+            className="fill-background-900"
+            rx="12"
+          />
+          <text
+            x="50%"
+            y="50%"
+            dominantBaseline="middle"
+            textAnchor="middle"
+            fill="currentColor"
+            className="text-white font-medium"
+            fontSize="20"
+          >
+            {target.index}
+          </text>
+        </svg>
+
+        <defs>
+          <linearGradient
+            id="paint0_linear_42_168"
+            x1="64"
+            y1="88"
+            x2="64"
+            y2="168"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#1D4ED8" />
+            <stop offset="1" stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="paint1_linear_42_168"
+            x1="64"
+            y1="0"
+            x2="64"
+            y2="128"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#1D4ED8" />
+            <stop offset="1" stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="paint2_linear_42_168"
+            x1="448"
+            y1="89"
+            x2="448"
+            y2="169"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#94A3B8" />
+            <stop offset="1" stopColor="#020617" />
+          </linearGradient>
+          <linearGradient
+            id="paint3_linear_42_168"
+            x1="448"
+            y1="1"
+            x2="448"
+            y2="129"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#94A3B8" />
+            <stop offset="1" stopColor="#020617" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
   );
 }

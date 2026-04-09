@@ -42,6 +42,7 @@ import {
 } from "./course-swap-artboard";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { getProfileImageUrl } from "@/lib/user";
+import { reduceStatus } from "@/lib/swap-request";
 
 type CourseRequestAndMatches = FunctionReturnType<
   typeof api.tasks.getCourseRequestAndMatches
@@ -209,25 +210,20 @@ export function SwapItemMatchBottomSheet({
   if (match.status === "pending") {
     statusElement =
       match.iam === "initiator" ? (
-        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-          Pending
-        </Badge>
+        <Badge variant="warning">Pending</Badge>
       ) : (
-        <Badge variant="default" className="text-yellow-500 bg-yellow-700/30">
-          Requested by Someone!
-        </Badge>
+        <Badge variant="warning">Requested by Someone!</Badge>
       );
-  } else if (match.status === "swapped") {
-    statusElement = (
-      <Badge variant="default" className="text-gray-400 bg-gray-600/30">
-        Already Swapped
-      </Badge>
-    );
-  } else {
-    statusElement = <span className="text-sm text-primary-500">Request</span>;
+  } else if (match.status === "accepted") {
+    statusElement = <Badge variant="success">Accepted</Badge>;
+  } else if (match.status === "declined") {
+    statusElement = <Badge variant="cancelled">Declined</Badge>;
   }
 
-  const disabled = match.status === "swapped" || match.status === "pending";
+  const disabled =
+    match.status === "accepted" ||
+    match.status === "declined" ||
+    match.status === "pending";
   let hintElement = null;
   let footer = (
     <RequestSwapBottomSheetFooter
@@ -347,31 +343,28 @@ export function SwapItemMatchBottomSheet({
           <div className="w-full max-w-72">
             {matchObj.type === "direct" ? (
               <DirectSwapArtboard
-                initiator={{
-                  index: matchObj.match.initiator.index,
-                  username: matchObj.match.initiator.username,
-                }}
-                target={{
-                  index: matchObj.match.target.index,
-                  username: matchObj.match.target.username,
-                }}
+                initiator={matchObj.match.initiator}
+                target={matchObj.match.target}
                 iam={matchObj.match.iam}
                 // iam="intiator"
               />
             ) : (
               <ThreeWayCycleArtboard
                 initiator={{
-                  index: matchObj.match.initiator.index,
-                  username: matchObj.match.initiator.username,
+                  ...matchObj.match.initiator,
+                  status: "accepted",
                 }}
                 target={{
-                  index: matchObj.match.target.index,
-                  username: matchObj.match.target.username,
+                  ...matchObj.match.target,
+                  status: "pending",
                 }}
                 middleman={{
-                  index: matchObj.match.middleman.index,
-                  username: matchObj.match.middleman.username,
+                  ...matchObj.match.middleman,
+                  status: "declined",
                 }}
+                // initiator={matchObj.match.initiator}
+                // target={matchObj.match.target}
+                // middleman={matchObj.match.middleman}
                 iam={matchObj.match.iam}
               />
             )}
@@ -408,12 +401,10 @@ export function SwapDirectMatchRow({
           Requested by Someone!
         </Badge>
       );
-  } else if (match.status === "swapped") {
-    statusElement = (
-      <Badge variant="default" className="text-gray-400 bg-gray-600/30">
-        Already Swapped
-      </Badge>
-    );
+  } else if (match.status === "accepted") {
+    statusElement = <Badge variant="success">Accepted</Badge>;
+  } else if (match.status === "declined") {
+    statusElement = <Badge variant="cancelled">Declined</Badge>;
   } else {
     statusElement = (
       <span className="text-sm lg:text-base text-primary-500">Request</span>
@@ -499,12 +490,10 @@ export function SwapThreeWayRow({
           Requested by Someone!
         </Badge>
       );
-  } else if (match.status === "swapped") {
-    statusElement = (
-      <Badge variant="default" className="text-gray-400 bg-gray-600/30">
-        Already Swapped
-      </Badge>
-    );
+  } else if (match.status === "accepted") {
+    statusElement = <Badge variant="success">Accepted</Badge>;
+  } else if (match.status === "declined") {
+    statusElement = <Badge variant="cancelled">Declined</Badge>;
   } else {
     statusElement = <span className="text-sm text-primary-500">Request</span>;
   }

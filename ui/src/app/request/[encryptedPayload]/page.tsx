@@ -2,64 +2,111 @@ import { SwapItemMatchBottomSheet } from "@/components/course-swaps";
 import { HydrationSafeScrollArea } from "@/components/hydration-safe-scroll-area";
 import { decryptValue } from "@/lib/encrypt";
 import { env } from "@/lib/env";
+import { fetchAction } from "convex/nextjs";
+import { Suspense } from "react";
 import z from "zod";
+import { api } from "../../../../convex/_generated/api";
+import {
+  DirectSwapArtboard,
+  ThreeWayCycleArtboard,
+} from "@/components/course-swap-artboard";
+import { Badge } from "@/components/ui/badge";
+import { reduceStatus } from "@/lib/swap-request";
 
 export const SwapRequestPayloadSchema = z.object({
   requestId: z.string(),
   swapperId: z.string(),
 });
 
-export default async function Page({
-  params,
+export async function Request({
+  encryptedPayload,
 }: {
-  params: Promise<{
-    encryptedPayload: string;
-  }>;
+  encryptedPayload: string;
 }) {
-  const { encryptedPayload } = await params;
   try {
-    const decryptedPayload = await decryptValue(
-      encryptedPayload,
-      env.ENCRYPTION_KEY
+    const request = await fetchAction(
+      api.actions.getSwapRequestByEncryptedPayload,
+      {
+        encryptedPayload,
+        apiKey: env.API_KEY,
+      }
     );
-    if (!decryptedPayload) {
-      return <div>Invalid payload</div>;
+
+    let statusElement: React.ReactNode = null;
+    if (request.isCompleted) {
+      statusElement =
+        request.initiator.hasAccepted &&
+        request.target.hasAccepted &&
+        (request.middleman === undefined || request.middleman?.hasAccepted) ? (
+          <Badge variant="success">Completed</Badge>
+        ) : (
+          <Badge variant="cancelled">Cancelled</Badge>
+        );
+    } else {
+      statusElement = <Badge variant="warning">Pending</Badge>;
     }
 
-    const payload = SwapRequestPayloadSchema.parse(
-      JSON.parse(decryptedPayload)
-    );
-    console.log(payload);
     return (
-      <HydrationSafeScrollArea>
-        <div className="flex flex-col items-center">
-          <div className="flex flex-col gap-2 w-full max-w-7xl">
-            {/* <SwapItemMatchBottomSheet
-              isSheet={false}
-              course={{
-                id: "1" as any,
-                haveIndex: "1",
-                hasSwapped: false,
-                code: "1",
-                name: "1",
+      <div className="flex flex-col gap-2 w-full px-4 py-12">
+        <h1 className="w-full text-xl lg:text-2xl font-bold max-w-md">
+          {request.course.code} {request.course.name} Swap Request
+        </h1>
+
+        <div className="w-full">{statusElement}</div>
+
+        <div className="w-full">
+          {request.middleman ? (
+            <ThreeWayCycleArtboard
+              iam={request.iam}
+              initiator={{
+                index: request.initiator.index,
+                username: request.initiator.username,
+                status: reduceStatus(
+                  request.initiator.hasAccepted,
+                  request.isCompleted
+                ),
               }}
-              match={{
-                type: "direct",
-                match: {
-                  status: undefined,
-                  otherSwapperId: "1" as any,
-                  index: "1",
-                  isPerfectMatch: false,
-                  iHaveWhatTheyWant: false,
-                  theyHaveWhatIWant: false,
-                },
+              target={{
+                index: request.target.index,
+                username: request.target.username,
+                status: reduceStatus(
+                  request.target.hasAccepted,
+                  request.isCompleted
+                ),
               }}
-              isAlreadySwapped={false}
-              requestClose={() => {}}
-            /> */}
-          </div>
+              middleman={{
+                index: request.middleman.index,
+                username: request.middleman.username,
+                status: reduceStatus(
+                  request.middleman.hasAccepted,
+                  request.isCompleted
+                ),
+              }}
+            />
+          ) : (
+            <DirectSwapArtboard
+              className="h-36 md:h-44 lg:h-56 xl:h-64 2xl:h-72"
+              iam={request.iam === "initiator" ? "initiator" : "target"}
+              initiator={{
+                index: request.initiator.index,
+                username: request.initiator.username,
+                status: reduceStatus(
+                  request.initiator.hasAccepted,
+                  request.isCompleted
+                ),
+              }}
+              target={{
+                index: request.target.index,
+                username: request.target.username,
+                status: reduceStatus(
+                  request.target.hasAccepted,
+                  request.isCompleted
+                ),
+              }}
+            />
+          )}
         </div>
-      </HydrationSafeScrollArea>
+      </div>
     );
   } catch (error) {
     console.warn(error);
@@ -72,4 +119,25 @@ export default async function Page({
       </div>
     );
   }
+}
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{
+    encryptedPayload: string;
+  }>;
+}) {
+  const { encryptedPayload } = await params;
+  return (
+    <HydrationSafeScrollArea>
+      <div className="flex flex-col items-center">
+        <div className="flex flex-col gap-2 w-full max-w-4xl">
+          <Suspense fallback={<div>Loading...</div>}>
+            <Request encryptedPayload={encryptedPayload} />
+          </Suspense>
+        </div>
+      </div>
+    </HydrationSafeScrollArea>
+  );
 }

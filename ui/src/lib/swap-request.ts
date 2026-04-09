@@ -257,3 +257,13 @@ export function template(
   }
   return out;
 }
+
+export function reduceStatus(hasAccepted: boolean, isCompleted: boolean) {
+  if (isCompleted) {
+    return hasAccepted ? "accepted" : ("declined" as const);
+  }
+  if (hasAccepted) {
+    return "accepted" as const;
+  }
+  return "pending" as const;
+}

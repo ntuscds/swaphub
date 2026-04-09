@@ -1,6 +1,11 @@
 import { CurrentAcadYear } from "@/lib/acad";
 import { schools } from "@/lib/types";
-import { internalMutation, mutation, query } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import {
@@ -537,27 +542,20 @@ export const getCourseRequestAndMatches = query({
       .collect();
 
     type BaseMatch = {
+      status?: "pending" | "accepted" | "declined";
       initiator: {
         id: Id<"swapper">;
         username: string;
         index: string;
+        hasAccepted: boolean;
       };
       target: {
         id: Id<"swapper">;
         username: string;
         index: string;
+        hasAccepted: boolean;
       };
-    } & (
-      | {
-          status: undefined;
-        }
-      | {
-          status: "pending";
-        }
-      | {
-          status: "swapped";
-        }
-    );
+    };
     const directMatches: (BaseMatch & {
       isPerfectMatch: boolean;
       iHaveWhatTheyWant: boolean;
@@ -569,6 +567,7 @@ export const getCourseRequestAndMatches = query({
         id: Id<"swapper">;
         username: string;
         index: string;
+        hasAccepted: boolean;
       };
       iam: "initiator" | "target" | "middleman";
     })[] = [];
@@ -632,11 +631,14 @@ export const getCourseRequestAndMatches = query({
           id: mySwapper._id,
           username: user.username,
           index: mySwapper.index,
+          hasAccepted: myMatchRequestWithOther?.acceptedByInitiator ?? false,
         };
         target = {
           id: otherSwapper._id,
           username: otherUser.username,
           index: otherSwapper.index,
+          hasAccepted:
+            myMatchRequestWithOther?.acceptedByTargetSwapper ?? false,
         };
       } else {
         // initiatorWantsTarget = haveWhatTheyWant;
@@ -645,11 +647,14 @@ export const getCourseRequestAndMatches = query({
           id: otherSwapper._id,
           username: otherUser.username,
           index: otherSwapper.index,
+          hasAccepted: myMatchRequestWithOther?.acceptedByInitiator ?? false,
         };
         target = {
           id: mySwapper._id,
           username: user.username,
           index: mySwapper.index,
+          hasAccepted:
+            myMatchRequestWithOther?.acceptedByTargetSwapper ?? false,
         };
       }
 
@@ -686,7 +691,14 @@ export const getCourseRequestAndMatches = query({
             isPerfectMatch: isPerfectMatchWithOther,
             iHaveWhatTheyWant: haveWhatTheyWant,
             theyHaveWhatIWant: haveWhatIWant,
-            status: "swapped",
+            status:
+              myMatchRequestWithOther.isCompleted &&
+              myMatchRequestWithOther.acceptedByInitiator &&
+              myMatchRequestWithOther.acceptedByTargetSwapper &&
+              (myMatchRequestWithOther.acceptedByMiddlemanSwapper ||
+                myMatchRequestWithOther.middlemanSwapper === undefined)
+                ? ("accepted" as const)
+                : ("declined" as const),
             iam: isSelfInitiated ? "initiator" : "target",
           });
         } else {
@@ -750,9 +762,9 @@ export const getCourseRequestAndMatches = query({
         if (!myMatchRequestWithBothOthers && !isAvailable) continue;
 
         // Deduce the status of the match.
-        const isSelfInitiated =
-          myMatchRequestWithBothOthers === undefined ||
-          myMatchRequestWithBothOthers.initiator === mySwapper._id;
+        // const isSelfInitiated =
+        //   myMatchRequestWithBothOthers === undefined ||
+        //   myMatchRequestWithBothOthers.initiator === mySwapper._id;
 
         let iam: "initiator" | "target" | "middleman" = "initiator";
         if (
@@ -809,16 +821,22 @@ export const getCourseRequestAndMatches = query({
             id: myMatchRequestWithBothOthers.initiator,
             username: initiatorUsername,
             index: initiatorSwapper.index,
+            hasAccepted:
+              myMatchRequestWithBothOthers?.acceptedByInitiator ?? false,
           };
           middleman = {
             id: myMatchRequestWithBothOthers.middlemanSwapper,
             username: middlemanUsername,
             index: middlemanSwapper.index,
+            hasAccepted:
+              myMatchRequestWithBothOthers?.acceptedByMiddlemanSwapper ?? false,
           };
           target = {
             id: myMatchRequestWithBothOthers.targetSwapper,
             username: targetUsername,
             index: targetSwapper.index,
+            hasAccepted:
+              myMatchRequestWithBothOthers?.acceptedByTargetSwapper ?? false,
           };
         } else {
           const initiatorSwapper = mySwapper;
@@ -832,16 +850,19 @@ export const getCourseRequestAndMatches = query({
             id: initiatorSwapper._id,
             username: initiatorUsername,
             index: initiatorSwapper.index,
+            hasAccepted: false,
           };
           middleman = {
             id: middlemanSwapper._id,
             username: middlemanUsername,
             index: middlemanSwapper.index,
+            hasAccepted: false,
           };
           target = {
             id: targetSwapper._id,
             username: targetUsername,
             index: targetSwapper.index,
+            hasAccepted: false,
           };
         }
 
@@ -869,7 +890,14 @@ export const getCourseRequestAndMatches = query({
               initiator,
               target,
               middleman,
-              status: "swapped",
+              status:
+                myMatchRequestWithBothOthers.isCompleted &&
+                myMatchRequestWithBothOthers.acceptedByInitiator &&
+                myMatchRequestWithBothOthers.acceptedByTargetSwapper &&
+                (myMatchRequestWithBothOthers.acceptedByMiddlemanSwapper ||
+                  myMatchRequestWithBothOthers.middlemanSwapper === undefined)
+                  ? ("accepted" as const)
+                  : ("declined" as const),
               iam,
             });
           } else {
@@ -888,12 +916,13 @@ export const getCourseRequestAndMatches = query({
     }
 
     // Sort matches by:
-    // 1. By state: Pending -> undefined -> Swapped
+    // 1. By state: Pending -> undefined -> Accepted -> Declined
     // 2. In case of same state, by perfect match first, then requestedAt (newest first)
     const statusPriority = {
       pending: 1,
       undefined: 2,
-      swapped: 3,
+      accepted: 3,
+      declined: 4,
     } as const;
     directMatches.sort((a, b) => {
       const aState =

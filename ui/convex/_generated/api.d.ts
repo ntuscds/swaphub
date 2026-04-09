@@ -10,6 +10,7 @@
 
 import type * as actions from "../actions.js";
 import type * as http from "../http.js";
+import type * as swapRequests from "../swapRequests.js";
 import type * as tasks from "../tasks.js";
 import type * as utils from "../utils.js";
 
@@ -22,6 +23,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   http: typeof http;
+  swapRequests: typeof swapRequests;
   tasks: typeof tasks;
   utils: typeof utils;
 }>;

@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import { bot } from "@/telegram/telegram";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { env } from "@/lib/env-convex";
 import crypto from "crypto";
 import { redis } from "@/db/upstash";
@@ -13,10 +13,14 @@ import { isValid, parse } from "@tma.js/init-data-node";
 import {
   MESSAGE_TEMPLATES,
   SwapRequestPayload,
+  SwapRequestPayloadSchema,
   template,
 } from "@/lib/swap-request";
-import { encryptValue } from "@/lib/encrypt";
+import { decryptValue, encryptValue } from "@/lib/encrypt";
 import { getDefaultUsername } from "@/lib/user";
+import { Id } from "./_generated/dataModel";
+import { GetSwapRequestByIdResult } from "./swapRequests";
+import { FunctionReturnType } from "convex/server";
 
 function escapeMarkdown(text: string): string {
   return text.replace(/([_*`[\]()~])/g, "\\$1");
@@ -128,7 +132,16 @@ export const sendSwapRequest = action({
             parse_mode: "Markdown",
             disable_web_page_preview: true,
             reply_markup: {
-              inline_keyboard: [[{ text: "View", url: middlemanRequestUrl }]],
+              inline_keyboard: [
+                [
+                  {
+                    text: "View",
+                    web_app: {
+                      url: middlemanRequestUrl,
+                    },
+                  },
+                ],
+              ],
             },
           })
           .catch((error) => {
@@ -142,7 +155,16 @@ export const sendSwapRequest = action({
             parse_mode: "Markdown",
             disable_web_page_preview: true,
             reply_markup: {
-              inline_keyboard: [[{ text: "View", url: targetRequestUrl }]],
+              inline_keyboard: [
+                [
+                  {
+                    text: "View",
+                    web_app: {
+                      url: targetRequestUrl,
+                    },
+                  },
+                ],
+              ],
             },
           })
           .catch((error) => {
@@ -176,7 +198,16 @@ export const sendSwapRequest = action({
           parse_mode: "Markdown",
           disable_web_page_preview: true,
           reply_markup: {
-            inline_keyboard: [[{ text: "View", url: targetRequestUrl }]],
+            inline_keyboard: [
+              [
+                {
+                  text: "View",
+                  web_app: {
+                    url: targetRequestUrl,
+                  },
+                },
+              ],
+            ],
           },
         })
         .catch((error) => {
@@ -289,6 +320,33 @@ You are no longer looking to swap, and this 3 way request has been cancelled.`;
       ]);
     }
 
+    return result;
+  },
+});
+
+export const getSwapRequestByEncryptedPayload = action({
+  args: {
+    encryptedPayload: v.string(),
+    apiKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (env.API_KEY !== args.apiKey) {
+      throw new ConvexError("Invalid API key");
+    }
+    const decryptedPayload = await decryptValue(
+      args.encryptedPayload,
+      env.ENCRYPTION_KEY
+    );
+    const payload = SwapRequestPayloadSchema.parse(
+      JSON.parse(decryptedPayload)
+    );
+    const result: GetSwapRequestByIdResult = await ctx.runQuery(
+      internal.swapRequests.getSwapRequestById,
+      {
+        requestId: payload.requestId as Id<"swap_requests">,
+        swapperId: payload.swapperId as Id<"swapper">,
+      }
+    );
     return result;
   },
 });
