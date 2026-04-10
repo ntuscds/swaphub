@@ -217,7 +217,7 @@ export function SwapItemMatchBottomSheet({
   } else if (match.status === "accepted") {
     statusElement = <Badge variant="success">Accepted</Badge>;
   } else if (match.status === "declined") {
-    statusElement = <Badge variant="cancelled">Declined</Badge>;
+    statusElement = <Badge variant="declined">Declined</Badge>;
   }
 
   const disabled =
@@ -404,7 +404,7 @@ export function SwapDirectMatchRow({
   } else if (match.status === "accepted") {
     statusElement = <Badge variant="success">Accepted</Badge>;
   } else if (match.status === "declined") {
-    statusElement = <Badge variant="cancelled">Declined</Badge>;
+    statusElement = <Badge variant="declined">Declined</Badge>;
   } else {
     statusElement = (
       <span className="text-sm lg:text-base text-primary-500">Request</span>
@@ -493,7 +493,7 @@ export function SwapThreeWayRow({
   } else if (match.status === "accepted") {
     statusElement = <Badge variant="success">Accepted</Badge>;
   } else if (match.status === "declined") {
-    statusElement = <Badge variant="cancelled">Declined</Badge>;
+    statusElement = <Badge variant="declined">Declined</Badge>;
   } else {
     statusElement = <span className="text-sm text-primary-500">Request</span>;
   }

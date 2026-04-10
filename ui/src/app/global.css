@@ -77,6 +77,10 @@
   --sidebar-accent-foreground: var(--primary-900);
   --sidebar-border: var(--background-200);
   --sidebar-ring: var(--primary-400);
+
+  --artboard-target: var(--background-400);
+  --artboard-middleman: var(--secondary-400);
+  --artboard-initiator: var(--primary-400);
 }
 
 .dark {
@@ -112,6 +116,10 @@
   --sidebar-accent-foreground: var(--primary-50);
   --sidebar-border: var(--background-800);
   --sidebar-ring: var(--primary-400);
+
+  --artboard-target: var(--background-500);
+  --artboard-middleman: var(--secondary-600);
+  --artboard-initiator: var(--primary-600);
 }
 
 @theme inline {

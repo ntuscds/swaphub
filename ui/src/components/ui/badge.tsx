@@ -17,9 +17,12 @@ const badgeVariants = cva(
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         warning:
-          "bg-yellow-300/30 text-yellow-500 dark:bg-yellow-500/30 dark:text-yellow-500 [a]:hover:bg-yellow-500/80",
-        cancelled: "text-gray-400 bg-gray-600/30",
-        success: "text-green-500 bg-green-700/30",
+          "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300 [a]:hover:bg-yellow-500/80",
+        declined:
+          "text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950 [a]:hover:bg-red-500/80",
+        // cancelled: "text-gray-400 bg-gray-600/30",
+        success:
+          "text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950 [a]:hover:bg-green-500/80",
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",

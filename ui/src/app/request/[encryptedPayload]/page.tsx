@@ -40,7 +40,7 @@ export async function Request({
         (request.middleman === undefined || request.middleman?.hasAccepted) ? (
           <Badge variant="success">Completed</Badge>
         ) : (
-          <Badge variant="cancelled">Cancelled</Badge>
+          <Badge variant="declined">Declined</Badge>
         );
     } else {
       statusElement = <Badge variant="warning">Pending</Badge>;
@@ -57,7 +57,7 @@ export async function Request({
         <div className="w-full">
           {request.middleman ? (
             <ThreeWayCycleArtboard
-              className="h-80 md:h-88 lg:h-96 xl:h-112 2xl:h-144"
+              className="h-80 md:h-88 lg:h-96 xl:h-112 2xl:h-128"
               iam={request.iam}
               initiator={{
                 index: request.initiator.index,
@@ -86,7 +86,7 @@ export async function Request({
             />
           ) : (
             <DirectSwapArtboard
-              className="h-36 md:h-44 lg:h-56 xl:h-64 2xl:h-72"
+              className="h-44 md:h-52 lg:h-56 xl:h-64 2xl:h-72"
               iam={request.iam === "initiator" ? "initiator" : "target"}
               initiator={{
                 index: request.initiator.index,
