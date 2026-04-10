@@ -43,7 +43,6 @@ type ToggleSwapRequestCancelledRequest = {
 type ToggleSwapRequestResult = {
   success: true;
   toggledTo: boolean;
-  cancelledRequests: ToggleSwapRequestCancelledRequest[];
 };
 
 export const sendSwapRequest = action({
@@ -254,91 +253,58 @@ export const toggleSwapRequest = action({
       hasSwapped: args.hasSwapped,
     });
 
-    if (!args.hasSwapped || result.cancelledRequests.length === 0) {
-      return result;
+    if (!args.hasSwapped || result.toDecline.length === 0) {
+      return {
+        success: true,
+        toggledTo: args.hasSwapped,
+      };
     }
 
     const sendMessage = async (userId: bigint, msg: string) => {
       if (msg === "") return;
-      await bot.sendMessage(Number(userId), msg, {
-        parse_mode: "Markdown",
-      });
+      await bot
+        .sendMessage(Number(userId), msg, {
+          parse_mode: "Markdown",
+          disable_web_page_preview: true,
+        })
+        .catch((error) => {
+          console.error(`Error sending message to ${userId}:`, error);
+        });
     };
 
-    for (const request of result.cancelledRequests) {
-      const courseLabel = `${request.course.code} ${request.course.name}`;
-      let msgForInitiator = "";
-      let msgForTargetSwapper = "";
-      let msgForMiddlemanSwapper = "";
-
-      if (request.isDirectSwap) {
-        if (request.iam === "targetSwapper") {
-          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.targetSwapper.handle)} has declined to participate in your swap request.`;
-          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You declined to participate in @${escapeMarkdown(request.initiator.handle)}'s swap request.`;
-        } else {
-          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You are no longer looking to swap, and this request has been cancelled.`;
-          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.initiator.handle)} is no longer looking to swap and has cancelled this request.`;
-        }
-      } else if (request.middlemanSwapper) {
-        if (request.iam === "targetSwapper") {
-          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.targetSwapper.handle)} has declined to participate in your 3 way swap request.`;
-          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You declined to participate in @${escapeMarkdown(request.initiator.handle)}'s 3 way swap request.`;
-          msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.targetSwapper.handle)} has declined to participate in @${escapeMarkdown(request.initiator.handle)}'s 3 way swap request.`;
-        } else if (request.iam === "middlemanSwapper") {
-          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
-          msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You declined to participate in @${escapeMarkdown(request.initiator.handle)}'s 3 way swap request.`;
-          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
-        } else {
-          msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You are no longer looking to swap, and this 3 way request has been cancelled.`;
-          msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.initiator.handle)} is no longer looking to swap and has cancelled this 3 way request.`;
-          msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(request.initiator.handle)} is no longer looking to swap and has cancelled this 3 way request.`;
-        }
+    const msg = template(
+      MESSAGE_TEMPLATES.decline.noLongerSwapping,
+      {
+        courseCode: result.course.code,
+        courseName: result.course.name,
+        decliner: {
+          username: result.me.username,
+        },
+        initiator: {
+          username: null,
+          telegram: null,
+          index: null,
+        },
+        target: {
+          username: null,
+          telegram: null,
+          index: null,
+        },
+        middleman: {
+          username: null,
+          telegram: null,
+          index: null,
+        },
+      },
+      {
+        ay: result.course.ay,
+        semester: result.course.semester,
       }
+    );
 
-      await Promise.all([
-        sendMessage(request.initiator.telegramUserId, msgForInitiator).catch(
-          (error) => {
-            console.error(
-              `Error sending toggle cancellation message to ${request.initiator.telegramUserId}:`,
-              error
-            );
-          }
-        ),
-        sendMessage(
-          request.targetSwapper.telegramUserId,
-          msgForTargetSwapper
-        ).catch((error) => {
-          console.error(
-            `Error sending toggle cancellation message to ${request.targetSwapper.telegramUserId}:`,
-            error
-          );
-        }),
-        request.middlemanSwapper
-          ? sendMessage(
-              request.middlemanSwapper.telegramUserId,
-              msgForMiddlemanSwapper
-            ).catch((error) => {
-              console.error(
-                `Error sending toggle cancellation message to ${request.middlemanSwapper?.telegramUserId}:`,
-                error
-              );
-            })
-          : Promise.resolve(),
-      ]);
-    }
+    await Promise.all(
+      result.toDecline.map((user) => sendMessage(user.telegramUserId, msg))
+    );
 
     return result;
   },

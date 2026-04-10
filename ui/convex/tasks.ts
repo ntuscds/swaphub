@@ -1235,101 +1235,158 @@ export const toggleSwapRequest = internalMutation({
       .unique();
     if (!mySwapper) throw new ConvexError("Swap request not found.");
 
-    const cancelledRequests: Array<{
-      isDirectSwap: boolean;
-      iam: "initiator" | "targetSwapper" | "middlemanSwapper";
-      course: { code: string; name: string };
-      initiator: { handle: string; telegramUserId: bigint };
-      targetSwapper: { handle: string; telegramUserId: bigint };
-      middlemanSwapper: { handle: string; telegramUserId: bigint } | null;
-    }> = [];
+    // const cancelledRequests: Array<{
+    //   isDirectSwap: boolean;
+    //   iam: "initiator" | "targetSwapper" | "middlemanSwapper";
+    //   course: { code: string; name: string };
+    //   initiator: { handle: string; telegramUserId: bigint };
+    //   target: { handle: string; telegramUserId: bigint };
+    //   middleman: { handle: string; telegramUserId: bigint } | null;
+    // }> = [];
 
-    if (args.hasSwapped) {
-      const activeRequests = await ctx.db
-        .query("swap_requests")
-        .withIndex("by_courseId", (q) => q.eq("courseId", course._id))
-        .filter((q) =>
-          q.and(
-            q.or(
-              q.eq(q.field("initiator"), mySwapper._id),
-              q.eq(q.field("targetSwapper"), mySwapper._id),
-              q.eq(q.field("middlemanSwapper"), mySwapper._id)
-            ),
-            q.eq(q.field("isCompleted"), false)
+    // if (args.hasSwapped) {
+    //   const activeRequests = await ctx.db
+    //     .query("swap_requests")
+    //     .withIndex("by_courseId", (q) => q.eq("courseId", course._id))
+    //     .filter((q) =>
+    //       q.and(
+    //         q.or(
+    //           q.eq(q.field("initiator"), mySwapper._id),
+    //           q.eq(q.field("targetSwapper"), mySwapper._id),
+    //           q.eq(q.field("middlemanSwapper"), mySwapper._id)
+    //         ),
+    //         q.eq(q.field("isCompleted"), false)
+    //       )
+    //     )
+    //     .collect();
+
+    //   for (const request of activeRequests) {
+    //     const [initiatorSwapper, targetSwapper, middlemanSwapper] =
+    //       await Promise.all([
+    //         ctx.db.get(request.initiator),
+    //         ctx.db.get(request.targetSwapper),
+    //         request.middlemanSwapper
+    //           ? ctx.db.get(request.middlemanSwapper)
+    //           : Promise.resolve(null),
+    //       ]);
+    //     if (!initiatorSwapper || !targetSwapper) continue;
+
+    //     const [initiatorUser, targetUser, middlemanUser] = await Promise.all([
+    //       ctx.db.get(initiatorSwapper.userId),
+    //       ctx.db.get(targetSwapper.userId),
+    //       middlemanSwapper
+    //         ? ctx.db.get(middlemanSwapper.userId)
+    //         : Promise.resolve(null),
+    //     ]);
+    //     if (!initiatorUser || !targetUser) continue;
+
+    //     const iam: "initiator" | "targetSwapper" | "middlemanSwapper" =
+    //       request.initiator === mySwapper._id
+    //         ? "initiator"
+    //         : request.targetSwapper === mySwapper._id
+    //           ? "targetSwapper"
+    //           : "middlemanSwapper";
+
+    //     await ctx.db.patch(request._id, {
+    //       isCompleted: true,
+    //       acceptedByInitiator:
+    //         iam === "initiator" ? false : request.acceptedByInitiator,
+    //       acceptedByTargetSwapper:
+    //         iam === "targetSwapper" ? false : request.acceptedByTargetSwapper,
+    //       acceptedByMiddlemanSwapper:
+    //         iam === "middlemanSwapper"
+    //           ? false
+    //           : request.acceptedByMiddlemanSwapper,
+    //     });
+
+    //     cancelledRequests.push({
+    //       isDirectSwap: request.middlemanSwapper === undefined,
+    //       iam,
+    //       course: {
+    //         code: course.code,
+    //         name: course.name,
+    //       },
+    //       initiator: {
+    //         handle: initiatorUser.handle,
+    //         telegramUserId: initiatorUser.telegramUserId,
+    //       },
+    //       target: {
+    //         handle: targetUser.handle,
+    //         telegramUserId: targetUser.telegramUserId,
+    //       },
+    //       middleman:
+    //         middlemanUser && middlemanSwapper
+    //           ? {
+    //               handle: middlemanUser.handle,
+    //               telegramUserId: middlemanUser.telegramUserId,
+    //             }
+    //           : null,
+    //     });
+    //   }
+    // }
+
+    const declineRequests = await ctx.db
+      .query("swap_requests")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("courseId"), course._id),
+          q.eq(q.field("isCompleted"), false),
+          q.or(
+            q.eq(q.field("initiator"), mySwapper._id),
+            q.eq(q.field("targetSwapper"), mySwapper._id),
+            q.eq(q.field("middlemanSwapper"), mySwapper._id)
           )
         )
-        .collect();
+      )
+      .collect();
 
-      for (const request of activeRequests) {
-        const [initiatorSwapper, targetSwapper, middlemanSwapper] =
-          await Promise.all([
-            ctx.db.get(request.initiator),
-            ctx.db.get(request.targetSwapper),
-            request.middlemanSwapper
-              ? ctx.db.get(request.middlemanSwapper)
-              : Promise.resolve(null),
-          ]);
-        if (!initiatorSwapper || !targetSwapper) continue;
+    let toDecline: {
+      telegramUserId: bigint;
+      username: string;
+    }[] = [];
+    if (args.hasSwapped) {
+      const toDeclineSwapperIds = [
+        ...new Set(
+          declineRequests
+            .flatMap((r) => [r.initiator, r.targetSwapper, r.middlemanSwapper])
+            .filter((id) => id !== undefined)
+        ),
+      ];
+      const toDeclineSwappers = await Promise.all(
+        toDeclineSwapperIds.map((id) => ctx.db.get(id))
+      );
 
-        const [initiatorUser, targetUser, middlemanUser] = await Promise.all([
-          ctx.db.get(initiatorSwapper.userId),
-          ctx.db.get(targetSwapper.userId),
-          middlemanSwapper
-            ? ctx.db.get(middlemanSwapper.userId)
-            : Promise.resolve(null),
-        ]);
-        if (!initiatorUser || !targetUser) continue;
-
-        const iam: "initiator" | "targetSwapper" | "middlemanSwapper" =
-          request.initiator === mySwapper._id
-            ? "initiator"
-            : request.targetSwapper === mySwapper._id
-              ? "targetSwapper"
-              : "middlemanSwapper";
-
-        await ctx.db.patch(request._id, {
-          isCompleted: true,
-          acceptedByInitiator:
-            iam === "initiator" ? false : request.acceptedByInitiator,
-          acceptedByTargetSwapper:
-            iam === "targetSwapper" ? false : request.acceptedByTargetSwapper,
-          acceptedByMiddlemanSwapper:
-            iam === "middlemanSwapper"
-              ? false
-              : request.acceptedByMiddlemanSwapper,
-        });
-
-        cancelledRequests.push({
-          isDirectSwap: request.middlemanSwapper === undefined,
-          iam,
-          course: {
-            code: course.code,
-            name: course.name,
-          },
-          initiator: {
-            handle: initiatorUser.handle,
-            telegramUserId: initiatorUser.telegramUserId,
-          },
-          targetSwapper: {
-            handle: targetUser.handle,
-            telegramUserId: targetUser.telegramUserId,
-          },
-          middlemanSwapper:
-            middlemanUser && middlemanSwapper
-              ? {
-                  handle: middlemanUser.handle,
-                  telegramUserId: middlemanUser.telegramUserId,
-                }
-              : null,
-        });
-      }
+      const toDeclineUsers = await Promise.all(
+        toDeclineSwappers
+          .filter((swapper) => swapper !== null)
+          .map((swapper) => ctx.db.get(swapper.userId))
+      );
+      toDecline = toDeclineUsers
+        .map((user) => {
+          if (!user) return undefined;
+          return {
+            telegramUserId: user.telegramUserId,
+            username: user.username,
+          };
+        })
+        .filter((user) => user !== undefined);
     }
 
     await ctx.db.patch(mySwapper._id, { hasSwapped: args.hasSwapped });
     return {
       success: true as const,
+      course: {
+        id: course._id,
+        code: course.code,
+        name: course.name,
+        ay: course.ay,
+        semester: course.semester,
+      },
       toggledTo: args.hasSwapped,
-      cancelledRequests,
+      me: {
+        username: user.username,
+      },
+      toDecline,
     };
   },
 });
