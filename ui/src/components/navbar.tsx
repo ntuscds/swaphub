@@ -158,20 +158,6 @@ export function ProfileMenu({
         {env.NEXT_PUBLIC_ALLOW_MOCK_USER && (
           <MockAccountsMenu mockUser={mockUser} />
         )}
-        {/* <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            Mock Accounts
-            <Badge variant="secondary">Temporary</Badge>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem>Email</DropdownMenuItem>
-              <DropdownMenuItem>Message</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>More...</DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub> */}
 
         <DropdownMenuSeparator />
         <DropdownMenuItem
