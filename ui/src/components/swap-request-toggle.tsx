@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { ChevronsUpDown } from "lucide-react";
 import { api } from "../../convex/_generated/api";
@@ -25,117 +25,172 @@ import {
 import { useConvexActionState } from "./use-convex-mutation-state";
 import { cn } from "@/lib/utils";
 
+// export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
+//   const [isDisableWarningOpen, setIsDisableWarningOpen] = useState(false);
+//   const [isMenuOpen, setIsMenuOpen] = useState(false);
+//   const toggleSwapRequestAction = useAction(api.actions.toggleSwapRequest);
+//   const { handle, isPending, error, setError } = useConvexActionState(
+//     toggleSwapRequestAction
+//   );
+//   // const [sheetSide, setSheetSide] = useState<"bottom" | "right">("bottom");
+
+//   // useEffect(() => {
+//   //   if (typeof window === "undefined") return;
+//   //   const mq = window.matchMedia("(min-width: 768px)");
+//   //   const update = () => setSheetSide(mq.matches ? "right" : "bottom");
+//   //   update();
+//   //   console.log("sheetSide", sheetSide);
+//   //   mq.addEventListener("change", update);
+//   //   return () => mq.removeEventListener("change", update);
+//   // }, []);
+
+//   const swapRequestState = useQuery(api.tasks.getActiveSwapRequestCount, {
+//     courseCode,
+//     acadYear: CurrentAcadYear,
+//   });
+
+//   const activeRequestsCount = swapRequestState?.activeRequestsCount ?? 0;
+//   const hasSwapped = swapRequestState?.hasSwapped ?? false;
+//   const isEnabled = !hasSwapped;
+
+//   const handleEnable = useCallback(async () => {
+//     await handle({ courseCode, hasSwapped: false });
+//   }, [courseCode, handle]);
+
+//   const handleDisable = useCallback(async () => {
+//     if (activeRequestsCount > 0) {
+//       setIsDisableWarningOpen(true);
+//       return;
+//     }
+//     await handle({ courseCode, hasSwapped: true });
+//   }, [courseCode, handle, activeRequestsCount]);
+
+//   const confirmDisable = useCallback(async () => {
+//     await handle({ courseCode, hasSwapped: true });
+//   }, [courseCode, handle]);
+
+//   // if (swapRequestState === undefined) {
+//   //   return <Skeleton className="w-24 h-7" />;
+//   // }
+
+//   return (
+//     <>
+//       <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+//         <DropdownMenuTrigger
+//           render={
+//             <Button
+//               type="button"
+//               variant="outline"
+//               size="sm"
+//               className="w-24 flex flex-row gap-1 items-center"
+//               disabled={isPending}
+//             >
+//               <span
+//                 className={cn({
+//                   "text-green-700 dark:text-green-500": isEnabled,
+//                   "text-red-700 dark:text-red-500": !isEnabled,
+//                   // isEnabled ? "text-green-400" : "text-red-400"
+//                 })}
+//               >
+//                 {isEnabled ? "Enabled" : "Disabled"}
+//               </span>
+//               <ChevronsUpDown className="size-3.5 text-background-600 dark:text-background-400" />
+//             </Button>
+//           }
+//         />
+//         <DropdownMenuContent className="min-w-48">
+//           <DropdownMenuGroup>
+//             <DropdownMenuLabel>Still looking to swap?</DropdownMenuLabel>
+//             <DropdownMenuItem
+//               onClick={async () => {
+//                 await handleEnable();
+//                 setIsMenuOpen(false);
+//               }}
+//             >
+//               Yes, Enabled
+//             </DropdownMenuItem>
+//             <DropdownMenuItem
+//               onClick={async () => {
+//                 await handleDisable();
+//                 setIsMenuOpen(false);
+//               }}
+//             >
+//               No, Disabled
+//             </DropdownMenuItem>
+//           </DropdownMenuGroup>
+//         </DropdownMenuContent>
+//       </DropdownMenu>
+
+//       <Sheet open={isDisableWarningOpen} onOpenChange={setIsDisableWarningOpen}>
+//         <SheetContent side="bottom">
+//           <SheetHeader>
+//             <SheetTitle>Disable Swap Requests?</SheetTitle>
+//             <SheetDescription>
+//               {activeRequestsCount > 0
+//                 ? `This will decline ${activeRequestsCount} active request${
+//                     activeRequestsCount > 1 ? "s" : ""
+//                   } that you are part of.`
+//                 : "You do not have active requests for this course."}
+//             </SheetDescription>
+//           </SheetHeader>
+//           {error && (
+//             <div className="px-4 text-sm text-red-500" role="alert">
+//               {error}
+//             </div>
+//           )}
+//           <SheetFooter className="flex flex-row gap-2">
+//             <Button
+//               type="button"
+//               variant="outline"
+//               onClick={() => {
+//                 setError(null);
+//                 setIsDisableWarningOpen(false);
+//               }}
+//               disabled={isPending}
+//             >
+//               Cancel
+//             </Button>
+//             <Button
+//               type="button"
+//               variant="destructive"
+//               onClick={confirmDisable}
+//               disabled={isPending}
+//             >
+//               {isPending ? "Disabling..." : "Disable and Decline Requests"}
+//             </Button>
+//           </SheetFooter>
+//         </SheetContent>
+//       </Sheet>
+//     </>
+//   );
+// }
+
 export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
-  const [isDisableWarningOpen, setIsDisableWarningOpen] = useState(false);
-  const toggleSwapRequestAction = useAction(api.actions.toggleSwapRequest);
-  const { handle, isPending, error, setError } = useConvexActionState(
-    toggleSwapRequestAction
-  );
-
-  const swapRequestState = useQuery(api.tasks.getActiveSwapRequestCount, {
-    courseCode,
-    acadYear: CurrentAcadYear,
-  });
-
-  const activeRequestsCount = swapRequestState?.activeRequestsCount ?? 0;
-  const hasSwapped = swapRequestState?.hasSwapped ?? false;
-  const isEnabled = !hasSwapped;
-
-  const handleEnable = async () => {
-    await handle({ courseCode, hasSwapped: false });
-  };
-
-  const handleDisable = async () => {
-    if (activeRequestsCount > 0) {
-      setIsDisableWarningOpen(true);
-      return;
-    }
-    await handle({ courseCode, hasSwapped: true });
-  };
-
-  const confirmDisable = async () => {
-    await handle({ courseCode, hasSwapped: true });
-
-    // if (result?.success) {
-    //   setIsDisableWarningOpen(false);
-    // }
-  };
-
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex flex-row gap-1 items-center"
-              disabled={isPending}
-            >
-              <span
-                className={cn({
-                  "text-green-700 dark:text-green-500": isEnabled,
-                  "text-red-700 dark:text-red-500": !isEnabled,
-                  // isEnabled ? "text-green-400" : "text-red-400"
-                })}
-              >
-                {isEnabled ? "Enabled" : "Disabled"}
-              </span>
-              <ChevronsUpDown className="size-3.5 text-background-600 dark:text-background-400" />
-            </Button>
-          }
-        />
-        <DropdownMenuContent className="min-w-48">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Still looking to swap?</DropdownMenuLabel>
-            <DropdownMenuItem onClick={handleEnable}>
-              Yes, Enabled
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDisable}>
-              No, Disabled
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="outline"
+            // className=""
+            // disabled={isDecisionDisabled}
+          >
+            Decline
+          </Button>
+        }
+      />
 
-      <Sheet open={isDisableWarningOpen} onOpenChange={setIsDisableWarningOpen}>
-        <SheetContent side="bottom">
-          <SheetHeader>
-            <SheetTitle>Disable Swap Requests?</SheetTitle>
-            <SheetDescription>
-              {activeRequestsCount > 0
-                ? `This will decline ${activeRequestsCount} active request${
-                    activeRequestsCount > 1 ? "s" : ""
-                  } that you are part of.`
-                : "You do not have active requests for this course."}
-            </SheetDescription>
-          </SheetHeader>
-          {error && (
-            <div className="px-4 text-sm text-red-500" role="alert">
-              {error}
-            </div>
-          )}
-          <SheetFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setError(null);
-                setIsDisableWarningOpen(false);
-              }}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDisable}
-              disabled={isPending}
-            >
-              {isPending ? "Disabling..." : "Disable and Decline Requests"}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-    </>
+      <DropdownMenuContent side="top" align="end" className="w-72">
+        <DropdownMenuItem>
+          <div className="flex flex-col gap-0.5">
+            <span>Decline This Request</span>
+            <span className="text-xs text-muted-foreground">
+              Only decline this request. Your other requests for this course
+              will remain active.
+            </span>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

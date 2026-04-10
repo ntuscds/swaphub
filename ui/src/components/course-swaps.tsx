@@ -43,6 +43,12 @@ import {
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { getProfileImageUrl } from "@/lib/user";
 import { reduceStatus } from "@/lib/swap-request";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 type CourseRequestAndMatches = FunctionReturnType<
   typeof api.tasks.getCourseRequestAndMatches
@@ -786,6 +792,7 @@ export function CourseSwapMatches({
         </h2>
         {threeWayCycleMatchElement}
       </div>
+
       <Sheet
         open={bottomSheetMatchItem?.isOpen ?? false}
         onOpenChange={(open) =>

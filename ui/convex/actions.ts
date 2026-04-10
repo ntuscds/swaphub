@@ -355,7 +355,7 @@ export const verifyTelegramWebhookSecret = internalAction({
   },
 });
 
-export const handleSwapRequestDecision = action({
+export const handleSwapRequestDecisionByEncryptedPayload = action({
   args: {
     encryptedPayload: v.string(),
     action: v.union(v.literal("accept"), v.literal("decline")),

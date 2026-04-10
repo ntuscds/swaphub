@@ -47,7 +47,7 @@ export function SwapRequestDecision({
     null
   );
   const handleSwapRequestDecision = useAction(
-    api.actions.handleSwapRequestDecision
+    api.actions.handleSwapRequestDecisionByEncryptedPayload
   );
   const handleSwapRequestDecisionState = useConvexActionState(
     handleSwapRequestDecision,
