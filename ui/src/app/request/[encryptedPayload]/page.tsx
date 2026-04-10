@@ -1,6 +1,4 @@
-import { SwapItemMatchBottomSheet } from "@/components/course-swaps";
 import { HydrationSafeScrollArea } from "@/components/hydration-safe-scroll-area";
-import { decryptValue } from "@/lib/encrypt";
 import { env } from "@/lib/env";
 import { fetchAction } from "convex/nextjs";
 import { Suspense } from "react";

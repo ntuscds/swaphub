@@ -1621,204 +1621,204 @@ export const handleSwapRequestCallback = internalMutation({
   },
 });
 
-export const handleSwapRequestWebhookCallback = internalMutation({
-  args: {
-    payloadId: v.id("telegram_callback_data"),
-    fromTelegramUserId: v.int64(),
-  },
-  handler: async (ctx, args) => {
-    const payload = await ctx.db.get(args.payloadId);
-    if (!payload) {
-      throw new ConvexError("Callback payload not found.");
-    }
-    const actionInfo = getAction(payload.callbackData);
-    if (!actionInfo) {
-      throw new ConvexError("Invalid callback data.");
-    }
-    if (
-      actionInfo.action !== COMMAND_PREFIX.ACCEPT &&
-      actionInfo.action !== COMMAND_PREFIX.DECLINE
-    ) {
-      throw new ConvexError("Invalid callback action.");
-    }
-    const parsed =
-      actionInfo.action === COMMAND_PREFIX.ACCEPT
-        ? deserializeAccept(payload.callbackData)
-        : deserializeDecline(payload.callbackData);
-    if (!parsed) {
-      throw new ConvexError("Invalid callback payload.");
-    }
-    const parsedInitiator = parsed.initiator;
-    const parsedTargetSwapper = parsed.targetSwapper;
-    const parsedMiddlemanSwapper = parsed.middlemanSwapper;
-    // const parsedCourseId = parsed.courseId as Id<"courses">;
-    // const parsedSwapper1Id = parsed.swapper1 as Id<"swapper">;
-    // const parsedSwapper2Id = parsed.swapper2 as Id<"swapper">;
+// export const handleSwapRequestWebhookCallback = internalMutation({
+//   args: {
+//     payloadId: v.id("telegram_callback_data"),
+//     fromTelegramUserId: v.int64(),
+//   },
+//   handler: async (ctx, args) => {
+//     const payload = await ctx.db.get(args.payloadId);
+//     if (!payload) {
+//       throw new ConvexError("Callback payload not found.");
+//     }
+//     const actionInfo = getAction(payload.callbackData);
+//     if (!actionInfo) {
+//       throw new ConvexError("Invalid callback data.");
+//     }
+//     if (
+//       actionInfo.action !== COMMAND_PREFIX.ACCEPT &&
+//       actionInfo.action !== COMMAND_PREFIX.DECLINE
+//     ) {
+//       throw new ConvexError("Invalid callback action.");
+//     }
+//     const parsed =
+//       actionInfo.action === COMMAND_PREFIX.ACCEPT
+//         ? deserializeAccept(payload.callbackData)
+//         : deserializeDecline(payload.callbackData);
+//     if (!parsed) {
+//       throw new ConvexError("Invalid callback payload.");
+//     }
+//     const parsedInitiator = parsed.initiator;
+//     const parsedTargetSwapper = parsed.targetSwapper;
+//     const parsedMiddlemanSwapper = parsed.middlemanSwapper;
+//     // const parsedCourseId = parsed.courseId as Id<"courses">;
+//     // const parsedSwapper1Id = parsed.swapper1 as Id<"swapper">;
+//     // const parsedSwapper2Id = parsed.swapper2 as Id<"swapper">;
 
-    const initiator = await ctx.db.get(parsedInitiator);
-    const targetSwapper = await ctx.db.get(parsedTargetSwapper);
+//     const initiator = await ctx.db.get(parsedInitiator);
+//     const targetSwapper = await ctx.db.get(parsedTargetSwapper);
 
-    if (!initiator) {
-      throw new ConvexError("Initiator not found.");
-    }
-    if (!targetSwapper) {
-      throw new ConvexError("Target swapper not found.");
-    }
+//     if (!initiator) {
+//       throw new ConvexError("Initiator not found.");
+//     }
+//     if (!targetSwapper) {
+//       throw new ConvexError("Target swapper not found.");
+//     }
 
-    if (initiator.courseId !== targetSwapper.courseId) {
-      throw new ConvexError(
-        "Initiator and target swapper are not for the same course."
-      );
-    }
+//     if (initiator.courseId !== targetSwapper.courseId) {
+//       throw new ConvexError(
+//         "Initiator and target swapper are not for the same course."
+//       );
+//     }
 
-    const initiatorUser = await ctx.db.get(initiator.userId);
-    if (!initiatorUser) {
-      throw new ConvexError("Initiator user not found.");
-    }
-    const targetSwapperUser = await ctx.db.get(targetSwapper.userId);
-    if (!targetSwapperUser) {
-      throw new ConvexError("Target swapper user not found.");
-    }
+//     const initiatorUser = await ctx.db.get(initiator.userId);
+//     if (!initiatorUser) {
+//       throw new ConvexError("Initiator user not found.");
+//     }
+//     const targetSwapperUser = await ctx.db.get(targetSwapper.userId);
+//     if (!targetSwapperUser) {
+//       throw new ConvexError("Target swapper user not found.");
+//     }
 
-    // If set, 3 way swap.
-    let isDirectSwap = true;
-    let middlemanSwapper: typeof initiator | null = null;
-    let middlemanSwapperUser: typeof initiatorUser | null = null;
-    if (parsedMiddlemanSwapper) {
-      isDirectSwap = false;
-      middlemanSwapper = await ctx.db.get(parsedMiddlemanSwapper);
-      if (!middlemanSwapper) {
-        throw new ConvexError("Middleman swapper not found.");
-      }
-      if (middlemanSwapper.courseId !== initiator.courseId) {
-        throw new ConvexError(
-          "Middleman swapper is not for the same course as the initiator."
-        );
-      }
-      middlemanSwapperUser = await ctx.db.get(middlemanSwapper.userId);
-      if (!middlemanSwapperUser) {
-        throw new ConvexError("Middleman swapper user not found.");
-      }
-    }
+//     // If set, 3 way swap.
+//     let isDirectSwap = true;
+//     let middlemanSwapper: typeof initiator | null = null;
+//     let middlemanSwapperUser: typeof initiatorUser | null = null;
+//     if (parsedMiddlemanSwapper) {
+//       isDirectSwap = false;
+//       middlemanSwapper = await ctx.db.get(parsedMiddlemanSwapper);
+//       if (!middlemanSwapper) {
+//         throw new ConvexError("Middleman swapper not found.");
+//       }
+//       if (middlemanSwapper.courseId !== initiator.courseId) {
+//         throw new ConvexError(
+//           "Middleman swapper is not for the same course as the initiator."
+//         );
+//       }
+//       middlemanSwapperUser = await ctx.db.get(middlemanSwapper.userId);
+//       if (!middlemanSwapperUser) {
+//         throw new ConvexError("Middleman swapper user not found.");
+//       }
+//     }
 
-    // Determine who the caller is.
-    let iam: "initiator" | "targetSwapper" | "middlemanSwapper" = "initiator";
-    if (parsed.myUserId === initiatorUser._id) {
-      throw new ConvexError("You cannot accept your own swap request.");
-      // iam = "initiator";
-    } else if (parsed.myUserId === targetSwapperUser._id) {
-      iam = "targetSwapper";
-    } else if (parsed.myUserId === middlemanSwapperUser?._id) {
-      iam = "middlemanSwapper";
-    } else {
-      throw new ConvexError("Not a participant in this swap request");
-    }
+//     // Determine who the caller is.
+//     let iam: "initiator" | "targetSwapper" | "middlemanSwapper" = "initiator";
+//     if (parsed.myUserId === initiatorUser._id) {
+//       throw new ConvexError("You cannot accept your own swap request.");
+//       // iam = "initiator";
+//     } else if (parsed.myUserId === targetSwapperUser._id) {
+//       iam = "targetSwapper";
+//     } else if (parsed.myUserId === middlemanSwapperUser?._id) {
+//       iam = "middlemanSwapper";
+//     } else {
+//       throw new ConvexError("Not a participant in this swap request");
+//     }
 
-    const requests = await ctx.db
-      .query("swap_requests")
-      .withIndex("by_courseId_initiator_targetSwapper_middlemanSwapper", (q) =>
-        q
-          .eq("courseId", initiator.courseId)
-          .eq("initiator", initiator._id)
-          .eq("targetSwapper", targetSwapper._id)
-          .eq("middlemanSwapper", middlemanSwapper?._id)
-      )
-      .collect();
-    // Exclude completed requests.
-    const incompletedRequests = requests.filter((r) => !r.isCompleted);
-    if (incompletedRequests.length <= 0) {
-      throw new ConvexError("Swap request not found.");
-    }
-    const request = incompletedRequests[0];
-    if (incompletedRequests.length > 1) {
-      throw new ConvexError("Multiple swap requests found.");
-    }
+//     const requests = await ctx.db
+//       .query("swap_requests")
+//       .withIndex("by_courseId_initiator_targetSwapper_middlemanSwapper", (q) =>
+//         q
+//           .eq("courseId", initiator.courseId)
+//           .eq("initiator", initiator._id)
+//           .eq("targetSwapper", targetSwapper._id)
+//           .eq("middlemanSwapper", middlemanSwapper?._id)
+//       )
+//       .collect();
+//     // Exclude completed requests.
+//     const incompletedRequests = requests.filter((r) => !r.isCompleted);
+//     if (incompletedRequests.length <= 0) {
+//       throw new ConvexError("Swap request not found.");
+//     }
+//     const request = incompletedRequests[0];
+//     if (incompletedRequests.length > 1) {
+//       throw new ConvexError("Multiple swap requests found.");
+//     }
 
-    const course = await ctx.db.get(initiator.courseId);
-    if (!course) {
-      throw new ConvexError("Course not found");
-    }
+//     const course = await ctx.db.get(initiator.courseId);
+//     if (!course) {
+//       throw new ConvexError("Course not found");
+//     }
 
-    const action =
-      actionInfo.action === COMMAND_PREFIX.ACCEPT ? "accept" : "decline";
+//     const action =
+//       actionInfo.action === COMMAND_PREFIX.ACCEPT ? "accept" : "decline";
 
-    let isCompleted = false;
-    let acceptedByInitiator = request.acceptedByInitiator;
-    let acceptedByTargetSwapper = request.acceptedByTargetSwapper;
-    let acceptedByMiddlemanSwapper = request.acceptedByMiddlemanSwapper;
-    if (action === "accept") {
-      if (iam === "middlemanSwapper") {
-        isCompleted =
-          request.acceptedByInitiator && request.acceptedByTargetSwapper;
-        acceptedByMiddlemanSwapper = true;
-        await ctx.db.patch(request._id, {
-          acceptedByMiddlemanSwapper: true,
-          isCompleted: isCompleted,
-        });
-      } else if (iam === "targetSwapper") {
-        isCompleted = isDirectSwap
-          ? request.acceptedByInitiator
-          : request.acceptedByMiddlemanSwapper && request.acceptedByInitiator;
-        acceptedByTargetSwapper = true;
-        await ctx.db.patch(request._id, {
-          acceptedByTargetSwapper: true,
-          isCompleted: isCompleted,
-        });
-      }
+//     let isCompleted = false;
+//     let acceptedByInitiator = request.acceptedByInitiator;
+//     let acceptedByTargetSwapper = request.acceptedByTargetSwapper;
+//     let acceptedByMiddlemanSwapper = request.acceptedByMiddlemanSwapper;
+//     if (action === "accept") {
+//       if (iam === "middlemanSwapper") {
+//         isCompleted =
+//           request.acceptedByInitiator && request.acceptedByTargetSwapper;
+//         acceptedByMiddlemanSwapper = true;
+//         await ctx.db.patch(request._id, {
+//           acceptedByMiddlemanSwapper: true,
+//           isCompleted: isCompleted,
+//         });
+//       } else if (iam === "targetSwapper") {
+//         isCompleted = isDirectSwap
+//           ? request.acceptedByInitiator
+//           : request.acceptedByMiddlemanSwapper && request.acceptedByInitiator;
+//         acceptedByTargetSwapper = true;
+//         await ctx.db.patch(request._id, {
+//           acceptedByTargetSwapper: true,
+//           isCompleted: isCompleted,
+//         });
+//       }
 
-      if (isCompleted) {
-        await Promise.all([
-          ctx.db.patch(initiator._id, { hasSwapped: true }),
-          ctx.db.patch(targetSwapper._id, { hasSwapped: true }),
-          (async () => {
-            if (middlemanSwapper) {
-              await ctx.db.patch(middlemanSwapper._id, { hasSwapped: true });
-            }
-          })(),
-        ]);
-      }
-    } else {
-      await ctx.db.patch(request._id, {
-        isCompleted: true,
-      });
-    }
+//       if (isCompleted) {
+//         await Promise.all([
+//           ctx.db.patch(initiator._id, { hasSwapped: true }),
+//           ctx.db.patch(targetSwapper._id, { hasSwapped: true }),
+//           (async () => {
+//             if (middlemanSwapper) {
+//               await ctx.db.patch(middlemanSwapper._id, { hasSwapped: true });
+//             }
+//           })(),
+//         ]);
+//       }
+//     } else {
+//       await ctx.db.patch(request._id, {
+//         isCompleted: true,
+//       });
+//     }
 
-    return {
-      action,
-      isDirectSwap,
-      isCompleted,
-      course: {
-        code: course.code,
-        name: course.name,
-      },
-      iam,
-      initiator: {
-        handle: initiatorUser.handle,
-        telegramUserId: initiatorUser.telegramUserId,
-        acceptedByInitiator,
-        index: initiator.index,
-      },
-      targetSwapper: {
-        handle: targetSwapperUser.handle,
-        telegramUserId: targetSwapperUser.telegramUserId,
-        acceptedByTargetSwapper,
-        index: targetSwapper.index,
-      },
-      middlemanSwapper:
-        middlemanSwapperUser && middlemanSwapper
-          ? {
-              handle: middlemanSwapperUser.handle,
-              telegramUserId: middlemanSwapperUser.telegramUserId,
-              acceptedByMiddlemanSwapper,
-              index: middlemanSwapper.index,
-            }
-          : null,
-      // thisTelegramUserId: Number(thisUser.telegramUserId),
-      // otherTelegramUserId: Number(otherUser.telegramUserId),
-      // otherUsername: user2.handle,
-    };
-  },
-});
+//     return {
+//       action,
+//       isDirectSwap,
+//       isCompleted,
+//       course: {
+//         code: course.code,
+//         name: course.name,
+//       },
+//       iam,
+//       initiator: {
+//         handle: initiatorUser.handle,
+//         telegramUserId: initiatorUser.telegramUserId,
+//         acceptedByInitiator,
+//         index: initiator.index,
+//       },
+//       targetSwapper: {
+//         handle: targetSwapperUser.handle,
+//         telegramUserId: targetSwapperUser.telegramUserId,
+//         acceptedByTargetSwapper,
+//         index: targetSwapper.index,
+//       },
+//       middlemanSwapper:
+//         middlemanSwapperUser && middlemanSwapper
+//           ? {
+//               handle: middlemanSwapperUser.handle,
+//               telegramUserId: middlemanSwapperUser.telegramUserId,
+//               acceptedByMiddlemanSwapper,
+//               index: middlemanSwapper.index,
+//             }
+//           : null,
+//       // thisTelegramUserId: Number(thisUser.telegramUserId),
+//       // otherTelegramUserId: Number(otherUser.telegramUserId),
+//       // otherUsername: user2.handle,
+//     };
+//   },
+// });
 
 export const setProfile = mutation({
   args: {

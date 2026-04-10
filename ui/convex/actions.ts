@@ -55,102 +55,157 @@ export const sendSwapRequest = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
-    const result = await ctx.runMutation(internal.tasks.requestSwap, {
-      targetSwapperId: args.targetSwapperId,
-      middlemanSwapperId: args.middlemanSwapperId,
+    const lock = new Lock({
+      id: `findex:send_swap_request:${args.targetSwapperId}`,
+      lease: 5000,
+      redis,
     });
+    try {
+      if (!(await lock.acquire())) {
+        throw new ConvexError("Failed to acquire lock");
+      }
+      const result = await ctx.runMutation(internal.tasks.requestSwap, {
+        targetSwapperId: args.targetSwapperId,
+        middlemanSwapperId: args.middlemanSwapperId,
+      });
 
-    const { requestId, course, initiator, target, middleman } = result;
+      const { requestId, course, initiator, target, middleman } = result;
 
-    const templatePayload = {
-      courseCode: course.code,
-      courseName: course.name,
-      initiator: {
-        username: initiator.username,
-        telegram: initiator.telegramUserId.toString(),
-        index: initiator.index,
-      },
-      target: {
-        username: target.username,
-        telegram: target.telegramUserId.toString(),
-        index: target.index,
-      },
-      middleman: {
-        username: "",
-        telegram: "",
-        index: "",
-      },
-    };
-    const ay = {
-      ay: course.ay,
-      semester: course.semester,
-    };
-    if (middleman) {
-      templatePayload.middleman = {
-        username: middleman.username,
-        telegram: middleman.telegramUserId.toString(),
-        index: middleman.index,
+      const templatePayload = {
+        courseCode: course.code,
+        courseName: course.name,
+        initiator: {
+          username: initiator.username,
+          telegram: initiator.telegramUserId.toString(),
+          index: initiator.index,
+        },
+        target: {
+          username: target.username,
+          telegram: target.telegramUserId.toString(),
+          index: target.index,
+        },
+        middleman: {
+          username: "",
+          telegram: "",
+          index: "",
+        },
+        decliner: {
+          username: null,
+        },
       };
-      const middlemanMessage = template(
-        MESSAGE_TEMPLATES.threeWay.initiator.request.target,
-        templatePayload,
-        ay
-      );
-      const targetMessage = template(
-        MESSAGE_TEMPLATES.threeWay.initiator.request.target,
-        templatePayload,
-        ay
-      );
-
-      const targetSwapPayload: SwapRequestPayload = {
-        requestId,
-        swapperId: target.id,
+      const ay = {
+        ay: course.ay,
+        semester: course.semester,
       };
-      const middlemanSwapPayload: SwapRequestPayload = {
-        requestId,
-        swapperId: middleman.id,
-      };
+      if (middleman) {
+        templatePayload.middleman = {
+          username: middleman.username,
+          telegram: middleman.telegramUserId.toString(),
+          index: middleman.index,
+        };
+        const middlemanMessage = template(
+          MESSAGE_TEMPLATES.threeWay.initiator.request.target,
+          templatePayload,
+          ay
+        );
+        const targetMessage = template(
+          MESSAGE_TEMPLATES.threeWay.initiator.request.target,
+          templatePayload,
+          ay
+        );
 
-      const encryptedTargetSwapPayload = await encryptValue(
-        JSON.stringify(targetSwapPayload),
-        env.ENCRYPTION_KEY
-      );
-      const encryptedMiddlemanSwapPayload = await encryptValue(
-        JSON.stringify(middlemanSwapPayload),
-        env.ENCRYPTION_KEY
-      );
-      const targetRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
-        encryptedTargetSwapPayload
-      )}`;
-      const middlemanRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
-        encryptedMiddlemanSwapPayload
-      )}`;
+        const targetSwapPayload: SwapRequestPayload = {
+          requestId,
+          swapperId: target.id,
+        };
+        const middlemanSwapPayload: SwapRequestPayload = {
+          requestId,
+          swapperId: middleman.id,
+        };
 
-      await Promise.all([
-        bot
-          .sendMessage(Number(middleman.telegramUserId), middlemanMessage, {
-            parse_mode: "Markdown",
-            disable_web_page_preview: true,
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "View",
-                    web_app: {
-                      url: middlemanRequestUrl,
+        const encryptedTargetSwapPayload = await encryptValue(
+          JSON.stringify(targetSwapPayload),
+          env.ENCRYPTION_KEY
+        );
+        const encryptedMiddlemanSwapPayload = await encryptValue(
+          JSON.stringify(middlemanSwapPayload),
+          env.ENCRYPTION_KEY
+        );
+        const targetRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
+          encryptedTargetSwapPayload
+        )}`;
+        const middlemanRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
+          encryptedMiddlemanSwapPayload
+        )}`;
+
+        await Promise.all([
+          bot
+            .sendMessage(Number(middleman.telegramUserId), middlemanMessage, {
+              parse_mode: "Markdown",
+              disable_web_page_preview: true,
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "View",
+                      web_app: {
+                        url: middlemanRequestUrl,
+                      },
                     },
-                  },
+                  ],
                 ],
-              ],
-            },
-          })
-          .catch((error) => {
-            console.error(
-              `Error sending message to ${middleman.telegramUserId}:`,
-              error
-            );
-          }),
-        bot
+              },
+            })
+            .catch((error) => {
+              console.error(
+                `Error sending message to ${middleman.telegramUserId}:`,
+                error
+              );
+            }),
+          bot
+            .sendMessage(Number(target.telegramUserId), targetMessage, {
+              parse_mode: "Markdown",
+              disable_web_page_preview: true,
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "View",
+                      web_app: {
+                        url: targetRequestUrl,
+                      },
+                    },
+                  ],
+                ],
+              },
+            })
+            .catch((error) => {
+              console.error(
+                `Error sending message to ${target.telegramUserId}:`,
+                error
+              );
+            }),
+        ]);
+      } else {
+        const targetMessage = template(
+          MESSAGE_TEMPLATES.direct.initiator.request.target,
+          templatePayload,
+          ay
+        );
+
+        const targetSwapPayload: SwapRequestPayload = {
+          requestId,
+          swapperId: target.id,
+        };
+        const encryptedTargetSwapPayload = await encryptValue(
+          JSON.stringify(targetSwapPayload),
+          env.ENCRYPTION_KEY
+        );
+        const targetRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
+          encryptedTargetSwapPayload
+        )}`;
+
+        await bot
           .sendMessage(Number(target.telegramUserId), targetMessage, {
             parse_mode: "Markdown",
             disable_web_page_preview: true,
@@ -172,50 +227,15 @@ export const sendSwapRequest = action({
               `Error sending message to ${target.telegramUserId}:`,
               error
             );
-          }),
-      ]);
-    } else {
-      const targetMessage = template(
-        MESSAGE_TEMPLATES.direct.initiator.request.target,
-        templatePayload,
-        ay
-      );
-
-      const targetSwapPayload: SwapRequestPayload = {
-        requestId,
-        swapperId: target.id,
-      };
-      const encryptedTargetSwapPayload = await encryptValue(
-        JSON.stringify(targetSwapPayload),
-        env.ENCRYPTION_KEY
-      );
-      const targetRequestUrl = `${env.NEXT_APP_URL.replace(/\/$/, "")}/request/${encodeURIComponent(
-        encryptedTargetSwapPayload
-      )}`;
-
-      await bot
-        .sendMessage(Number(target.telegramUserId), targetMessage, {
-          parse_mode: "Markdown",
-          disable_web_page_preview: true,
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "View",
-                  web_app: {
-                    url: targetRequestUrl,
-                  },
-                },
-              ],
-            ],
-          },
-        })
-        .catch((error) => {
-          console.error(
-            `Error sending message to ${target.telegramUserId}:`,
-            error
-          );
-        });
+          });
+      }
+    } catch (error) {
+      console.error(`Error sending swap request:`, error);
+      throw error;
+    } finally {
+      await lock.release().catch((error) => {
+        console.error(`Error releasing lock:`, error);
+      });
     }
   },
 });
@@ -369,6 +389,181 @@ export const verifyTelegramWebhookSecret = internalAction({
   },
 });
 
+export const handleSwapRequestDecision = action({
+  args: {
+    encryptedPayload: v.string(),
+    action: v.union(v.literal("accept"), v.literal("decline")),
+    shouldMarkAsSwappedIfDecline: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const decryptedPayload = await decryptValue(
+      args.encryptedPayload,
+      env.ENCRYPTION_KEY
+    );
+    const payload = SwapRequestPayloadSchema.parse(
+      JSON.parse(decryptedPayload)
+    );
+
+    // Acquire lock to prevent concurrent requests.
+    const lock = new Lock({
+      id: `findex:tg_wh:${payload.requestId}`,
+      lease: 5000,
+      redis,
+    });
+    try {
+      if (!(await lock.acquire())) {
+        throw new ConvexError("Failed to acquire lock");
+      }
+      const result = await ctx.runMutation(
+        internal.swapRequests.handleSwapRequestDecision,
+        {
+          requestId: payload.requestId as Id<"swap_requests">,
+          swapperId: payload.swapperId as Id<"swapper">,
+          action: args.action,
+          shouldMarkAsSwappedIfDecline: args.shouldMarkAsSwappedIfDecline,
+        }
+      );
+
+      const templatePayload = {
+        courseCode: result.course.code,
+        courseName: result.course.name,
+        initiator: {
+          username: result.initiator.username,
+          telegram: result.initiator.handle,
+          index: result.initiator.index,
+        },
+        target: {
+          username: result.target.username,
+          telegram: result.target.handle,
+          index: result.target.index,
+        },
+        middleman: {
+          username: result.middleman?.username ?? null,
+          telegram: result.middleman?.handle ?? null,
+          index: result.middleman?.index ?? null,
+        },
+        decliner: {
+          username: result.me.username,
+        },
+      };
+      const ay = {
+        ay: result.course.ay,
+        semester: result.course.semester,
+      };
+
+      let messageForInitiator = "";
+      let messageForTarget = "";
+      let messageForMiddleman = "";
+
+      if (result.action === "accept") {
+        // Three way
+        if (result.middleman) {
+          if (result.iam === "initiator") {
+            console.warn(
+              "Unhandled state where the initiator accepted a 3 way swap request. Initiator should not be able to accept a 3 way swap request."
+            );
+          } else if (result.iam === "target") {
+            messageForInitiator = template(
+              MESSAGE_TEMPLATES.threeWay.target.accept.initiator(
+                result.middleman.hasAccepted
+              ),
+              templatePayload,
+              ay
+            );
+            messageForTarget = template(
+              MESSAGE_TEMPLATES.threeWay.target.accept.middleman(
+                result.middleman.hasAccepted
+              ),
+              templatePayload,
+              ay
+            );
+          } else if (result.iam === "middleman") {
+            messageForInitiator = template(
+              MESSAGE_TEMPLATES.threeWay.middleman.accept.initiator(
+                result.target.hasAccepted
+              ),
+              templatePayload,
+              ay
+            );
+            messageForMiddleman = template(
+              MESSAGE_TEMPLATES.threeWay.middleman.accept.target(
+                result.target.hasAccepted
+              ),
+              templatePayload,
+              ay
+            );
+          }
+        }
+        // Direct
+        else {
+          if (result.iam === "target") {
+            messageForInitiator = template(
+              MESSAGE_TEMPLATES.direct.target.accept.initiator,
+              templatePayload,
+              ay
+            );
+          } else {
+            console.warn(
+              "Unhandled state where the middleman accepted a direct swap request. Middleman should not be able to accept a direct swap request."
+            );
+          }
+        }
+      }
+
+      const sendMessage = async (userId: bigint, msg: string) => {
+        if (msg === "") return;
+        if (!userId) return;
+        await bot
+          .sendMessage(Number(userId), msg, {
+            parse_mode: "Markdown",
+          })
+          .catch((error) => {
+            console.error(`Error sending message to ${userId}:`, error);
+          });
+      };
+
+      // Send messages, including any declined messages.
+      await Promise.all([
+        sendMessage(result.initiator.telegramUserId, messageForInitiator),
+        sendMessage(result.target.telegramUserId, messageForTarget),
+        result.middleman
+          ? sendMessage(result.middleman.telegramUserId, messageForMiddleman)
+          : Promise.resolve(),
+        ...result.declineNotifications.map((notification) => {
+          let msg = "";
+          if (notification.reason === "no-longer-swapping") {
+            msg = template(
+              MESSAGE_TEMPLATES.decline.noLongerSwapping,
+              templatePayload,
+              ay
+            );
+          } else if (notification.reason === "found-a-swap") {
+            msg = template(
+              MESSAGE_TEMPLATES.decline.foundASwap,
+              templatePayload,
+              ay
+            );
+          } else if (notification.reason === "not-interested") {
+            msg = template(
+              MESSAGE_TEMPLATES.decline.notInterested,
+              templatePayload,
+              ay
+            );
+          }
+          return sendMessage(notification.for.telegramUserId, msg);
+        }),
+      ]);
+    } catch (error) {
+      console.error(`Error handling swap request decision:`, error);
+      throw error;
+    } finally {
+      await lock.release().catch((error) => {
+        console.error(`Error releasing lock:`, error);
+      });
+    }
+  },
+});
+
 export const processTelegramWebhookCallback = internalAction({
   args: {
     callbackId: v.string(),
@@ -386,224 +581,189 @@ export const processTelegramWebhookCallback = internalAction({
     });
 
     if (await lock.acquire()) {
-      try {
-        const lockKey = `telegram:webhook:${args.payloadId}`;
-        const lockValue = await redis.get(lockKey);
-        if (lockValue) {
-          return { ok: true as const };
-        }
-
-        const {
-          action,
-          isDirectSwap,
-          isCompleted,
-          course,
-          iam,
-          initiator,
-          targetSwapper,
-          middlemanSwapper,
-        } = await ctx.runMutation(
-          internal.tasks.handleSwapRequestWebhookCallback,
-          {
-            payloadId: args.payloadId,
-            fromTelegramUserId: BigInt(args.fromId),
-          }
-        );
-
-        const courseLabel = `${course.code} ${course.name}`;
-        let msgForInitiator = "";
-        let msgForMiddlemanSwapper = "";
-        let msgForTargetSwapper = "";
-
-        const setMessageForMe = (msg: string) => {
-          if (iam === "middlemanSwapper") {
-            msgForMiddlemanSwapper = msg;
-          } else if (iam === "targetSwapper") {
-            msgForTargetSwapper = msg;
-          } else {
-            throw new ConvexError("Invalid iam");
-          }
-        };
-
-        if (action === "accept") {
-          if (isDirectSwap) {
-            if (iam === "middlemanSwapper") {
-              throw new ConvexError(
-                "Middleman swapper cannot accept direct swap request. How did this happen?"
-              );
-            }
-
-            // Initiator declined the swap.
-            if (!isCompleted) {
-              setMessageForMe(`*Swap failed for ${escapeMarkdown(courseLabel)}*.
-It seems that this request is no longer valid.`);
-            } else {
-              msgForTargetSwapper = `*Swap confirmation for ${escapeMarkdown(courseLabel)}*.
-You have accepted @${escapeMarkdown(initiator.handle)}'s swap request, message them to proceed with the swap!.`;
-              msgForInitiator = `*Swap confirmation for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(targetSwapper.handle)} has accepted your swap request, message them to proceed with the swap!.`;
-            }
-          }
-          // 3 Way Swap
-          else {
-            if (!middlemanSwapper) {
-              throw new ConvexError("Middleman swapper not found.");
-            }
-
-            // Initiator declined the swap.
-            if (!initiator.acceptedByInitiator) {
-              setMessageForMe(`*Swap failed for ${escapeMarkdown(courseLabel)}*.
-It seems that this request is no longer valid.`);
-            } else {
-              const swapSequenceMessageInitiator = `First, YOU (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
-              Then, YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(targetSwapper.handle)} (${targetSwapper.index}) swap.`;
-              const swapSequenceMessageTarget = `Wait for (${escapeMarkdown(initiator.handle)} (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
-              Then, YOU (${targetSwapper.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index})`;
-              const swapSequenceMessageMiddleman = ` YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(initiator.handle)} (${initiator.index}) swap.`;
-
-              if (iam === "middlemanSwapper") {
-                if (!isCompleted) {
-                  msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
-You have accepted @${escapeMarkdown(initiator.handle)}'s request.
-
-2 / 3 confirmations received.`;
-                  msgForInitiator = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has accepted your request.
-
-2 / 3 confirmations received.`;
-                  msgForTargetSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in.
-
-2 / 3 confirmations received.
-
-You have yet to confirm this swap request.`;
-                } else {
-                  msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
-You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(targetSwapper.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
-
-${swapSequenceMessageMiddleman}
-
-Message them to proceed with the swap!`;
-
-                  msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
-
-${swapSequenceMessageTarget}
-
-Message them to proceed with the swap!`;
-
-                  msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
-
-${swapSequenceMessageInitiator}
-
-Message them to proceed with the swap!`;
-                }
-              } else if (iam === "targetSwapper") {
-                if (!isCompleted) {
-                  msgForTargetSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
-You have accepted @${escapeMarkdown(initiator.handle)}'s request.
-
-2 / 3 confirmations received.`;
-                  msgForInitiator = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has accepted your request.
-
-2 / 3 confirmations received.`;
-                  msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in.
-
-2 / 3 confirmations received.
-
-You have yet to confirm this swap request.`;
-                } else {
-                  msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
-You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
-
-${swapSequenceMessageTarget}
-
-Message them to proceed with the swap!`;
-
-                  msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(targetSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
-
-${swapSequenceMessageInitiator}
-
-Message them to proceed with the swap!`;
-
-                  msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(targetSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
-
-${swapSequenceMessageMiddleman}
-
-Message them to proceed with the swap!`;
-                }
-              }
-            }
-          }
-        } else {
-          if (isDirectSwap) {
-            msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(targetSwapper.handle)} has declined to participate in your swap request.`;
-            msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You declined to participate in @${escapeMarkdown(initiator.handle)}'s swap request.`;
-          } else {
-            if (!middlemanSwapper) {
-              throw new ConvexError("Middleman swapper not found.");
-            }
-
-            if (iam === "targetSwapper") {
-              msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
-              msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
-              msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(targetSwapper.handle)} has declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
-            } else if (iam === "middlemanSwapper") {
-              msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(targetSwapper.handle)} has declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
-              msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-You declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
-              msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
-@${escapeMarkdown(middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
-            }
-          }
-        }
-
-        const sendMessage = async (userId: bigint | undefined, msg: string) => {
-          if (msg === "") return;
-          if (!userId) return;
-          await bot
-            .sendMessage(Number(userId), msg, {
-              parse_mode: "Markdown",
-            })
-            .catch((error) => {
-              console.error(`Error sending message to ${userId}:`, error);
-            });
-        };
-
-        await Promise.all([
-          sendMessage(initiator.telegramUserId, msgForInitiator),
-          sendMessage(targetSwapper.telegramUserId, msgForTargetSwapper),
-          sendMessage(middlemanSwapper?.telegramUserId, msgForMiddlemanSwapper),
-        ]);
-
-        await bot.answerCallbackQuery(args.callbackId).catch(() => {});
-        if (args.messageChatId != null && args.messageId != null) {
-          await bot
-            .editMessageReplyMarkup(
-              { inline_keyboard: [] },
-              { chat_id: args.messageChatId, message_id: args.messageId }
-            )
-            .catch(() => {});
-        }
-        await redis.set(lockKey, "1", { ex: 60 * 5 });
-
-        return { ok: true as const };
-      } catch (error) {
-        console.error(`Error handling callback ${args.callbackId}:`, error);
-      } finally {
-        await lock.release();
-      }
+      lock.release().catch(() => {});
+      //       try {
+      //         const lockKey = `telegram:webhook:${args.payloadId}`;
+      //         const lockValue = await redis.get(lockKey);
+      //         if (lockValue) {
+      //           return { ok: true as const };
+      //         }
+      //         const {
+      //           action,
+      //           isDirectSwap,
+      //           isCompleted,
+      //           course,
+      //           iam,
+      //           initiator,
+      //           targetSwapper,
+      //           middlemanSwapper,
+      //         } = await ctx.runMutation(
+      //           internal.tasks.handleSwapRequestWebhookCallback,
+      //           {
+      //             payloadId: args.payloadId,
+      //             fromTelegramUserId: BigInt(args.fromId),
+      //           }
+      //         );
+      //         const courseLabel = `${course.code} ${course.name}`;
+      //         let msgForInitiator = "";
+      //         let msgForMiddlemanSwapper = "";
+      //         let msgForTargetSwapper = "";
+      //         const setMessageForMe = (msg: string) => {
+      //           if (iam === "middlemanSwapper") {
+      //             msgForMiddlemanSwapper = msg;
+      //           } else if (iam === "targetSwapper") {
+      //             msgForTargetSwapper = msg;
+      //           } else {
+      //             throw new ConvexError("Invalid iam");
+      //           }
+      //         };
+      //         if (action === "accept") {
+      //           if (isDirectSwap) {
+      //             if (iam === "middlemanSwapper") {
+      //               throw new ConvexError(
+      //                 "Middleman swapper cannot accept direct swap request. How did this happen?"
+      //               );
+      //             }
+      //             // Initiator declined the swap.
+      //             if (!isCompleted) {
+      //               setMessageForMe(`*Swap failed for ${escapeMarkdown(courseLabel)}*.
+      // It seems that this request is no longer valid.`);
+      //             } else {
+      //               msgForTargetSwapper = `*Swap confirmation for ${escapeMarkdown(courseLabel)}*.
+      // You have accepted @${escapeMarkdown(initiator.handle)}'s swap request, message them to proceed with the swap!.`;
+      //               msgForInitiator = `*Swap confirmation for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(targetSwapper.handle)} has accepted your swap request, message them to proceed with the swap!.`;
+      //             }
+      //           }
+      //           // 3 Way Swap
+      //           else {
+      //             if (!middlemanSwapper) {
+      //               throw new ConvexError("Middleman swapper not found.");
+      //             }
+      //             // Initiator declined the swap.
+      //             if (!initiator.acceptedByInitiator) {
+      //               setMessageForMe(`*Swap failed for ${escapeMarkdown(courseLabel)}*.
+      // It seems that this request is no longer valid.`);
+      //             } else {
+      //               const swapSequenceMessageInitiator = `First, YOU (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
+      //               Then, YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(targetSwapper.handle)} (${targetSwapper.index}) swap.`;
+      //               const swapSequenceMessageTarget = `Wait for (${escapeMarkdown(initiator.handle)} (${initiator.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index}) swap.
+      //               Then, YOU (${targetSwapper.index}) <-> ${escapeMarkdown(middlemanSwapper.handle)} (${middlemanSwapper.index})`;
+      //               const swapSequenceMessageMiddleman = ` YOU (${middlemanSwapper.index}) <-> ${escapeMarkdown(initiator.handle)} (${initiator.index}) swap.`;
+      //               if (iam === "middlemanSwapper") {
+      //                 if (!isCompleted) {
+      //                   msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+      // You have accepted @${escapeMarkdown(initiator.handle)}'s request.
+      // 2 / 3 confirmations received.`;
+      //                   msgForInitiator = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has accepted your request.
+      // 2 / 3 confirmations received.`;
+      //                   msgForTargetSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in.
+      // 2 / 3 confirmations received.
+      // You have yet to confirm this swap request.`;
+      //                 } else {
+      //                   msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+      // You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(targetSwapper.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
+      // ${swapSequenceMessageMiddleman}
+      // Message them to proceed with the swap!`;
+      //                   msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
+      // ${swapSequenceMessageTarget}
+      // Message them to proceed with the swap!`;
+      //                   msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+      // ${swapSequenceMessageInitiator}
+      // Message them to proceed with the swap!`;
+      //                 }
+      //               } else if (iam === "targetSwapper") {
+      //                 if (!isCompleted) {
+      //                   msgForTargetSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+      // You have accepted @${escapeMarkdown(initiator.handle)}'s request.
+      // 2 / 3 confirmations received.`;
+      //                   msgForInitiator = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has accepted your request.
+      // 2 / 3 confirmations received.`;
+      //                   msgForMiddlemanSwapper = `*Swap pending confirmation for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has accepted a 3 way swap request you are participating in.
+      // 2 / 3 confirmations received.
+      // You have yet to confirm this swap request.`;
+      //                 } else {
+      //                   msgForTargetSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+      // You have accepted @${escapeMarkdown(initiator.handle)}'s request, finalising the 3 way swap between you, @${escapeMarkdown(middlemanSwapper.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+      // ${swapSequenceMessageTarget}
+      // Message them to proceed with the swap!`;
+      //                   msgForInitiator = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(targetSwapper.handle)} has accepted your 3 way swap request, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(middlemanSwapper.handle)}.
+      // ${swapSequenceMessageInitiator}
+      // Message them to proceed with the swap!`;
+      //                   msgForMiddlemanSwapper = `*Swap confirmed for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(targetSwapper.handle)} has accepted a 3 way swap request you are participating in, finalising the swap between you, @${escapeMarkdown(initiator.handle)} and @${escapeMarkdown(targetSwapper.handle)}.
+      // ${swapSequenceMessageMiddleman}
+      // Message them to proceed with the swap!`;
+      //                 }
+      //               }
+      //             }
+      //           }
+      //         } else {
+      //           if (isDirectSwap) {
+      //             msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(targetSwapper.handle)} has declined to participate in your swap request.`;
+      //             msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // You declined to participate in @${escapeMarkdown(initiator.handle)}'s swap request.`;
+      //           } else {
+      //             if (!middlemanSwapper) {
+      //               throw new ConvexError("Middleman swapper not found.");
+      //             }
+      //             if (iam === "targetSwapper") {
+      //               msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
+      //               msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // You declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+      //               msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(targetSwapper.handle)} has declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+      //             } else if (iam === "middlemanSwapper") {
+      //               msgForInitiator = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(targetSwapper.handle)} has declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+      //               msgForMiddlemanSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // You declined to participate in @${escapeMarkdown(initiator.handle)}'s 3 way swap request.`;
+      //               msgForTargetSwapper = `*Swap cancelled for ${escapeMarkdown(courseLabel)}*.
+      // @${escapeMarkdown(middlemanSwapper.handle)} has declined to participate in your 3 way swap request.`;
+      //             }
+      //           }
+      //         }
+      //         const sendMessage = async (userId: bigint | undefined, msg: string) => {
+      //           if (msg === "") return;
+      //           if (!userId) return;
+      //           await bot
+      //             .sendMessage(Number(userId), msg, {
+      //               parse_mode: "Markdown",
+      //             })
+      //             .catch((error) => {
+      //               console.error(`Error sending message to ${userId}:`, error);
+      //             });
+      //         };
+      //         await Promise.all([
+      //           sendMessage(initiator.telegramUserId, msgForInitiator),
+      //           sendMessage(targetSwapper.telegramUserId, msgForTargetSwapper),
+      //           sendMessage(middlemanSwapper?.telegramUserId, msgForMiddlemanSwapper),
+      //         ]);
+      //         await bot.answerCallbackQuery(args.callbackId).catch(() => {});
+      //         if (args.messageChatId != null && args.messageId != null) {
+      //           await bot
+      //             .editMessageReplyMarkup(
+      //               { inline_keyboard: [] },
+      //               { chat_id: args.messageChatId, message_id: args.messageId }
+      //             )
+      //             .catch(() => {});
+      //         }
+      //         await redis.set(lockKey, "1", { ex: 60 * 5 });
+      //         return { ok: true as const };
+      //       } catch (error) {
+      //         console.error(`Error handling callback ${args.callbackId}:`, error);
+      //       } finally {
+      //         await lock.release();
+      //       }
     }
 
     return { ok: true as const };
