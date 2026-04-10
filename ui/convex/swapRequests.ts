@@ -246,11 +246,11 @@ export const handleSwapRequestDecision = internalMutation({
       throw new ConvexError("User not found, this should not happen.");
     }
 
-    let declineNotifications: {
+    let otherDeclineNotifications: {
       for: {
         telegramUserId: bigint;
       };
-      reason: "no-longer-swapping" | "found-a-swap" | "not-interested";
+      reason: "no-longer-swapping" | "found-a-swap";
     }[] = [];
     const ignoreParticipants = [
       initiatorSwapper._id,
@@ -259,7 +259,7 @@ export const handleSwapRequestDecision = internalMutation({
     ].filter((id) => id !== undefined);
     const addDecline = async (
       swapperId: Id<"swapper">,
-      reason: (typeof declineNotifications)[number]["reason"]
+      reason: (typeof otherDeclineNotifications)[number]["reason"]
     ) => {
       if (ignoreParticipants.includes(swapperId)) {
         return;
@@ -272,7 +272,7 @@ export const handleSwapRequestDecision = internalMutation({
       if (!user) {
         return;
       }
-      declineNotifications.push({
+      otherDeclineNotifications.push({
         for: {
           telegramUserId: user.telegramUserId,
         },
@@ -280,47 +280,43 @@ export const handleSwapRequestDecision = internalMutation({
       });
     };
 
-    if (args.action === "decline") {
-      if (args.shouldMarkAsSwappedIfDecline) {
-        await ctx.db.patch(meSwapperId, { hasSwapped: true });
-        // Retrieve requests to decline.
-        const requests = await ctx.db
-          .query("swap_requests")
-          .filter((q) => {
-            return q.and(
-              q.eq(q.field("isCompleted"), false),
-              q.eq(q.field("courseId"), course._id),
-              q.not(q.eq(q.field("_id"), request._id)),
-              q.or(
-                q.eq(q.field("initiator"), meSwapperId),
-                q.eq(q.field("targetSwapper"), meSwapperId),
-                q.eq(q.field("middlemanSwapper"), meSwapperId)
-              )
-            );
-          })
-          .collect();
+    if (args.action === "decline" && args.shouldMarkAsSwappedIfDecline) {
+      await ctx.db.patch(meSwapperId, { hasSwapped: true });
+      // Retrieve requests to decline.
+      const requests = await ctx.db
+        .query("swap_requests")
+        .filter((q) => {
+          return q.and(
+            q.eq(q.field("isCompleted"), false),
+            q.eq(q.field("courseId"), course._id),
+            q.not(q.eq(q.field("_id"), request._id)),
+            q.or(
+              q.eq(q.field("initiator"), meSwapperId),
+              q.eq(q.field("targetSwapper"), meSwapperId),
+              q.eq(q.field("middlemanSwapper"), meSwapperId)
+            )
+          );
+        })
+        .collect();
 
-        const uniqueSwapperIds = [
-          ...new Set(
-            requests.reduce((acc, r) => {
-              acc.push(r.initiator);
-              acc.push(r.targetSwapper);
-              if (r.middlemanSwapper) {
-                acc.push(r.middlemanSwapper);
-              }
-              return acc;
-            }, [] as Id<"swapper">[])
-          ),
-        ];
-        await Promise.all([
-          ...uniqueSwapperIds.map((swapperId) =>
-            addDecline(swapperId, "no-longer-swapping")
-          ),
-          ...requests.map((r) => ctx.db.patch(r._id, { isCompleted: true })),
-        ]);
-      } else {
-        await addDecline(meSwapperId, "not-interested");
-      }
+      const uniqueSwapperIds = [
+        ...new Set(
+          requests.reduce((acc, r) => {
+            acc.push(r.initiator);
+            acc.push(r.targetSwapper);
+            if (r.middlemanSwapper) {
+              acc.push(r.middlemanSwapper);
+            }
+            return acc;
+          }, [] as Id<"swapper">[])
+        ),
+      ];
+      await Promise.all([
+        ...uniqueSwapperIds.map((swapperId) =>
+          addDecline(swapperId, "no-longer-swapping")
+        ),
+        ...requests.map((r) => ctx.db.patch(r._id, { isCompleted: true })),
+      ]);
     }
 
     // Check if everyone has accepted the swap.
@@ -389,7 +385,7 @@ export const handleSwapRequestDecision = internalMutation({
 
     return {
       action: args.action,
-      declineNotifications,
+      otherDeclineNotifications,
       isCompleted,
       course: {
         code: course.code,

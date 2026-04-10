@@ -39,8 +39,8 @@ export const MESSAGE_TEMPLATES = {
 *${P.decliner.username}* is no longer interested to swap for this course.`,
     foundASwap: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
 *${P.decliner.username}* has found a swap for this course, they are no longer interested to swap for this course.`,
-    notInterested: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-*${P.decliner.username}* is not interested to swap with you.`,
+    //     notInterested: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+    // *${P.decliner.username}* declined to swap with you.`,
   },
   // Direct swap messages.
   direct: {
@@ -68,12 +68,12 @@ Message @${P.target.telegram} to proceed with the swap!`,
 You accepted *${P.initiator.username}*'s swap request.
 Message @${P.initiator.telegram} to proceed with the swap!`,
       },
-      //       decline: {
-      //         initiator: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // *${P.target.username}* has declined your swap request.`,
-      //         target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // You declined *${P.initiator.username}*'s swap request.`,
-      //       },
+      decline: {
+        initiator: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+*${P.target.username}* has declined your direct swap request.`,
+        target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+You declined *${P.initiator.username}*'s direct swap request.`,
+      },
     },
   },
 
@@ -83,12 +83,12 @@ Message @${P.initiator.telegram} to proceed with the swap!`,
       request: {
         target: `⚠️ *${P.courseCode} ${P.courseName} Swap Request* ⚠️
 *${P.initiator.username}* wants to do a 3 way swap between *YOU*, *${P.middleman.username}*, and *${P.target.username}*.
-They will first swap with *${P.middleman.username}* (${P.middleman.index}),
-then swap with *YOU* (${P.target.index}).`,
+First, *${P.initiator.username}* (${P.initiator.index}) <-> *${P.middleman.username}* (${P.middleman.index}) swap.
+Then, *${P.initiator.username}* (${P.middleman.index}) <-> *YOU* (${P.target.index}) swap.`,
         middleman: `⚠️ *${P.courseCode} ${P.courseName} Swap Request* ⚠️
 *${P.initiator.username}* wants to do a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.
-They will first swap with *YOU* (${P.target.index}),
-then swap with *${P.middleman.username}* (${P.middleman.index}).`,
+First, *${P.initiator.username}* (${P.initiator.index}) <-> *YOU* (${P.middleman.index}) swap.
+Then, *${P.initiator.username}* (${P.middleman.index}) <-> *${P.target.username}* (${P.target.index}) swap.`,
       },
       //       decline: {
       //         targety: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
@@ -142,14 +142,14 @@ Please message @${P.initiator.telegram} and @${P.target.telegram} to proceed wit
 Waiting on *${P.target.username}* to accept the request.`;
         },
       },
-      //       decline: {
-      //         initiator: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // *${P.middleman.username}* has declined a 3 way swap between *YOU*, *${P.middleman.username}*, and *${P.target.username}*.`,
-      //         target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // *${P.middleman.username}* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
-      //         middleman: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // *YOU* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
-      //       },
+      decline: {
+        initiator: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+*${P.middleman.username}* has declined a 3 way swap between *YOU*, *${P.middleman.username}*, and *${P.target.username}*.`,
+        target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+*${P.middleman.username}* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
+        middleman: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+*YOU* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
+      },
     },
     target: {
       accept: {
@@ -196,14 +196,14 @@ Please message @${P.initiator.telegram} and @${P.middleman.telegram} to proceed 
 Waiting on *YOU* to accept your swap request.`;
         },
       },
-      //       decline: {
-      //         initiator: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // *${P.target.username}* has declined a 3 way swap between *YOU*, *${P.middleman.username}*, and *${P.target.username}*.`,
-      //         middleman: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // *${P.target.username}* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
-      //         target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-      // *YOU* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
-      //       },
+      decline: {
+        initiator: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+*${P.target.username}* has declined a 3 way swap between *YOU*, *${P.middleman.username}*, and *${P.target.username}*.`,
+        middleman: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+*${P.target.username}* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
+        target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
+*YOU* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
+      },
     },
   },
 };
@@ -215,7 +215,7 @@ type PlaceholderValue<T> = {
 type PType = PlaceholderValue<typeof P>;
 
 function escapeMarkdown(text: string): string {
-  return text.replace(/([_*`[\]()~])/g, "\\$1");
+  return text.replace(/([_*`[\]~])/g, "\\$1");
 }
 
 function buildFStarsUrl(

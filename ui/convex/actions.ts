@@ -395,7 +395,7 @@ export const handleSwapRequestDecision = action({
     action: v.union(v.literal("accept"), v.literal("decline")),
     shouldMarkAsSwappedIfDecline: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<GetSwapRequestByIdResult> => {
     const decryptedPayload = await decryptValue(
       args.encryptedPayload,
       env.ENCRYPTION_KEY
@@ -455,58 +455,92 @@ export const handleSwapRequestDecision = action({
       let messageForTarget = "";
       let messageForMiddleman = "";
 
-      if (result.action === "accept") {
-        // Three way
-        if (result.middleman) {
-          if (result.iam === "initiator") {
-            console.warn(
-              "Unhandled state where the initiator accepted a 3 way swap request. Initiator should not be able to accept a 3 way swap request."
-            );
-          } else if (result.iam === "target") {
-            messageForInitiator = template(
-              MESSAGE_TEMPLATES.threeWay.target.accept.initiator(
-                result.middleman.hasAccepted
-              ),
-              templatePayload,
-              ay
-            );
-            messageForTarget = template(
-              MESSAGE_TEMPLATES.threeWay.target.accept.middleman(
-                result.middleman.hasAccepted
-              ),
-              templatePayload,
-              ay
-            );
-          } else if (result.iam === "middleman") {
-            messageForInitiator = template(
-              MESSAGE_TEMPLATES.threeWay.middleman.accept.initiator(
-                result.target.hasAccepted
-              ),
-              templatePayload,
-              ay
-            );
-            messageForMiddleman = template(
-              MESSAGE_TEMPLATES.threeWay.middleman.accept.target(
-                result.target.hasAccepted
-              ),
-              templatePayload,
-              ay
-            );
-          }
+      const isAccept = result.action === "accept";
+      // Three way
+      if (result.middleman) {
+        if (result.iam === "initiator") {
+          console.warn(
+            "Unhandled state where the initiator accepted a 3 way swap request. Initiator should not be able to accept a 3 way swap request."
+          );
+        } else if (result.iam === "target") {
+          messageForInitiator = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.threeWay.target.accept.initiator(
+                  result.middleman.hasAccepted
+                )
+              : MESSAGE_TEMPLATES.threeWay.target.decline.initiator,
+            templatePayload,
+            ay
+          );
+          messageForMiddleman = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.threeWay.target.accept.middleman(
+                  result.middleman.hasAccepted
+                )
+              : MESSAGE_TEMPLATES.threeWay.target.decline.middleman,
+            templatePayload,
+            ay
+          );
+          messageForTarget = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.threeWay.target.accept.target(
+                  result.middleman.hasAccepted
+                )
+              : MESSAGE_TEMPLATES.threeWay.target.decline.target,
+            templatePayload,
+            ay
+          );
+        } else if (result.iam === "middleman") {
+          messageForInitiator = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.threeWay.middleman.accept.initiator(
+                  result.target.hasAccepted
+                )
+              : MESSAGE_TEMPLATES.threeWay.middleman.decline.initiator,
+            templatePayload,
+            ay
+          );
+          messageForMiddleman = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.threeWay.middleman.accept.middleman(
+                  result.target.hasAccepted
+                )
+              : MESSAGE_TEMPLATES.threeWay.middleman.decline.middleman,
+            templatePayload,
+            ay
+          );
+          messageForTarget = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.threeWay.middleman.accept.target(
+                  result.target.hasAccepted
+                )
+              : MESSAGE_TEMPLATES.threeWay.middleman.decline.target,
+            templatePayload,
+            ay
+          );
         }
-        // Direct
-        else {
-          if (result.iam === "target") {
-            messageForInitiator = template(
-              MESSAGE_TEMPLATES.direct.target.accept.initiator,
-              templatePayload,
-              ay
-            );
-          } else {
-            console.warn(
-              "Unhandled state where the middleman accepted a direct swap request. Middleman should not be able to accept a direct swap request."
-            );
-          }
+      }
+      // Direct
+      else {
+        if (result.iam === "target") {
+          messageForInitiator = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.direct.target.accept.initiator
+              : MESSAGE_TEMPLATES.direct.target.decline.initiator,
+            templatePayload,
+            ay
+          );
+          messageForTarget = template(
+            isAccept
+              ? MESSAGE_TEMPLATES.direct.target.accept.target
+              : MESSAGE_TEMPLATES.direct.target.decline.target,
+            templatePayload,
+            ay
+          );
+        } else {
+          console.warn(
+            "Unhandled state where the middleman accepted a direct swap request. Middleman should not be able to accept a direct swap request."
+          );
         }
       }
 
@@ -516,6 +550,7 @@ export const handleSwapRequestDecision = action({
         await bot
           .sendMessage(Number(userId), msg, {
             parse_mode: "Markdown",
+            disable_web_page_preview: true,
           })
           .catch((error) => {
             console.error(`Error sending message to ${userId}:`, error);
@@ -529,7 +564,7 @@ export const handleSwapRequestDecision = action({
         result.middleman
           ? sendMessage(result.middleman.telegramUserId, messageForMiddleman)
           : Promise.resolve(),
-        ...result.declineNotifications.map((notification) => {
+        ...result.otherDeclineNotifications.map((notification) => {
           let msg = "";
           if (notification.reason === "no-longer-swapping") {
             msg = template(
@@ -543,16 +578,19 @@ export const handleSwapRequestDecision = action({
               templatePayload,
               ay
             );
-          } else if (notification.reason === "not-interested") {
-            msg = template(
-              MESSAGE_TEMPLATES.decline.notInterested,
-              templatePayload,
-              ay
-            );
           }
           return sendMessage(notification.for.telegramUserId, msg);
         }),
       ]);
+
+      const updatedRequest: GetSwapRequestByIdResult = await ctx.runQuery(
+        internal.swapRequests.getSwapRequestById,
+        {
+          requestId: payload.requestId as Id<"swap_requests">,
+          swapperId: payload.swapperId as Id<"swapper">,
+        }
+      );
+      return updatedRequest;
     } catch (error) {
       console.error(`Error handling swap request decision:`, error);
       throw error;

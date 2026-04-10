@@ -82,10 +82,12 @@ export function useConvexMutationState<
  * pending / error / success / data state and an optional `onSuccess` callback.
  */
 export function useConvexActionState<
-  R,
-  Act extends (...args: never[]) => Promise<R>,
->(action: Act, options?: UseConvexActionStateOptions<R>) {
-  type Data = R;
+  Act extends (...args: never[]) => Promise<unknown>,
+>(
+  action: Act,
+  options?: UseConvexActionStateOptions<Awaited<ReturnType<Act>>>
+) {
+  type Data = Awaited<ReturnType<Act>>;
 
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -96,12 +98,12 @@ export function useConvexActionState<
   optionsRef.current = options;
 
   const handle = useCallback(
-    async (...args: Parameters<Act>): Promise<R | undefined> => {
+    async (...args: Parameters<Act>): Promise<Data | undefined> => {
       setError(null);
       setIsSuccess(false);
       setIsPending(true);
       try {
-        const result = await action(...args);
+        const result = (await action(...args)) as Data;
         setData(result);
         setIsSuccess(true);
         optionsRef.current?.onSuccess?.(result);
