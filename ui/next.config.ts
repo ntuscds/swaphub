@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import createMDX from "@next/mdx";
 
 const withNextIntl = createNextIntlPlugin("./src/core/i18n/i18n.ts");
 
 const nextConfig: NextConfig = {
+  // Required for `page.mdx` / `page.md` routes in the App Router
+  pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   async rewrites() {
     return [
       {
@@ -24,4 +27,8 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
-export default withNextIntl(nextConfig);
+const withMDX = createMDX({
+  extension: /\.mdx?$/,
+});
+
+export default withNextIntl(withMDX(nextConfig));
