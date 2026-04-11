@@ -125,7 +125,7 @@ export const sendSwapRequest = action({
               parse_mode: "Markdown",
               disable_web_page_preview: true,
               reply_markup: {
-                keyboard: [
+                inline_keyboard: [
                   [
                     {
                       text: "View",
@@ -148,7 +148,7 @@ export const sendSwapRequest = action({
               parse_mode: "Markdown",
               disable_web_page_preview: true,
               reply_markup: {
-                keyboard: [
+                inline_keyboard: [
                   [
                     {
                       text: "View",

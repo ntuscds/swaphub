@@ -19,11 +19,22 @@ import { api } from "../../convex/_generated/api";
 import { Loader2 } from "lucide-react";
 import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type SwapRequest = FunctionReturnType<
   typeof api.actions.getSwapRequestByEncryptedPayload
 >;
+
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        ready?: () => void;
+        expand?: () => void;
+      };
+    };
+  }
+}
 
 function hasCurrentUserAccepted(request: SwapRequest): boolean {
   if (request.iam === "initiator") {
@@ -57,6 +68,25 @@ export function SwapRequestDecision({
       },
     }
   );
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const webApp = window.Telegram?.WebApp;
+      if (!webApp) {
+        alert("not telegram webapp");
+        return;
+      }
+
+      try {
+        webApp.ready?.();
+        webApp.expand?.();
+        alert("telegram expand");
+      } catch {
+        alert("not telegram expand");
+      }
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const isDecisionDisabled = useMemo(() => {
     return (

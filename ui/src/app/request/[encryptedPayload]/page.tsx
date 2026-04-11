@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import z from "zod";
 import { api } from "../../../../convex/_generated/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import Script from "next/script";
 
 export const SwapRequestPayloadSchema = z.object({
   requestId: z.string(),
@@ -53,14 +54,20 @@ export default async function Page({
 }) {
   const { encryptedPayload } = await params;
   return (
-    <HydrationSafeScrollArea>
-      <div className="flex flex-col items-center">
-        <div className="flex flex-col gap-2 w-full max-w-4xl">
-          <Suspense fallback={<Skeleton className="w-full h-screen-safe" />}>
-            <Request encryptedPayload={encryptedPayload} />
-          </Suspense>
+    <>
+      <Script
+        src="https://telegram.org/js/telegram-web-app.js"
+        strategy="beforeInteractive"
+      />
+      <HydrationSafeScrollArea>
+        <div className="flex flex-col items-center">
+          <div className="flex flex-col gap-2 w-full max-w-4xl">
+            <Suspense fallback={<Skeleton className="w-full h-screen-safe" />}>
+              <Request encryptedPayload={encryptedPayload} />
+            </Suspense>
+          </div>
         </div>
-      </div>
-    </HydrationSafeScrollArea>
+      </HydrationSafeScrollArea>
+    </>
   );
 }
