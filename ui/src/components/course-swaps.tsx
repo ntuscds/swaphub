@@ -32,9 +32,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import { useConvexMutationState } from "./use-convex-mutation-state";
+import { SetStateAction, Dispatch, useEffect, useMemo, useState } from "react";
+import {
+  useConvexActionState,
+  useConvexMutationState,
+} from "./use-convex-mutation-state";
 import { AcadYear } from "@/lib/acad";
 import {
   DirectSwapArtboard,
@@ -42,7 +44,6 @@ import {
 } from "./course-swap-artboard";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { getProfileImageUrl } from "@/lib/user";
-import { reduceStatus } from "@/lib/swap-request";
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -57,64 +58,131 @@ type DirectMatch = CourseRequestAndMatches["directMatches"][number];
 type ThreeWayCycleMatch =
   CourseRequestAndMatches["threeWayCycleMatches"][number];
 
+type BottomSheetState = {
+  match:
+    | {
+        type: "direct";
+        match: DirectMatch;
+      }
+    | {
+        type: "three-way-cycle";
+        match: ThreeWayCycleMatch;
+      };
+  isOpen: boolean;
+};
+
 export function SwapConfirmationBottomSheetFooter({
-  // courseId,
-  // match,
-  targetSwapperId,
-  middlemanSwapperId,
+  requestId,
+  setBottomSheetMatchItem,
 }: {
-  targetSwapperId: Id<"swapper">;
-  middlemanSwapperId?: Id<"swapper">;
+  requestId: Id<"swap_requests">;
+  setBottomSheetMatchItem: Dispatch<SetStateAction<BottomSheetState | null>>;
 }) {
-  const handleSwapRequestCallbackMut = useAction(api.actions.sendSwapRequest);
-  const { handle, error, isPending } = useConvexMutationState(
-    handleSwapRequestCallbackMut,
+  const handleSwapRequestDecisionAction = useAction(
+    api.actions.handleSwapRequestDecision
+  );
+  const handleSwapRequestDecisionState = useConvexActionState(
+    handleSwapRequestDecisionAction,
     {
-      onSuccess: () => {
-        toast.success("Swap request accepted!", {
-          description:
-            "We will notify the swapper of your request. They will reach out to you to confirm the swap. Keep your DMs open!",
+      onSuccess: (data) => {
+        setBottomSheetMatchItem((old) => {
+          if (!old) return old;
+          let match: BottomSheetState["match"] = old.match;
+          const matchObj = match.match;
+          if (matchObj.status !== undefined) {
+            matchObj.status = data.status;
+          }
+          return {
+            isOpen: true,
+            match,
+          };
         });
       },
     }
   );
+
+  const disabled = handleSwapRequestDecisionState.isPending;
 
   return (
     <div className="flex flex-col gap-4">
       <h3 className="text-sm font-medium text-primary-500">
         Someone wants to swap with you!
       </h3>
-      {error && (
+      {handleSwapRequestDecisionState.error && (
         <Alert variant="destructive">
-          <AlertTitle>Error!</AlertTitle>
-          <p className="text-muted-foreground max-w-none">{error}</p>
+          <AlertTitle>Error! {handleSwapRequestDecisionState.error}</AlertTitle>
+        </Alert>
+      )}
+      {handleSwapRequestDecisionState.data && (
+        <Alert variant="success">
+          <AlertTitle>Success!</AlertTitle>
         </Alert>
       )}
       <div className="w-full flex flex-row gap-2">
-        <Button
-          variant="ghost"
-          className="flex-1 border border-border bg-primary/20"
-          onClick={() =>
-            // handle({
-            //   courseId,
-            //   otherSwapperId: match.otherSwapperId,
-            //   // action: "already_swapped",
-            // })
-            {}
-          }
-          disabled={isPending}
-        >
-          Decline
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" className="flex-1" disabled={disabled}>
+                {handleSwapRequestDecisionState.isPending && (
+                  <Loader2 className="size-4 animate-spin" />
+                )}
+                Decline
+              </Button>
+            }
+          />
+          <DropdownMenuContent side="top" align="start" className="w-72">
+            <DropdownMenuItem
+              onClick={() => {
+                handleSwapRequestDecisionState.handle({
+                  requestId,
+                  action: "decline",
+                  shouldMarkAsSwappedIfDecline: false,
+                });
+              }}
+            >
+              <div className="flex flex-col gap-0.5">
+                <span>Decline This Request</span>
+                <span className="text-xs text-muted-foreground">
+                  Only decline this request. Your other requests for this course
+                  will remain active.
+                </span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => {
+                handleSwapRequestDecisionState.handle({
+                  requestId,
+                  action: "decline",
+                  shouldMarkAsSwappedIfDecline: true,
+                });
+              }}
+            >
+              <div className="flex flex-col gap-0.5">
+                <span>Decline and Disable Course Requests</span>
+                <span className="text-xs text-muted-foreground">
+                  Decline all active requests and disables swap requests for
+                  this course
+                </span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="default"
           className="flex-1"
-          onClick={
-            () => {}
-            // handle({ courseId, otherSwapperId: match.otherSwapperId })
-          }
-          disabled={isPending}
+          onClick={() => {
+            handleSwapRequestDecisionState.handle({
+              requestId,
+              action: "accept",
+              shouldMarkAsSwappedIfDecline: false,
+            });
+          }}
+          disabled={disabled}
         >
+          {handleSwapRequestDecisionState.isPending && (
+            <Loader2 className="size-4 animate-spin" />
+          )}
           Accept
         </Button>
       </div>
@@ -179,18 +247,16 @@ function RequestSwapBottomSheetFooter({
       </div>
     </>
   );
-  // return (
-
-  // );
 }
 
 export function SwapItemMatchBottomSheet({
+  setBottomSheetMatchItem,
   course,
   match: matchObj,
-  isAlreadySwapped,
   requestClose,
   isSheet = true,
 }: {
+  setBottomSheetMatchItem: Dispatch<SetStateAction<BottomSheetState | null>>;
   course: {
     id: Id<"courses">;
     haveIndex: string;
@@ -198,16 +264,7 @@ export function SwapItemMatchBottomSheet({
     code: string;
     name: string;
   };
-  match:
-    | {
-        type: "direct";
-        match: DirectMatch;
-      }
-    | {
-        type: "three-way-cycle";
-        match: ThreeWayCycleMatch;
-      };
-  isAlreadySwapped: boolean;
+  match: BottomSheetState["match"];
   requestClose?: () => void;
   isSheet?: boolean;
 }) {
@@ -245,16 +302,12 @@ export function SwapItemMatchBottomSheet({
   );
   if (match.status === "pending") {
     if (match.iam === "initiator") {
-      if (isAlreadySwapped) {
+      if (match.isCompleted) {
         hintElement = (
           <div className="flex flex-col p-2.5 gap-1 border border-border rounded-md bg-card">
             <h3 className="text-sm font-medium text-primary-500">
-              You have already swapped.
+              This request is already completed.
             </h3>
-            <p className="text-muted-foreground">
-              They won't be able to request a swap with you unless you unmark
-              this course as already swapped.
-            </p>
           </div>
         );
       } else {
@@ -272,28 +325,27 @@ export function SwapItemMatchBottomSheet({
         );
       }
     } else {
-      if (isAlreadySwapped) {
+      if (match.isCompleted) {
         hintElement = (
           <div className="flex flex-col p-2.5 gap-1 border border-border rounded-md bg-card">
             <h3 className="text-sm font-medium text-primary-500">
-              They have already swapped.
+              This request is already completed.
             </h3>
-            <p className="text-muted-foreground">
-              They won't be able to request a swap with you unless you unmark
-              this course as already swapped.
-            </p>
           </div>
         );
       } else {
         footer = (
           <SwapConfirmationBottomSheetFooter
-            targetSwapperId={match.target.id}
-            middlemanSwapperId={
-              matchObj.type === "three-way-cycle"
-                ? matchObj.match.middleman.id
-                : undefined
-            }
-            // match={match}
+            requestId={match.requestId}
+            setBottomSheetMatchItem={setBottomSheetMatchItem}
+            // courseId={course.id}
+            // initiatorSwapperId={match.initiator.id}
+            // targetSwapperId={match.target.id}
+            // middlemanSwapperId={
+            //   matchObj.type === "three-way-cycle"
+            //     ? matchObj.match.middleman.id
+            //     : undefined
+            // }
           />
         );
       }
@@ -565,18 +617,8 @@ export function CourseSwapMatches({
       acadYear,
     }
   );
-  const [bottomSheetMatchItem, setBottomSheetMatchItem] = useState<{
-    match:
-      | {
-          type: "direct";
-          match: DirectMatch;
-        }
-      | {
-          type: "three-way-cycle";
-          match: ThreeWayCycleMatch;
-        };
-    isOpen: boolean;
-  } | null>(null);
+  const [bottomSheetMatchItem, setBottomSheetMatchItem] =
+    useState<BottomSheetState | null>(null);
   const [editUrl, setEditUrl] = useState<string>("/swap");
   const [sheetSide, setSheetSide] = useState<"bottom" | "right">("bottom");
 
@@ -805,6 +847,7 @@ export function CourseSwapMatches({
         <SheetContent side={sheetSide}>
           {bottomSheetMatchItem?.match && requestsQuery?.course && (
             <SwapItemMatchBottomSheet
+              setBottomSheetMatchItem={setBottomSheetMatchItem}
               course={{
                 id: requestsQuery.course.id,
                 haveIndex: requestsQuery.course.haveIndex ?? "",
@@ -813,7 +856,6 @@ export function CourseSwapMatches({
                 name: requestsQuery.course.name ?? "",
               }}
               match={bottomSheetMatchItem.match}
-              isAlreadySwapped={requestsQuery?.course.hasSwapped === true}
               requestClose={() =>
                 setBottomSheetMatchItem((old) => {
                   if (!old) return old;

@@ -1,5 +1,5 @@
 import { ConvexError } from "convex/values";
-import { QueryCtx } from "./_generated/server";
+import { ActionCtx, QueryCtx } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { ALLOWED_DOMAINS } from "@/lib/user";
 
@@ -12,6 +12,15 @@ export function getAccountSetupFromUser(user: Doc<"users">) {
     return "school_not_setup" as const;
   }
   return "complete" as const;
+}
+
+export async function getIdentityFromAction(ctx: ActionCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new ConvexError("Unauthorized");
+  }
+  const email = identity.email ?? identity.subject;
+  return { email, identity };
 }
 
 export async function getIdentity(ctx: QueryCtx) {

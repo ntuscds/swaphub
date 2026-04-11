@@ -47,7 +47,7 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
           render={
             <Button
               variant="outline"
-              className="size-8 fixed top-4 right-4 z-10 bg-background border-border aspect-square"
+              className="lg:hidden size-8 fixed top-4 right-4 z-10 bg-background border-border aspect-square"
             >
               <Menu className="size-4" />
             </Button>
@@ -62,6 +62,18 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
               </Link>
             </SheetTitle>
           </SheetHeader>
+          <div className="flex flex-col">
+            <Button variant="ghost" className="w-full">
+              <Link href="/swap" className="w-full text-start px-2">
+                My Swaps
+              </Link>
+            </Button>
+            <Button variant="ghost" className="w-full">
+              <Link href="/help" className="w-full text-start px-2">
+                Help
+              </Link>
+            </Button>
+          </div>
           <SheetFooter>
             <div className="flex flex-row items-center gap-3">
               <ThemeSwitcher />
@@ -82,10 +94,18 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
       </Sheet>
       <div className="hidden lg:flex navbar-height bg-background border-b border-border flex-col items-center justify-center">
         <div className="w-full max-w-ui px-4 flex flex-row items-center justify-between">
-          <div className="flex flex-row items-center gap-2">
+          <div className="flex flex-row items-center gap-4">
             <Link href="/swap">
               <h2 className="font-bold">SWAPHUB</h2>
             </Link>
+            <div className="flex flex-row items-center gap-2.5">
+              <Link href="/swap">
+                <p className="text-sm">My Swaps</p>
+              </Link>
+              <Link href="/help">
+                <p className="text-sm">Help</p>
+              </Link>
+            </div>
           </div>
           <div className="flex flex-row items-center gap-3">
             <ThemeSwitcher />

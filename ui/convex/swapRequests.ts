@@ -1,8 +1,9 @@
 import { ConvexError, v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { internalMutation, internalQuery } from "./_generated/server";
+import { Doc, Id } from "./_generated/dataModel";
 
 export type GetSwapRequestByIdResult = {
+  status: "pending" | "accepted" | "declined";
   requestId: Id<"swap_requests">;
   isCompleted: boolean;
   iam: "initiator" | "target" | "middleman";
@@ -82,8 +83,21 @@ export const getSwapRequestById = internalQuery({
     } else if (targetSwapper._id === args.swapperId) {
       iam = "target";
     }
+
+    let status: "pending" | "accepted" | "declined" = "pending";
+    if (request.isCompleted) {
+      status =
+        request.acceptedByInitiator &&
+        request.acceptedByTargetSwapper &&
+        (request.middlemanSwapper === undefined ||
+          request.acceptedByMiddlemanSwapper)
+          ? "accepted"
+          : "declined";
+    }
+
     const result: GetSwapRequestByIdResult = {
       requestId: request._id,
+      status,
       isCompleted: request.isCompleted,
       iam,
       course: {
@@ -118,7 +132,6 @@ export const getSwapRequestById = internalQuery({
             }
           : undefined,
     };
-    // return "HELLO";
     return result;
   },
 });
@@ -126,7 +139,16 @@ export const getSwapRequestById = internalQuery({
 export const handleSwapRequestDecision = internalMutation({
   args: {
     requestId: v.id("swap_requests"),
-    swapperId: v.id("swapper"),
+    user: v.union(
+      v.object({
+        type: v.literal("swapper"),
+        swapperId: v.id("swapper"),
+      }),
+      v.object({
+        type: v.literal("user"),
+        email: v.string(),
+      })
+    ),
     action: v.union(v.literal("accept"), v.literal("decline")),
     shouldMarkAsSwappedIfDecline: v.boolean(),
   },
@@ -138,12 +160,37 @@ export const handleSwapRequestDecision = internalMutation({
     if (request.isCompleted) {
       throw new ConvexError("Swap request already completed.");
     }
+
+    let swapperId: Id<"swapper">;
+    const _user = args.user;
+    if (_user.type === "user") {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", _user.email))
+        .unique();
+      if (!user) {
+        throw new ConvexError("User not found.");
+      }
+      const swapper = await ctx.db
+        .query("swapper")
+        .withIndex("by_userId_courseId", (q) =>
+          q.eq("userId", user._id).eq("courseId", request.courseId)
+        )
+        .unique();
+      if (!swapper) {
+        throw new ConvexError("Swapper not found.");
+      }
+      swapperId = swapper._id;
+    } else {
+      swapperId = _user.swapperId;
+    }
+
     let iam: "initiator" | "target" | "middleman" = "initiator";
-    if (request.initiator === args.swapperId) {
+    if (request.initiator === swapperId) {
       iam = "initiator";
-    } else if (request.targetSwapper === args.swapperId) {
+    } else if (request.targetSwapper === swapperId) {
       iam = "target";
-    } else if (request.middlemanSwapper === args.swapperId) {
+    } else if (request.middlemanSwapper === swapperId) {
       iam = "middleman";
     }
 
@@ -156,8 +203,27 @@ export const handleSwapRequestDecision = internalMutation({
     if (!initiatorSwapper || !targetSwapper) {
       throw new ConvexError("Swap request participants not found.");
     }
-    if (middlemanSwapper && !middlemanSwapper) {
-      throw new ConvexError("Middleman swapper not found.");
+    if (initiatorSwapper.hasSwapped || targetSwapper.hasSwapped) {
+      throw new ConvexError("Swapper has already swapped.");
+    }
+    if (request.middlemanSwapper) {
+      if (!middlemanSwapper) {
+        throw new ConvexError("Middleman swapper not found.");
+      }
+      if (middlemanSwapper.hasSwapped) {
+        throw new ConvexError("Middleman swapper has already swapped.");
+      }
+      if (middlemanSwapper.courseId !== request.courseId) {
+        throw new ConvexError("Middleman swapper course mismatch.");
+      }
+    }
+
+    // Verify the course is correct.
+    if (
+      initiatorSwapper.courseId !== request.courseId ||
+      targetSwapper.courseId !== request.courseId
+    ) {
+      throw new ConvexError("Swap request course mismatch.");
     }
 
     const [initiatorUser, targetSwapperUser, middlemanSwapperUser] =
@@ -384,6 +450,8 @@ export const handleSwapRequestDecision = internalMutation({
     }
 
     return {
+      requestId: request._id,
+      meSwapperId,
       action: args.action,
       otherDeclineNotifications,
       isCompleted,

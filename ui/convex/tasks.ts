@@ -542,7 +542,7 @@ export const getCourseRequestAndMatches = query({
       .collect();
 
     type BaseMatch = {
-      status?: "pending" | "accepted" | "declined";
+      // status?: ;
       initiator: {
         id: Id<"swapper">;
         username: string;
@@ -555,7 +555,16 @@ export const getCourseRequestAndMatches = query({
         index: string;
         hasAccepted: boolean;
       };
-    };
+    } & (
+      | {
+          status: undefined;
+        }
+      | {
+          status: "pending" | "accepted" | "declined";
+          requestId: Id<"swap_requests">;
+          isCompleted: boolean;
+        }
+    );
     const directMatches: (BaseMatch & {
       isPerfectMatch: boolean;
       iHaveWhatTheyWant: boolean;
@@ -667,7 +676,9 @@ export const getCourseRequestAndMatches = query({
             iHaveWhatTheyWant: haveWhatTheyWant,
             theyHaveWhatIWant: haveWhatIWant,
             status: "pending",
+            requestId: myMatchRequestWithOther._id,
             iam: isSelfInitiated ? "initiator" : "target",
+            isCompleted: myMatchRequestWithOther.isCompleted,
             // requestedAt: myMatchRequestWithOther._creationTime,
           });
         } else {
@@ -699,7 +710,9 @@ export const getCourseRequestAndMatches = query({
                 myMatchRequestWithOther.middlemanSwapper === undefined)
                 ? ("accepted" as const)
                 : ("declined" as const),
+            requestId: myMatchRequestWithOther._id,
             iam: isSelfInitiated ? "initiator" : "target",
+            isCompleted: myMatchRequestWithOther.isCompleted,
           });
         } else {
           // This should not happen.
@@ -873,7 +886,9 @@ export const getCourseRequestAndMatches = query({
               target,
               middleman,
               status: "pending",
+              requestId: myMatchRequestWithBothOthers._id,
               iam,
+              isCompleted: myMatchRequestWithBothOthers.isCompleted,
             });
           } else {
             threeWayCycleMatches.push({
@@ -898,7 +913,9 @@ export const getCourseRequestAndMatches = query({
                   myMatchRequestWithBothOthers.middlemanSwapper === undefined)
                   ? ("accepted" as const)
                   : ("declined" as const),
+              requestId: myMatchRequestWithBothOthers._id,
               iam,
+              isCompleted: myMatchRequestWithBothOthers.isCompleted,
             });
           } else {
             // This should not happen.

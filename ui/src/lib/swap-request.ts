@@ -148,7 +148,7 @@ Waiting on *${P.target.username}* to accept the request.`;
         target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
 *${P.middleman.username}* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
         middleman: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-*YOU* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
+*YOU* declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
       },
     },
     target: {
@@ -202,7 +202,7 @@ Waiting on *YOU* to accept your swap request.`;
         middleman: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
 *${P.target.username}* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
         target: `❌ *${P.courseCode} ${P.courseName} Swap Request* ❌
-*YOU* has declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
+*YOU* declined a 3 way swap between *YOU*, *${P.initiator.username}*, and *${P.target.username}*.`,
       },
     },
   },
