@@ -73,18 +73,14 @@ export function SwapRequestDecision({
     const timeout = setTimeout(() => {
       const webApp = window.Telegram?.WebApp;
       if (!webApp) {
-        alert("not telegram webapp");
         return;
       }
 
       try {
         webApp.ready?.();
         webApp.expand?.();
-        alert("telegram expand");
-      } catch {
-        alert("not telegram expand");
-      }
-    }, 500);
+      } catch {}
+    }, 100);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -176,7 +172,7 @@ export function SwapRequestDecision({
         </div>
       </div>
 
-      <div className="sticky bottom-0 border-t border-border bg-background p-4">
+      <div className="sticky bottom-0 border-t border-border bg-background px-4 pt-4 pb-12">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
           {handleSwapRequestDecisionState.error && (
             <Alert variant="destructive">
