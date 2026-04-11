@@ -1,4 +1,110 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 # Help
 
-TBC
+## Onboarding
+
+You can either onboard via the [Telegram App](https://t.me/Findex_ntu_bot) or the [Website](https://swaphub.ntuscds.com/).
+
+### Via Telegram App 
+1. Go to the [Telegram App](https://t.me/Findex_ntu_bot), Click the "Open" button, next to the chat.
+1. Click "Sign in with Microsoft", and sign in to your `@e.ntu.edu.sg` Microsoft account.
+1. Click "Link Telegram Account", it will automatically link your Telegram account.
+1. Set your `username`, and `school`, and click "Submit".
+
+### Via Website
+1. Go to the [Website](https://swaphub.ntuscds.com/).
+1. Click "Sign in with Microsoft", and sign in to your `@e.ntu.edu.sg` Microsoft account.
+1. Click "Link Telegram Account", it will redirect you to the Telegram App to link your account. Enter `/link <code>` in the chat.
+1. Go back to the website, set your `username`, and `school`, and click "Submit".
+
+## Making a Swap Request
+
+Once onboarded, you can start making swap requests.
+
+1. Click `"+ New Swap"` button, click the course you want to swap.
+1. Click "What index do you have?", select the index you have.
+1. Click "Which indexes do you want?", select the indexes you want.
+1. Click "Request".
+
+Other users who wants what you have can request to swap with you. *Remember to keep your DM's open!*
+
+## Requesting / Accepting / Declining Someone's Swap Request
+
+For each course, you can view requests that are:
+- Requests with an index you want
+- Pending Requests
+
+There are 2 types of requests
+- **Direct swaps**, involves only you and your target swapper.
+- **3-way swaps**, involves you swapping with a middleman, then using the middleman's index to swap with your target swapper.
+
+### Requesting a Swap
+1. Click on a Request labelled with "Request ->", 
+1. Click "Request Swap".
+
+The other participants will be notified via `Telegram` of your request. 
+
+### Accepting / Declining a Swap
+
+You can accept / decline a swap request via Telegram.
+
+1. In the `Telegram` chat, click on the "View" button.
+1. Click the decision you want to make.
+
+<Table className="table-fixed border border-border rounded-md">
+  <TableHeader>
+    <TableRow>
+      <TableHead colSpan={2} className="text-sm lg:text-base">Decision</TableHead>
+      <TableHead colSpan={5} className="text-sm lg:text-base">Description</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell colSpan={2}>
+        <ul>
+          <li className="text-green-600 dark:text-green-400 text-sm lg:text-base text-wrap">
+            Accept
+          </li>
+        </ul>
+      </TableCell>
+      <TableCell colSpan={7}>
+        <ul>
+          <li className="text-sm lg:text-base text-wrap max-w-lg">For direct requests, notifies the target to proceed with the swap.</li>
+          <li className="text-sm lg:text-base text-wrap max-w-lg">For 3-way swaps, notifies the middleman to proceed with the swap.</li>
+          <li className="text-sm lg:text-base text-wrap pt-2 max-w-lg">If everyone has accepted, the swap will be completed. Message the other participants to proceed with the swap.</li>
+        </ul>
+      </TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell colSpan={2}>
+        <ul>
+          <li className="text-red-600 dark:text-red-400 text-sm lg:text-base text-wrap">
+            Decline This Request
+          </li>
+        </ul>
+      </TableCell>
+      <TableCell colSpan={7}>
+        <ul>
+          <li className="text-sm lg:text-base text-wrap max-w-lg">
+            Only decline this request. Your other requests for this course will remain active.
+          </li>
+        </ul>
+      </TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell colSpan={2}>
+        <ul>
+          <li className="text-red-600 dark:text-red-400 text-sm lg:text-base text-wrap">
+            Decline and Disable Course Requests
+          </li>
+        </ul>
+      </TableCell>
+      <TableCell colSpan={7}>
+        <li className="text-sm lg:text-base text-wrap max-w-lg">
+          Decline all active requests and disable swap requests for this course.
+        </li>
+      </TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
