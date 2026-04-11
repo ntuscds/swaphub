@@ -141,7 +141,10 @@ export async function exchangeMicrosoftCode(
   );
 
   if (!response.ok) {
-    throw new Error("Failed to exchange Microsoft authorization code");
+    throw new Error(
+      "Failed to exchange Microsoft authorization code, " +
+        (await response.text())
+    );
   }
 
   return (await response.json()) as {
