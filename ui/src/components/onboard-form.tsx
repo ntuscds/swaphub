@@ -164,11 +164,6 @@ export function VerifyTelegramForm() {
     api.actions.requestLinkTelegramAccount
   );
   const { handle, error, data, isPending } = useConvexActionState<
-    {
-      success: boolean;
-      email: string;
-      code: string;
-    },
     typeof requestLinkTelegramAccount
   >(requestLinkTelegramAccount);
 
