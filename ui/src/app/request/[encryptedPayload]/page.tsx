@@ -5,6 +5,7 @@ import { fetchAction } from "convex/nextjs";
 import { Suspense } from "react";
 import z from "zod";
 import { api } from "../../../../convex/_generated/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const SwapRequestPayloadSchema = z.object({
   requestId: z.string(),
@@ -55,7 +56,7 @@ export default async function Page({
     <HydrationSafeScrollArea>
       <div className="flex flex-col items-center">
         <div className="flex flex-col gap-2 w-full max-w-4xl">
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<Skeleton className="w-full h-screen-safe" />}>
             <Request encryptedPayload={encryptedPayload} />
           </Suspense>
         </div>

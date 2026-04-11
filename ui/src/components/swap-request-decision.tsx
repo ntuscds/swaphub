@@ -82,7 +82,7 @@ export function SwapRequestDecision({
 
   return (
     <div className="h-screen-safe flex flex-col w-full">
-      <div className="flex-1 overflow-y-auto px-4 py-12">
+      <div className="overflow-y-auto px-4 pt-12 pb-8">
         <div className="flex flex-col gap-2 w-full">
           <h1 className="w-full text-xl lg:text-2xl font-bold max-w-md">
             {request.course.code} {request.course.name} Swap Request
@@ -146,7 +146,7 @@ export function SwapRequestDecision({
         </div>
       </div>
 
-      <div className="sticky bottom-0 border-t border-border bg-background p-4">
+      <div className="p-4">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
           {handleSwapRequestDecisionState.error && (
             <Alert variant="destructive">
