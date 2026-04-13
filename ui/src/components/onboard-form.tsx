@@ -279,7 +279,7 @@ export function OnboardingForm({
   selectSchoolNode: React.ReactNode;
   defaultAccountSetup: "telegram_not_setup" | "school_not_setup";
 }) {
-  const router = useRouter();
+  // const router = useRouter();
   const getSelfQuery = useStableQuery(api.tasks.getSelf);
 
   useEffect(() => {
@@ -293,11 +293,13 @@ export function OnboardingForm({
         },
       });
 
+      console.log("accountSetup", accountSetup);
       if (accountSetup === "complete") {
-        router.push("/swap");
+        // router.push("/swap");
+        window.location.href = "/swap";
       }
     })();
-  }, [getSelfQuery?.accountSetup, router]);
+  }, [getSelfQuery?.accountSetup]);
 
   if (getSelfQuery === undefined) {
     if (defaultAccountSetup === "school_not_setup") {
@@ -307,6 +309,10 @@ export function OnboardingForm({
   }
 
   if (getSelfQuery === null) {
+    return verifyTelegramNode;
+  }
+
+  if (getSelfQuery.accountSetup === "telegram_not_setup") {
     return verifyTelegramNode;
   }
 
