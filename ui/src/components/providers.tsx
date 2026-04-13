@@ -92,13 +92,17 @@ export function Providers({
     const timeout = setTimeout(() => {
       const webApp = window.Telegram?.WebApp;
       if (!webApp) {
+        alert("No Telegram WebApp");
         return;
       }
 
       try {
         webApp.ready?.();
         webApp.expand?.();
-      } catch {}
+        alert("Telegram WebApp initialized");
+      } catch (error) {
+        alert(error);
+      }
     }, 100);
     return () => clearTimeout(timeout);
   }, []);
