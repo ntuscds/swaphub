@@ -25,17 +25,6 @@ type SwapRequest = FunctionReturnType<
   typeof api.actions.getSwapRequestByEncryptedPayload
 >;
 
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        ready?: () => void;
-        expand?: () => void;
-      };
-    };
-  }
-}
-
 function hasCurrentUserAccepted(request: SwapRequest): boolean {
   if (request.iam === "initiator") {
     return request.initiator.hasAccepted;
@@ -68,21 +57,6 @@ export function SwapRequestDecision({
       },
     }
   );
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const webApp = window.Telegram?.WebApp;
-      if (!webApp) {
-        return;
-      }
-
-      try {
-        webApp.ready?.();
-        webApp.expand?.();
-      } catch {}
-    }, 100);
-    return () => clearTimeout(timeout);
-  }, []);
 
   const isDecisionDisabled = useMemo(() => {
     return (

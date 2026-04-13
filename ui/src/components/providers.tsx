@@ -18,6 +18,17 @@ import { ThemeProvider } from "./theme-provider";
 import z from "zod";
 import { env } from "@/lib/env";
 
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        ready?: () => void;
+        expand?: () => void;
+      };
+    };
+  }
+}
+
 const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL);
 
 const ConvexTokenResponseSchema = z.object({
@@ -76,6 +87,21 @@ export function Providers({
         },
       })
   );
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const webApp = window.Telegram?.WebApp;
+      if (!webApp) {
+        return;
+      }
+
+      try {
+        webApp.ready?.();
+        webApp.expand?.();
+      } catch {}
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
