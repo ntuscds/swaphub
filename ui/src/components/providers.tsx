@@ -18,6 +18,7 @@ import { ThemeProvider } from "./theme-provider";
 import z from "zod";
 import { env } from "@/lib/env";
 import { retrieveRawInitData } from "@tma.js/sdk-react";
+import Script from "next/script";
 
 declare global {
   interface Window {
@@ -89,41 +90,35 @@ export function Providers({
       })
   );
 
-  useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    if (!webApp) {
-      return;
-    }
-
-    try {
-      webApp.ready?.();
-      webApp.expand?.();
-    } catch (error) {}
-    // const timeout = setTimeout(() => {
-    //   const webApp = window.Telegram?.WebApp;
-    //   if (!webApp) {
-    //     return;
-    //   }
-
-    //   try {
-    //     webApp.ready?.();
-    //     webApp.expand?.();
-    //   } catch (error) {}
-    // }, 1000);
-    // return () => clearTimeout(timeout);
-  }, []);
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <ConvexProviderWithAuth
-        client={convex}
-        useAuth={useAuthFromProviderMicrosoft}
-      >
-        <QueryClientProvider client={queryClient}>
-          {/* <SelfProvider>{children}</SelfProvider> */}
-          <ThemeProvider className={fontClass}>{children}</ThemeProvider>
-        </QueryClientProvider>
-      </ConvexProviderWithAuth>
-    </QueryClientProvider>
+    <>
+      <Script
+        src="https://telegram.org/js/telegram-web-app.js"
+        strategy="lazyOnload"
+        onLoad={() => {
+          const webApp = window.Telegram?.WebApp;
+          if (!webApp) {
+            return;
+          }
+
+          try {
+            webApp.ready?.();
+            webApp.expand?.();
+          } catch (error) {}
+        }}
+        // strategy="beforeInteractive"
+      />
+      <QueryClientProvider client={queryClient}>
+        <ConvexProviderWithAuth
+          client={convex}
+          useAuth={useAuthFromProviderMicrosoft}
+        >
+          <QueryClientProvider client={queryClient}>
+            {/* <SelfProvider>{children}</SelfProvider> */}
+            <ThemeProvider className={fontClass}>{children}</ThemeProvider>
+          </QueryClientProvider>
+        </ConvexProviderWithAuth>
+      </QueryClientProvider>
+    </>
   );
 }
