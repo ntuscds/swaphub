@@ -54,20 +54,14 @@ export default async function Page({
 }) {
   const { encryptedPayload } = await params;
   return (
-    <>
-      <Script
-        src="https://telegram.org/js/telegram-web-app.js"
-        strategy="beforeInteractive"
-      />
-      <HydrationSafeScrollArea>
-        <div className="flex flex-col items-center">
-          <div className="flex flex-col gap-2 w-full max-w-4xl">
-            <Suspense fallback={<Skeleton className="w-full h-screen-safe" />}>
-              <Request encryptedPayload={encryptedPayload} />
-            </Suspense>
-          </div>
+    <HydrationSafeScrollArea>
+      <div className="flex flex-col items-center">
+        <div className="flex flex-col gap-2 w-full max-w-4xl">
+          <Suspense fallback={<Skeleton className="w-full h-screen-safe" />}>
+            <Request encryptedPayload={encryptedPayload} />
+          </Suspense>
         </div>
-      </HydrationSafeScrollArea>
-    </>
+      </div>
+    </HydrationSafeScrollArea>
   );
 }

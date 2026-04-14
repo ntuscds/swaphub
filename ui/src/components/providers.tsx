@@ -17,6 +17,7 @@ import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "./theme-provider";
 import z from "zod";
 import { env } from "@/lib/env";
+import { retrieveRawInitData } from "@tma.js/sdk-react";
 
 declare global {
   interface Window {
@@ -92,18 +93,14 @@ export function Providers({
     const timeout = setTimeout(() => {
       const webApp = window.Telegram?.WebApp;
       if (!webApp) {
-        // alert("No Telegram WebApp");
         return;
       }
 
       try {
         webApp.ready?.();
         webApp.expand?.();
-        // alert("Telegram WebApp initialized");
-      } catch (error) {
-        // alert(error);
-      }
-    }, 100);
+      } catch (error) {}
+    }, 1000);
     return () => clearTimeout(timeout);
   }, []);
 

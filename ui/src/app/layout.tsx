@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -132,6 +133,11 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn(inter.variable)}>
+      <Script
+        src="https://telegram.org/js/telegram-web-app.js"
+        strategy="lazyOnload"
+        // strategy="beforeInteractive"
+      />
       <Providers fontClass={inter.variable}>
         <div className="w-full h-full relative z-10 navbar-height">
           {/* Navbar */}
