@@ -90,18 +90,27 @@ export function Providers({
   );
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      const webApp = window.Telegram?.WebApp;
-      if (!webApp) {
-        return;
-      }
+    const webApp = window.Telegram?.WebApp;
+    if (!webApp) {
+      return;
+    }
 
-      try {
-        webApp.ready?.();
-        webApp.expand?.();
-      } catch (error) {}
-    }, 1000);
-    return () => clearTimeout(timeout);
+    try {
+      webApp.ready?.();
+      webApp.expand?.();
+    } catch (error) {}
+    // const timeout = setTimeout(() => {
+    //   const webApp = window.Telegram?.WebApp;
+    //   if (!webApp) {
+    //     return;
+    //   }
+
+    //   try {
+    //     webApp.ready?.();
+    //     webApp.expand?.();
+    //   } catch (error) {}
+    // }, 1000);
+    // return () => clearTimeout(timeout);
   }, []);
 
   return (
