@@ -12,7 +12,7 @@ import z from "zod";
 import { cache } from "react";
 
 export const MICROSOFT_AUTH_BASE_PATH = "/api/auth/microsoft";
-export const MICROSOFT_SCOPE = "openid profile email offline_access";
+export const MICROSOFT_SCOPE = "openid profile email offline_access User.Read";
 export const AUTH_STATE_COOKIE = "microsoft_auth_state";
 export const AUTH_VERIFIER_COOKIE = "microsoft_auth_verifier";
 export const AUTH_CALLBACK_COOKIE = "microsoft_auth_callback";
@@ -27,8 +27,8 @@ const ACCESS_TOKEN_MAX_AGE_IN_SECONDS = SESSION_MAX_AGE_IN_SECONDS;
 const MicrosoftUserInfoSchema = z.object({
   sub: z.string(),
   email: z.string(),
-  name: z.string().nullable(),
-  picture: z.string().nullable(),
+  name: z.string().optional().nullable().default(null),
+  picture: z.string().optional().nullable().default(null),
 });
 
 export type MicrosoftUserInfo = z.infer<typeof MicrosoftUserInfoSchema>;
@@ -113,6 +113,8 @@ export function getMicrosoftAuthorizeUrl(
   url.searchParams.set("state", state);
   url.searchParams.set("code_challenge", codeChallenge);
   url.searchParams.set("code_challenge_method", "S256");
+  // url.searchParams.set("prompt", "login");
+  // url.searchParams.set("prompt", "select_account consent");
   url.searchParams.set("prompt", "select_account");
   return url.toString();
 }
