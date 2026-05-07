@@ -42,7 +42,7 @@ const MicrosoftSessionSeedSchema = z.object({
 
 export type MicrosoftSessionSeed = z.infer<typeof MicrosoftSessionSeedSchema>;
 
-const MicrosoftSessionSchema = z.object({
+export const MicrosoftSessionSchema = z.object({
   sub: z.string(),
   email: z.string(),
   name: z.string().nullable(),

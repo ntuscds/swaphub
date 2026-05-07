@@ -3,7 +3,28 @@ import { NextResponse, NextRequest } from "next/server";
 import {
   AUTH_ENCRYPTED_REFRESH_COOKIE,
   AUTH_SESSION_COOKIE,
+  MicrosoftSessionSchema,
 } from "./lib/microsoft-auth";
+
+// Fast parsing, we cannot rely on the crypto library in proxy.
+function parseJwt(token: string) {
+  const base64Url = token.split(".")[1];
+  if (!base64Url) {
+    throw new Error("Invalid JWT");
+  }
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(
+    base64.length + ((4 - (base64.length % 4)) % 4),
+    "="
+  );
+  // Edge middleware has no `window`; `atob` is available on the global object.
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
 
 export async function proxy(request: NextRequest) {
   const _cookies = await cookies();
@@ -29,8 +50,31 @@ export async function proxy(request: NextRequest) {
   }
   // If '/' is used, redirect to /swap. Should not happen.
   // Set it in the next.config.ts instead.
-  if (request.nextUrl.pathname === "/") {
-    return NextResponse.redirect(new URL("/swap", request.url));
+  // Parse session cookie
+  try {
+    const jsonSession = parseJwt(session.value);
+
+    const sessionParsed = MicrosoftSessionSchema.parse(jsonSession);
+    if (
+      request.nextUrl.pathname === "/" &&
+      sessionParsed.accountSetup.type === "complete"
+    ) {
+      return NextResponse.redirect(new URL("/swap", request.url));
+    }
+    if (
+      request.nextUrl.pathname === "/swap" &&
+      sessionParsed.accountSetup.type !== "complete"
+    ) {
+      return NextResponse.redirect(new URL("/onboard", request.url));
+    }
+    if (
+      request.nextUrl.pathname === "/onboard" &&
+      sessionParsed.accountSetup.type === "complete"
+    ) {
+      return NextResponse.redirect(new URL("/swap", request.url));
+    }
+  } catch (error) {
+    console.error(error);
   }
   return NextResponse.next();
 }
