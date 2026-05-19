@@ -22,6 +22,16 @@ import { isAllowedUsername } from "@/lib/user";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
+const ICC_COURSES = new Set([
+  "CC0001",
+  "CC0002",
+  "CC0003",
+  "CC0006",
+  "CC0007",
+  "CC0015",
+  "ML0004",
+]);
+
 const acadYearValidator = v.object({
   ay: v.string(),
   semester: v.union(v.literal("1"), v.literal("2")),
@@ -565,6 +575,9 @@ export const getCourseRequestAndMatches = query({
           isCompleted: boolean;
         }
     );
+    // ICC courses can only swap within same school
+    const isICC = ICC_COURSES.has(course.code);
+
     const directMatches: (BaseMatch & {
       isPerfectMatch: boolean;
       iHaveWhatTheyWant: boolean;
@@ -597,6 +610,11 @@ export const getCourseRequestAndMatches = query({
       if (!otherUser) continue;
       // TAG: Personal check
       if (otherSwapper.userId === user._id) continue;
+
+      // ICC courses can only swap within same school
+      if (isICC && user.school !== otherUser.school) {
+        continue;
+      }
 
       // First check if this is a potential match. A potential match
       // is one where the other swapper's index is in my want indexes.
@@ -748,6 +766,18 @@ export const getCourseRequestAndMatches = query({
 
         const middlemanUser = userMap.get(_middleman.userId);
         if (!middlemanUser) continue;
+
+        // ICC courses can only swap within same school
+        if (
+          isICC &&
+          (
+            user.school !== otherUser.school ||
+            user.school !== middlemanUser.school
+          )
+        ) {
+          continue;
+        }
+
 
         const middlemanWants = wantsBySwapperId.get(_middleman._id);
         if (!middlemanWants?.has(haveIndex)) continue;
@@ -1375,11 +1405,32 @@ export const requestSwap = internalMutation({
         throw new ConvexError("User not found.");
       }
     }
+      
 
     const targetUser = await ctx.db.get(targetSwapper.userId);
     if (!targetUser) {
       throw new ConvexError("User not found.");
     }
+    // ICC courses can only swap within same school
+    const isICC = ICC_COURSES.has(course.code);
+    if (isICC && meUser.school !== targetUser.school) {
+      throw new ConvexError(
+        "ICC swaps are only allowed within the same school."
+      );
+    }
+    // ICC courses can only swap within same school
+    if (
+      middlemanSwapperUser &&
+      isICC &&
+      (
+        meUser.school !== middlemanSwapperUser.school ||
+        meUser.school !== targetUser.school
+  )
+) {
+  throw new ConvexError(
+    "ICC swaps are only allowed within the same school."
+  );
+}
 
     const meSwapper = await ctx.db
       .query("swapper")
