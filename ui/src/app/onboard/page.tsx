@@ -327,11 +327,11 @@ function useIsDark() {
 }
 
 const TEAM = [
-  { name: "Benedict Tan",     initial: "B", linkedin: "https://www.linkedin.com/in/benedict-tan-265403215/" },
-  { name: "Vidisha Bajoria",  initial: "V", linkedin: "https://www.linkedin.com/in/vidishabajoria/" },
-  { name: "Suhani Mishra",    initial: "S", linkedin: "https://www.linkedin.com/in/suhanimishra07/" },
-  { name: "Rushika Gupta",    initial: "R", linkedin: "https://www.linkedin.com/in/rushikagupta/" },
-  { name: "Shrujan Beesetty", initial: "S", linkedin: "https://www.linkedin.com/in/shrujan-beesetty/" },
+  { name: "Benedict Tan",     photo: "/benedict.jpg",  linkedin: "https://www.linkedin.com/in/benedict-tan-265403215/" },
+  { name: "Vidisha Bajoria",  photo: "/vidisha.jpg",   linkedin: "https://www.linkedin.com/in/vidishabajoria/" },
+  { name: "Suhani Mishra",    photo: "/suhani.jpg",    linkedin: "https://www.linkedin.com/in/suhanimishra07/" },
+  { name: "Rushika Gupta",    photo: "/rushika.jpg",   linkedin: "https://www.linkedin.com/in/rushikagupta/" },
+  { name: "Shrujan Beesetty", photo: "/shrujan.jpg",   linkedin: "https://www.linkedin.com/in/shrujan-beesetty/" },
 ];
 
 const HOW_IT_WORKS = [
@@ -654,15 +654,28 @@ export default function LandingPage() {
                   className="team-card glass-card rounded-2xl p-4 flex flex-col items-center text-center gap-3"
                   style={{ textDecoration: "none", color: "inherit" }}
                 >
-                  <div
-                    className="team-avatar h-14 w-14 rounded-full flex items-center justify-center text-lg font-black text-white transition-all duration-200"
-                    style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}
-                  >
-                    {member.initial}
-                  </div>
+                  <img
+                    src={member.photo}
+                    alt={member.name}
+                    className="team-avatar h-14 w-14 rounded-full object-cover transition-all duration-200"
+                    style={{ border: "2px solid rgba(99,102,241,0.3)" }}
+                  />
                   <div>
                     <p className="font-semibold text-sm leading-snug">{member.name}</p>
-                    <p className="linkedin-icon">View LinkedIn ↗</p>
+                    <p style={{
+                      fontSize: "0.7rem",
+                      color: "rgba(129,140,248,0.9)",
+                      marginTop: "0.25rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.25rem",
+                    }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                      LinkedIn ↗
+                    </p>
                   </div>
                 </a>
               ))}
