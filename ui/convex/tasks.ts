@@ -207,9 +207,15 @@ export const getAllRequests = query({
         let matchCount = 0;
         const myWantsAsSet = new Set(myWants.map((w) => w.wantIndex));
         const potentialMatches = [];
+        const isICC = ICC_COURSES.has(course.code);
         for (const otherSwapper of allSwappersInCourse) {
           if (otherSwapper.hasSwapped) continue;
           if (otherSwapper.userId === user._id) continue;
+          // ICC courses can only swap within same school
+          if (isICC) {
+            const otherUser = await ctx.db.get(otherSwapper.userId);
+            if (!otherUser || otherUser.school !== user.school) continue;
+          }
           if (myWantsAsSet.has(otherSwapper.index)) {
             // The other swapper has the index I want and I have the index they want.
             // If not, we mark it as a potential match.
