@@ -172,7 +172,7 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-6 py-4 lg:py-6 xl:py-8 max-w-2xl w-full px-4 pb-20">
 
           {/* ── Hero card ── */}
-          <div className="w-full flex flex-col bg-card border border-border rounded-md overflow-hidden">
+          <div className="w-full flex flex-col bg-card border border-border rounded-md overflow-hidden mt-10 lg:mt-0">
             {/* Coloured banner */}
             <div className="h-16 bg-gradient-to-r from-primary-700 via-primary-500 to-primary-400" />
             {/* Avatar + name row */}
@@ -284,16 +284,16 @@ export default function ProfilePage() {
               ) : (
                 <>
                   {/* Email */}
-                  <div className="flex flex-row items-center justify-between px-4 py-3 border-b border-border">
+                  <div className="flex flex-row items-center justify-between gap-4 px-4 py-3 border-b border-border">
                     <span className="text-sm text-muted-foreground shrink-0">Email</span>
-                    <span className="text-sm font-medium text-right">{self?.email ?? "—"}</span>
+                    <span className="text-sm font-medium text-right break-all min-w-0">{self?.email ?? "—"}</span>
                   </div>
 
                   {/* Telegram */}
                   <div className="flex flex-col px-4 py-3 gap-3 border-b border-border">
-                    <div className="flex flex-row items-center justify-between">
+                    <div className="flex flex-row items-center justify-between gap-4">
                       <span className="text-sm text-muted-foreground shrink-0">Telegram</span>
-                      <span className="text-sm font-medium text-right">
+                      <span className="text-sm font-medium text-right break-all min-w-0">
                         {telegramHandle ? `@${telegramHandle}` : "—"}
                       </span>
                     </div>
@@ -310,11 +310,11 @@ export default function ProfilePage() {
                     />
                   ) : (
                     <>
-                      <div className="flex flex-row items-center justify-between px-4 py-3 border-b border-border">
+                      <div className="flex flex-row items-center justify-between gap-4 px-4 py-3 border-b border-border">
                         <span className="text-sm text-muted-foreground shrink-0">Username</span>
-                        <span className="text-sm font-medium text-right">{username || "—"}</span>
+                        <span className="text-sm font-medium text-right break-all min-w-0">{username || "—"}</span>
                       </div>
-                      <div className="flex flex-row items-center justify-between px-4 py-3">
+                      <div className="flex flex-row items-center justify-between gap-4 px-4 py-3">
                         <span className="text-sm text-muted-foreground shrink-0">School</span>
                         <span className="text-sm font-medium text-right">{school || "—"}</span>
                       </div>
