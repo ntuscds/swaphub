@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
 
-// import "@telegram-apps/telegram-ui/dist/styles.css";
-// import "normalize.css/normalize.css";
 import "./global.css";
 import { Providers } from "@/components/providers";
 import { ProfileMenu, ThemeSwitcher } from "@/components/navbar";
@@ -70,6 +68,11 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
               </Link>
             </Button>
             <Button variant="ghost" className="w-full">
+              <Link href="/about" className="w-full text-start px-2">
+                About
+              </Link>
+            </Button>
+            <Button variant="ghost" className="w-full">
               <Link href="/help" className="w-full text-start px-2">
                 Help
               </Link>
@@ -107,6 +110,9 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
             <div className="flex flex-row items-center gap-2.5">
               <Link href="/swap">
                 <p className="text-sm">My Swaps</p>
+              </Link>
+              <Link href="/about">
+                <p className="text-sm">About</p>
               </Link>
               <Link href="/help">
                 <p className="text-sm">Help</p>
