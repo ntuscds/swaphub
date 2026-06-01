@@ -4,7 +4,9 @@ import Posthog from "../components/posthog.astro";
 import { Chat } from "../components/chat";
 import "../styles/global.css";
 import HeroImage from "@/../public/signup-dark.png";
-import { StoryboardSection } from "../components/story-board";
+import Step1Image from "@/../public/see-1.png";
+import Step2Image from "@/../public/see-2.png";
+import Step3Image from "@/../public/see-3.png";
 
 const SIGNIN_URL = `${import.meta.env.MAIN_APP_URL}/api/auth/microsoft/login?callbackUrl=${encodeURIComponent("/onboard")}`;
 
@@ -211,14 +213,14 @@ const TEAM = [
       <section
         class="w-full flex flex-col gap-8 items-center max-w-ui py-12 px-8 md:px-12 lg:px-16"
       >
-        <header class="flex flex-col items-center gap-2">
+        <header class="flex flex-col items-center lg:gap-2">
           <span
             class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase text-center"
           >
             The Problem
           </span>
           <h2
-            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-14"
+            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-10 md:leading-12 lg:leading-14"
           >
             We felt the <span class="hero-title">Pain</span>
           </h2>
@@ -227,20 +229,192 @@ const TEAM = [
       </section>
 
       <section class="relative w-full flex flex-row max-w-ui">
-        <StoryboardSection client:visible />
+        <div class="w-full relative">
+          <!-- Step 1 -->
+          <div class="sticky top-0 h-svh w-full">
+            <div class="bg-background">
+              <div
+                class="w-full max-w-ui h-screen overflow-y-hidden flex not-landscape:flex-col landscape:flex-col lg:landscape:flex-row"
+              >
+                <div
+                  class="h-full flex flex-col gap-8 py-8 md:py-12 lg:py-16 xl:py-20 2xl:py-24 px-8 md:px-12 lg:px-16"
+                >
+                  <div class="flex flex-col gap-1 lg:gap-2">
+                    <span
+                      class="text-primary-500 font-semibold text-xs md:text-sm uppercase"
+                    >
+                      See It In Action
+                    </span>
+                    <h2
+                      class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-8 md:leading-12 xl:leading-14"
+                    >
+                      How SwapHub changes
+                      <br />
+                      everything!
+                    </h2>
+                  </div>
+                  <div class="flex flex-row gap-4 flex-1 items-center">
+                    <div class="flex flex-row gap-4">
+                      <div
+                        class="w-8 h-8 lg:w-10 lg:h-10 flex flex-col items-center justify-center gap-4 bg-primary-700 text-foreground rounded-lg text-base lg:text-lg"
+                      >
+                        1
+                      </div>
+                      <div class="flex-1 flex flex-col gap-1 lg:gap-2">
+                        <h3
+                          class="text-base lg:text-lg xl:text-xl text-primary-500 font-medium"
+                        >
+                          Register your Swap Request
+                        </h3>
+                        <span
+                          class="text-base lg:text-lg xl:text-xl text-foreground max-w-md"
+                        >
+                          Choose a course, select the index you have and the
+                          indexes you want
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="flex-1 lg:flex-2 flex flex-col items-center justify-center"
+                >
+                  <Image
+                    src={Step1Image}
+                    alt="Step 1"
+                    width={Step1Image.width}
+                    height={Step1Image.height}
+                    layout="full-width"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="sticky top-0 h-svh w-full">
+            <div class="bg-background">
+              <div
+                class="w-full max-w-ui h-screen overflow-y-hidden flex not-landscape:flex-col landscape:flex-col lg:landscape:flex-row"
+              >
+                <div
+                  class="h-full flex flex-col gap-8 py-8 md:py-12 lg:py-16 xl:py-20 2xl:py-24 px-8 md:px-12 lg:px-16"
+                >
+                  <div class="flex flex-row gap-4 flex-1 items-center">
+                    <div class="flex flex-row gap-4">
+                      <div
+                        class="w-8 h-8 lg:w-10 lg:h-10 flex flex-col items-center justify-center gap-4 bg-primary-700 text-foreground rounded-lg text-base lg:text-lg"
+                      >
+                        2
+                      </div>
+                      <div class="flex-1 flex flex-col gap-2">
+                        <h3
+                          class="text-base lg:text-lg xl:text-xl text-primary-500 font-medium"
+                        >
+                          We find your Match
+                        </h3>
+                        <span
+                          class="text-base lg:text-lg xl:text-xl text-foreground max-w-md"
+                        >
+                          See the matches that has the index you want and send a
+                          Swap Request to the other party. They will be notified
+                          of your Swap Request on Telegram.
+                          <br />
+                          <br />
+                          Likewise, others can be matched to you, and can send you
+                          Swap Requests.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="flex-1 lg:flex-2 flex flex-col items-center justify-center"
+                >
+                  <Image
+                    src={Step2Image}
+                    alt="Step 2"
+                    width={Step2Image.width}
+                    height={Step2Image.height}
+                    layout="full-width"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="sticky top-0 h-svh w-full">
+            <!-- Step 3 -->
+            <div class="bg-background">
+              <div
+                class="w-full max-w-ui h-screen overflow-y-hidden flex not-landscape:flex-col landscape:flex-col lg:landscape:flex-row"
+              >
+                <div
+                  class="h-full flex flex-col gap-8 py-8 md:py-12 lg:py-16 xl:py-20 2xl:py-24 px-8 md:px-12 lg:px-16"
+                >
+                  <div class="flex flex-row gap-4 flex-1 items-center">
+                    <div class="flex flex-row gap-4">
+                      <div
+                        class="w-8 h-8 lg:w-10 lg:h-10 flex flex-col items-center justify-center gap-4 bg-primary-700 text-foreground rounded-lg text-base lg:text-lg"
+                      >
+                        3
+                      </div>
+                      <div class="flex-1 flex flex-col gap-2">
+                        <h3
+                          class="text-base lg:text-lg xl:text-xl text-primary-500 font-medium"
+                        >
+                          Complete your Swap
+                        </h3>
+                        <span
+                          class="text-base lg:text-lg xl:text-xl text-foreground max-w-md"
+                        >
+                          Once all parties have accepted the Swap Request, you
+                          will receive the other party&apos;s Telegram to liase,
+                          and complete the Swap on NTU STARS.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="flex-1 lg:flex-2 flex flex-col items-center justify-center"
+                >
+                  <Image
+                    src={Step3Image}
+                    alt="Step 3"
+                    width={Step3Image.width}
+                    height={Step3Image.height}
+                    layout="full-width"
+                  />
+                </div>
+              </div>
+            </div>
+            <!-- <div class="sticky top-0 h-svh w-full">
+            {
+              pageIds?.[i] ? (
+                <div
+                  id={pageIds[i]}
+                  aria-hidden="true"
+                  className="absolute left-0 top-0 h-px w-px pointer-events-none"
+                />
+              ) : null
+            }
+            {page}
+          </div> -->
+          </div>
+        </div>
       </section>
 
       <section
         class="w-full flex flex-col gap-8 items-center max-w-ui py-12 px-8 md:px-12 lg:px-16"
       >
-        <header class="flex flex-col items-center gap-2">
+        <header class="flex flex-col items-center gap-1 lg:gap-2">
           <span
             class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase text-center"
           >
             The Team
           </span>
           <h2
-            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-14"
+            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-10 md:leading-12 lg:leading-14"
           >
             Meet the Team
           </h2>
@@ -286,14 +460,16 @@ const TEAM = [
       <section
         class="w-full flex flex-col gap-8 items-center max-w-ui py-16 md:py-20 lg:py-24 px-8 md:px-12 lg:px-16"
       >
-        <header class="flex flex-col items-center gap-3 text-center max-w-3xl">
+        <header
+          class="flex flex-col items-center gap-1 lg:gap-3 text-center max-w-3xl"
+        >
           <span
             class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase"
           >
             Ready to Swap?
           </span>
           <h2
-            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-14"
+            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-10 md:leading-12 lg:leading-14"
           >
             Stop Wasting Time,<br />Use <span class="hero-title">SwapHub</span>!
           </h2>
