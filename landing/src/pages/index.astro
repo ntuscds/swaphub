@@ -1,5 +1,6 @@
 ---
 import Posthog from "../components/posthog.astro";
+import { SignInButton } from "../components/sign-in-button";
 import "../styles/global.css";
 
 const NAMES = [
@@ -130,7 +131,7 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
 );
 ---
 
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -138,7 +139,7 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
 
-    <title>FIndex &mdash; Swap NTU indexes without the chaos</title>
+    <title>SwapHub</title>
     <meta
       name="description"
       content="FIndex helps you find people to swap NTU course indexes with, without spamming Telegram chats or spreadsheets."
@@ -188,9 +189,9 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
     />
     <Posthog />
   </head>
-  <body class="flex flex-col items-center bg-gray-900 text-white">
+  <body class="flex flex-col items-center bg-background text-foreground">
     <main class="flex flex-col items-center w-full">
-      <div class="relative w-full flex flex-row max-w-7xl">
+      <div class="relative w-full flex flex-row max-w-ui">
         <!-- Animated background conveyors -->
         <div class="pointer-events-none absolute inset-0 overflow-hidden">
           <div class="relative w-full h-full">
@@ -206,11 +207,11 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
                     >
                       {lane.concat(lane).map((message, cardIndex) => (
                         <div
-                          class="flex flex-col gap-1 text-xs sm:text-sm p-2 sm:p-3 border border-gray-700 rounded-md bg-gray-900/90 min-w-[220px] shadow-lg shadow-black/40"
+                          class="flex flex-col gap-1 text-xs sm:text-sm p-2 sm:p-3 border border-border rounded-md bg-card min-w-[220px] shadow-lg shadow-black/40"
                           data-lane={laneIndex}
                           data-card={cardIndex}
                         >
-                          <span class="text-primary font-medium">
+                          <span class="text-primary-500 font-medium">
                             {message.title}
                           </span>
                           <div class="flex flex-col text-gray-200">
@@ -226,7 +227,7 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
               }
             </div>
             <div
-              class="absolute inset-0 bg-linear-to-b from-gray-900/0 via-gray-900/0 to-gray-900"
+              class="absolute inset-0 bg-linear-to-b from-background/0 via-background/0 to-background"
             >
             </div>
           </div>
@@ -234,83 +235,53 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
 
         <!-- Header area -->
         <div
-          class="z-10 w-full flex flex-col gap-4 md:gap-6 lg:gap-8 py-8 md:py-12 px-8 md:px-12 lg:px-16"
+          class="z-10 w-full flex flex-col gap-4 md:gap-6 lg:gap-8 py-20 md:py-40 lg:py-48 px-8 md:px-12 lg:px-16"
         >
           <div class="w-full flex flex-col gap-4">
-            <div
-              class="w-fit flex flex-row items-center gap-2 rounded-xl bg-primary/15 px-2.5 py-1.5 md:px-4 md:py-2.5 border border-gray-700"
-            >
-              <div class="size-4 md:size-6">
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 128 128"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <circle cx="96.5" cy="97.5" r="17.5" fill="#00A4E8"></circle>
-                  <circle
-                    cx="110"
-                    cy="65"
-                    r="13"
-                    fill="#00A4E8"
-                    fill-opacity="0.75"></circle>
-                  <ellipse
-                    cx="97"
-                    cy="40.5"
-                    rx="9"
-                    ry="8.5"
-                    fill="#00A4E8"
-                    fill-opacity="0.5"></ellipse>
-                  <circle
-                    cx="79.5"
-                    cy="27.5"
-                    r="6.5"
-                    fill="#00A4E8"
-                    fill-opacity="0.5"></circle>
-                  <ellipse
-                    cx="64"
-                    cy="27.5"
-                    rx="4"
-                    ry="4.5"
-                    fill="#00A4E8"
-                    fill-opacity="0.5"></ellipse>
-                  <circle
-                    cx="64"
-                    cy="102"
-                    r="4"
-                    fill="#00A4E8"
-                    fill-opacity="0.5"></circle>
-                  <circle
-                    cx="48.5"
-                    cy="100.5"
-                    r="6.5"
-                    fill="#00A4E8"
-                    fill-opacity="0.5"></circle>
-                  <circle
-                    cx="31"
-                    cy="89"
-                    r="9"
-                    fill="#00A4E8"
-                    fill-opacity="0.5"></circle>
-                  <circle
-                    cx="18"
-                    cy="65"
-                    r="13"
-                    fill="#00A4E8"
-                    fill-opacity="0.75"></circle>
-                  <circle cx="31.5" cy="31.5" r="17.5" fill="#00A4E8"></circle>
-                </svg>
-              </div>
-
-              <p class="font-medium text-xs md:text-sm text-primary">FIndex</p>
-            </div>
             <h1 class="font-bold text-5xl md:text-6xl lg:text-7xl">
-              INDEX<br />SWAPPING<br /><span class="text-primary">SUCKS</span>
+              Swap Your<br />Indexes<br />Instantly.
             </h1>
           </div>
 
-          <a
+          <div class="flex flex-row gap-2">
+            <!-- <SignInButton /> -->
+            <a
+              href={`https://localhost:3000/api/auth/microsoft/login?callbackUrl=${encodeURIComponent("/onboard")}`}
+              class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-300 dark:bg-background-800 text-foreground"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-4 lg:size-6"
+                viewBox="0 0 23 23"
+              >
+                <path fill="#f35325" d="M1 1h10v10H1z"></path>
+                <path fill="#81bc06" d="M12 1h10v10H12z"></path>
+                <path fill="#05a6f0" d="M1 12h10v10H1z"></path>
+                <path fill="#ffba08" d="M12 12h10v10H12z"></path>
+              </svg>
+              Sign in Microsoft
+            </a>
+            <a
+              href="https://t.me/Findex_ntu_bot"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-sky-600 text-white transition-colors"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
+                ></path>
+              </svg>
+              Open in Telegram
+            </a>
+          </div>
+          <!-- <a
             href="https://t.me/Findex_ntu_bot"
             target="_blank"
             rel="noopener noreferrer"
@@ -320,13 +291,13 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
             >
               Use FIndex
             </button>
-          </a>
+          </a> -->
 
-          <div class="h-20"></div>
+          <!-- <div class="h-20"></div> -->
         </div>
       </div>
 
-      <section class="w-full border-t border-gray-800 bg-gray-900/80">
+      <!-- <section class="w-full border-t border-gray-800 bg-gray-900/80">
         <div
           class="max-w-7xl mx-auto px-8 md:px-12 lg:px-16 py-10 md:py-14 flex flex-col gap-8"
         >
@@ -396,9 +367,9 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
             </div>
           </div>
         </div>
-      </section>
+      </section> -->
 
-      <section class="w-full border-t border-gray-800 bg-gray-950">
+      <!-- <section class="w-full border-t border-gray-800 bg-gray-950">
         <div
           class="max-w-7xl mx-auto px-8 md:px-12 lg:px-16 py-12 md:py-16 flex flex-col items-center text-center gap-4"
         >
@@ -446,7 +417,7 @@ const lanes = Array.from({ length: LANE_COUNT }, () =>
           </a>
         </div>
         <div class="w-full h-40"></div>
-      </section>
+      </section> -->
     </main>
   </body>
 </html>

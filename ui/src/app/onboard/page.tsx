@@ -79,19 +79,21 @@ function SignInToMicrosoft({ errorMessages }: { errorMessages: string[] }) {
             <PaginationSteps selectedIndex={0} steps={3} />
           </div> */}
         </div>
-        <div className="relative w-full h-96 lg:h-full">
-          <Image
-            src="/signup-light.png"
-            alt="Onboard"
-            className="block dark:hidden object-contain"
-            fill
-          />
-          <Image
-            src="/signup-dark.png"
-            alt="Onboard"
-            className="hidden dark:block object-contain"
-            fill
-          />
+        <div className="px-6 lg:px-0 w-full lg:h-full">
+          <div className="relative w-full h-96 lg:h-full">
+            <Image
+              src="/signup-light.png"
+              alt="Onboard"
+              className="block dark:hidden object-contain"
+              fill
+            />
+            <Image
+              src="/signup-dark.png"
+              alt="Onboard"
+              className="hidden dark:block object-contain"
+              fill
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -121,19 +123,21 @@ function VerifyTelegram() {
             <PaginationSteps selectedIndex={1} steps={3} />
           </div> */}
         </div>
-        <div className="relative w-full h-96 lg:h-full">
-          <Image
-            src="/link-telegram-light.png"
-            alt="Link Telegram"
-            className="block dark:hidden object-contain"
-            fill
-          />
-          <Image
-            src="/link-telegram-dark.png"
-            alt="Link Telegram"
-            className="hidden dark:block object-contain"
-            fill
-          />
+        <div className="px-6 lg:px-0 w-full lg:h-full">
+          <div className="relative w-full h-96 lg:h-full">
+            <Image
+              src="/link-telegram-light.png"
+              alt="Link Telegram"
+              className="block dark:hidden object-contain"
+              fill
+            />
+            <Image
+              src="/link-telegram-dark.png"
+              alt="Link Telegram"
+              className="hidden dark:block object-contain"
+              fill
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -161,19 +165,21 @@ function SetProfile({ defaultUsername }: { defaultUsername?: string }) {
             <PaginationSteps selectedIndex={2} steps={3} />
           </div> */}
         </div>
-        <div className="relative w-full h-96 lg:h-full">
-          <Image
-            src="/set-profile-light.png"
-            alt="Set profile"
-            className="block dark:hidden object-contain"
-            fill
-          />
-          <Image
-            src="/set-profile-dark.png"
-            alt="Set profile"
-            className="hidden dark:block object-contain"
-            fill
-          />
+        <div className="px-6 lg:px-0 w-full lg:h-full">
+          <div className="relative w-full h-96 lg:h-full">
+            <Image
+              src="/set-profile-light.png"
+              alt="Set profile"
+              className="block dark:hidden object-contain"
+              fill
+            />
+            <Image
+              src="/set-profile-dark.png"
+              alt="Set profile"
+              className="hidden dark:block object-contain"
+              fill
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -209,9 +215,9 @@ export default async function Page({
     return (
       <main>
         <ScrollArea className="bg-background text-foreground h-screen-safe">
-          {/* <SetProfile /> */}
+          <SetProfile />
           {/* <VerifyTelegram /> */}
-          <SignInToMicrosoft errorMessages={errorMessages} />
+          {/* <SignInToMicrosoft errorMessages={errorMessages} /> */}
         </ScrollArea>
       </main>
     );
