@@ -16,6 +16,7 @@
     "astro": "^6.4.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "lucide-react": "^1.17.0",
     "motion": "^12.40.0",
     "react": "^19.2.6",
