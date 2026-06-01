@@ -237,7 +237,7 @@ const TEAM = [
                 class="w-full max-w-ui h-screen overflow-y-hidden flex not-landscape:flex-col landscape:flex-row"
               >
                 <div
-                  class="not-landscape:h-fit landscape:flex-1 flex flex-col gap-8 py-8 md:py-12 lg:py-16 xl:py-20 2xl:py-24 px-8 md:px-12 lg:px-16"
+                  class="not-landscape:h-fit landscape:flex-1 flex flex-col gap-4 py-8 md:py-12 lg:py-16 xl:py-20 2xl:py-24 px-8 md:px-12 lg:px-16"
                 >
                   <div class="flex flex-col gap-1 lg:gap-2">
                     <span
@@ -246,7 +246,7 @@ const TEAM = [
                       See It In Action
                     </span>
                     <h2
-                      class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-8 md:leading-10 xl:leading-12 max-w-48 md:max-w-72 lg:max-w-xl"
+                      class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-8 md:leading-10 xl:leading-12"
                     >
                       How SwapHub changes everything!
                     </h2>
@@ -386,130 +386,123 @@ const TEAM = [
                 </div>
               </div>
             </div>
-            <!-- <div class="sticky top-0 h-svh w-full">
-            {
-              pageIds?.[i] ? (
-                <div
-                  id={pageIds[i]}
-                  aria-hidden="true"
-                  className="absolute left-0 top-0 h-px w-px pointer-events-none"
-                />
-              ) : null
-            }
-            {page}
-          </div> -->
           </div>
-        </div>
-      </section>
 
-      <section
-        class="w-full flex flex-col gap-8 items-center max-w-ui py-12 px-8 md:px-12 lg:px-16"
-      >
-        <header class="flex flex-col items-center gap-1 lg:gap-2">
-          <span
-            class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase text-center"
-          >
-            The Team
-          </span>
-          <h2
-            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-10 md:leading-12 lg:leading-14"
-          >
-            Meet the Team
-          </h2>
-        </header>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {
-            TEAM.map((member) => (
-              <a
-                href={member.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="bg-card border border-border rounded-2xl p-4 flex flex-col items-center text-center gap-3"
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <img
-                  src={member.photo}
-                  alt={member.name}
-                  class="h-14 w-14 rounded-full object-cover transition-all duration-200"
-                  style="border: 2px solid rgba(99,102,241,0.3)"
-                />
-                <div class="w-full flex flex-col items-center">
-                  <p class="font-medium text-sm lg:text-base leading-snug">
-                    {member.name}
-                  </p>
-                  <p class="flex flex-row gap-2 items-center text-sm lg:text-base text-primary-500">
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
+          <!-- Bottom -->
+          <!-- Have to move it here, Safari sticky positioning is insanely broken. -->
+          <section class="bg-background sticky w-full flex flex-col">
+            <section
+              class="w-full flex flex-col gap-8 items-center py-16 md:py-20 lg:py-24 px-8 md:px-12 lg:px-16"
+            >
+              <header class="flex flex-col items-center gap-1 lg:gap-2">
+                <span
+                  class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase text-center"
+                >
+                  The Team
+                </span>
+                <h2
+                  class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-10 md:leading-12 lg:leading-14"
+                >
+                  Meet the Team
+                </h2>
+              </header>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                {
+                  TEAM.map((member) => (
+                    <a
+                      href={member.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="bg-card border border-border rounded-2xl p-4 flex flex-col items-center text-center gap-3"
+                      style={{ textDecoration: "none", color: "inherit" }}
                     >
-                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                    </svg>
-                    LinkedIn ↗
-                  </p>
-                </div>
-              </a>
-            ))
-          }
-        </div>
-      </section>
-
-      <section
-        class="w-full flex flex-col gap-8 items-center max-w-ui py-16 md:py-20 lg:py-24 px-8 md:px-12 lg:px-16"
-      >
-        <header
-          class="flex flex-col items-center gap-1 lg:gap-3 text-center max-w-3xl"
-        >
-          <span
-            class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase"
-          >
-            Ready to Swap?
-          </span>
-          <h2
-            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-8 md:leading-10 xl:leading-12"
-          >
-            Stop Wasting Time,<br />Use <span class="hero-title">SwapHub</span>!
-          </h2>
-        </header>
-        <div
-          class="flex flex-col lg:flex-row gap-2 items-center pb-48 lg:pb-72"
-        >
-          <a
-            href={SIGNIN_URL}
-            class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-300 dark:bg-background-800 text-foreground"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="size-4 lg:size-6"
-              viewBox="0 0 23 23"
+                      <img
+                        src={member.photo}
+                        alt={member.name}
+                        class="h-14 w-14 rounded-full object-cover transition-all duration-200"
+                        style="border: 2px solid rgba(99,102,241,0.3)"
+                      />
+                      <div class="w-full flex flex-col items-center">
+                        <p class="font-medium text-sm lg:text-base leading-snug">
+                          {member.name}
+                        </p>
+                        <p class="flex flex-row gap-2 items-center text-sm lg:text-base text-primary-500">
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                          </svg>
+                          LinkedIn ↗
+                        </p>
+                      </div>
+                    </a>
+                  ))
+                }
+              </div>
+            </section>
+            <section
+              class="w-full flex flex-col gap-8 items-center max-w-ui py-16 md:py-20 lg:py-24 px-8 md:px-12 lg:px-16"
             >
-              <path fill="#f35325" d="M1 1h10v10H1z"></path>
-              <path fill="#81bc06" d="M12 1h10v10H12z"></path>
-              <path fill="#05a6f0" d="M1 12h10v10H1z"></path>
-              <path fill="#ffba08" d="M12 12h10v10H12z"></path>
-            </svg>
-            Sign in Microsoft
-          </a>
-          <a
-            href="https://t.me/Findex_ntu_bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-sky-600 text-white transition-colors"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
-              ></path>
-            </svg>
-            Open in Telegram
-          </a>
+              <header
+                class="flex flex-col items-center gap-1 lg:gap-3 text-center max-w-3xl"
+              >
+                <span
+                  class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase"
+                >
+                  Ready to Swap?
+                </span>
+                <h2
+                  class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-8 md:leading-10 xl:leading-12"
+                >
+                  Stop Wasting Time,<br />Use <span class="hero-title"
+                    >SwapHub</span
+                  >!
+                </h2>
+              </header>
+              <div
+                class="flex flex-col lg:flex-row gap-2 items-center pb-48 lg:pb-72"
+              >
+                <a
+                  href={SIGNIN_URL}
+                  class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-300 dark:bg-background-800 text-foreground"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="size-4 lg:size-6"
+                    viewBox="0 0 23 23"
+                  >
+                    <path fill="#f35325" d="M1 1h10v10H1z"></path>
+                    <path fill="#81bc06" d="M12 1h10v10H12z"></path>
+                    <path fill="#05a6f0" d="M1 12h10v10H1z"></path>
+                    <path fill="#ffba08" d="M12 12h10v10H12z"></path>
+                  </svg>
+                  Sign in Microsoft
+                </a>
+                <a
+                  href="https://t.me/Findex_ntu_bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-sky-600 text-white transition-colors"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
+                    ></path>
+                  </svg>
+                  Open in Telegram
+                </a>
+              </div>
+            </section>
+          </section>
         </div>
       </section>
     </main>
