@@ -91,7 +91,7 @@ export function Step1() {
             <span className="text-primary-500 font-semibold text-xs md:text-sm uppercase">
               See It In Action
             </span>
-            <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-14">
               How SwapHub changes
               <br />
               everything!

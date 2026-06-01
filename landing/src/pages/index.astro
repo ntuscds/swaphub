@@ -138,8 +138,17 @@ const TEAM = [
     />
     <Posthog />
   </head>
-  <body class="flex flex-col items-center bg-background text-foreground">
-    <main class="flex flex-col gap-12 items-center w-full">
+  <body
+    class="relative flex flex-col items-center overflow-x-hidden bg-background text-foreground"
+  >
+    <div
+      id="mouse-glow"
+      aria-hidden="true"
+      class="pointer-events-none fixed inset-0 z-20 transition-all duration-300"
+      style="background: radial-gradient(600px at 50% 50%, rgba(99,102,241,0.12), transparent 100%);"
+    >
+    </div>
+    <main class="relative z-10 flex flex-col gap-12 items-center w-full">
       <div class="relative w-full flex flex-row max-w-ui">
         <!-- Header area -->
         <div class="w-full flex flex-col xl:flex-row max-w-ui items-center">
@@ -148,7 +157,7 @@ const TEAM = [
           >
             <div class="w-full flex flex-col gap-4">
               <h1
-                class="text-center xl:text-left hero-title font-black tracking-tight leading-[1.02] text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
+                class="text-center xl:text-left hero-title font-black tracking-tight leading-[1.02] text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-12"
               >
                 Swap Your<br />Indexes<br />Instantly.
               </h1>
@@ -210,7 +219,7 @@ const TEAM = [
             The Problem
           </span>
           <h2
-            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center"
+            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-14"
           >
             We felt the <span class="hero-title">Pain</span>
           </h2>
@@ -232,7 +241,7 @@ const TEAM = [
             The Team
           </span>
           <h2
-            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center"
+            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-14"
           >
             Meet the Team
           </h2>
@@ -253,11 +262,11 @@ const TEAM = [
                   class="h-14 w-14 rounded-full object-cover transition-all duration-200"
                   style="border: 2px solid rgba(99,102,241,0.3)"
                 />
-                <div>
+                <div class="w-full flex flex-col items-center">
                   <p class="font-medium text-sm lg:text-base leading-snug">
                     {member.name}
                   </p>
-                  <p class="flex flex-row items-center text-sm lg:text-base text-primary-500">
+                  <p class="flex flex-row gap-2 items-center text-sm lg:text-base text-primary-500">
                     <svg
                       width="10"
                       height="10"
@@ -274,6 +283,69 @@ const TEAM = [
           }
         </div>
       </section>
+
+      <section
+        class="w-full flex flex-col gap-8 items-center max-w-ui py-16 md:py-20 lg:py-24 px-8 md:px-12 lg:px-16"
+      >
+        <header class="flex flex-col items-center gap-3 text-center max-w-3xl">
+          <span
+            class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase"
+          >
+            Ready to Swap?
+          </span>
+          <h2
+            class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-center leading-14"
+          >
+            Stop Wasting Time,<br />Use <span class="hero-title">SwapHub</span>!
+          </h2>
+        </header>
+        <div class="flex flex-col lg:flex-row gap-2 items-center pb-72">
+          <a
+            href={`https://localhost:3000/api/auth/microsoft/login?callbackUrl=${encodeURIComponent("/onboard")}`}
+            class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-300 dark:bg-background-800 text-foreground"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="size-4 lg:size-6"
+              viewBox="0 0 23 23"
+            >
+              <path fill="#f35325" d="M1 1h10v10H1z"></path>
+              <path fill="#81bc06" d="M12 1h10v10H12z"></path>
+              <path fill="#05a6f0" d="M1 12h10v10H1z"></path>
+              <path fill="#ffba08" d="M12 12h10v10H12z"></path>
+            </svg>
+            Sign in Microsoft
+          </a>
+          <a
+            href="https://t.me/Findex_ntu_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="rounded-md w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-sky-600 text-white transition-colors"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
+              ></path>
+            </svg>
+            Open in Telegram
+          </a>
+        </div>
+      </section>
     </main>
+    <script is:inline>
+      const mouseGlow = document.getElementById("mouse-glow");
+
+      if (mouseGlow) {
+        window.addEventListener("mousemove", (event) => {
+          mouseGlow.style.background = `radial-gradient(600px at ${event.clientX}px ${event.clientY}px, rgba(99,102,241,0.12), transparent 80%)`;
+        });
+      }
+    </script>
   </body>
 </html>
