@@ -114,11 +114,6 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
             </div>
           </div>
           <div className="flex flex-row items-center gap-3">
-            <Link href="/profile">
-              <Button variant="outline" size="sm" className="text-sm h-8">
-                My Profile
-              </Button>
-            </Link>
             <ThemeSwitcher />
             <ProfileMenu
               user={

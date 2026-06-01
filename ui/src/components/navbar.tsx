@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Moon, Plus, Sun, UserRound } from "lucide-react";
+import { LogOut, Moon, Plus, Sun, User, UserRound } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useThemeStore } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { api } from "../../convex/_generated/api";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { setMockUserEmail } from "@/app/admin/actions";
 import { getProfileImageUrl, getProfileInitials } from "@/lib/user";
+import Link from "next/link";
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useThemeStore(
@@ -160,6 +161,14 @@ export function ProfileMenu({
         )}
 
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          render={
+            <Link href="/profile" className="flex flex-row items-center gap-2">
+              <User className="size-4" />
+              My Profile
+            </Link>
+          }
+        ></DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => {
             window.location.href = "/api/auth/microsoft/logout";
