@@ -1,11 +1,12 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 # Help
 
 <nav className="mb-8 p-4 rounded-lg border border-border bg-muted dark:bg-muted/80">
-  <p className="text-sm font-semibold mb-2 text-foreground uppercase tracking-wide">On this page</p>
+  <span className="block text-sm font-semibold mb-2 text-foreground uppercase tracking-wide">On this page</span>
   <div className="flex flex-col gap-1">
     <a href="#onboarding" className="text-sm text-blue-400 hover:text-blue-300 hover:underline">1. Onboarding</a>
     <a href="#making-a-swap" className="text-sm text-blue-400 hover:text-blue-300 hover:underline">2. Making a Swap Request</a>
@@ -20,19 +21,30 @@ import { Separator } from "@/components/ui/separator";
 
 ## Onboarding
 
-You can either onboard via the [Telegram App](https://t.me/Findex_ntu_bot) or the [Website](https://swaphub.ntuscds.com/).
+You can either onboard via the <a href="https://t.me/Findex_ntu_bot" className="text-blue-400 hover:text-blue-300 hover:underline underline">Telegram App</a> or the <a href="https://swaphub.ntuscds.com/" className="text-blue-400 hover:text-blue-300 hover:underline underline">Website</a>.
 
-### Via Telegram App
-1. Go to the [Telegram App](https://t.me/Findex_ntu_bot), click the "Open" button next to the chat.
-1. Click "Sign in with Microsoft", and sign in to your `@e.ntu.edu.sg` Microsoft account.
-1. Click "Link Telegram Account", it will automatically link your Telegram account.
-1. Set your `username` and `school`, and click "Submit".
-
-### Via Website
-1. Go to the [Website](https://swaphub.ntuscds.com/).
-1. Click "Sign in with Microsoft", and sign in to your `@e.ntu.edu.sg` Microsoft account.
-1. Click "Link Telegram Account", it will redirect you to the Telegram App to link your account. Enter `/link <code>` in the chat.
-1. Go back to the website, set your `username` and `school`, and click "Submit".
+<Tabs defaultValue="web" className="mt-4">
+  <TabsList className="mb-4">
+    <TabsTrigger value="web">Web</TabsTrigger>
+    <TabsTrigger value="telegram">Telegram</TabsTrigger>
+  </TabsList>
+  <TabsContent value="web">
+    <ol className="flex flex-col gap-2 list-decimal list-inside">
+      <li>Go to the <a href="https://swaphub.ntuscds.com/" className="text-blue-400 hover:text-blue-300 hover:underline">Website</a>.</li>
+      <li>Click "Sign in with Microsoft", and sign in to your <code>@e.ntu.edu.sg</code> Microsoft account.</li>
+      <li>Click "Link Telegram Account", it will redirect you to the Telegram App to link your account. Enter <code>/link &lt;code&gt;</code> in the chat.</li>
+      <li>Go back to the website, set your <code>username</code> and <code>school</code>, and click "Submit".</li>
+    </ol>
+  </TabsContent>
+  <TabsContent value="telegram">
+    <ol className="flex flex-col gap-2 list-decimal list-inside">
+      <li>Go to the <a href="https://t.me/Findex_ntu_bot" className="text-blue-400 hover:text-blue-300 hover:underline">Telegram App</a>, click the "Open" button next to the chat.</li>
+      <li>Click "Sign in with Microsoft", and sign in to your <code>@e.ntu.edu.sg</code> Microsoft account.</li>
+      <li>Click "Link Telegram Account", it will automatically link your Telegram account.</li>
+      <li>Set your <code>username</code> and <code>school</code>, and click "Submit".</li>
+    </ol>
+  </TabsContent>
+</Tabs>
 
 <Separator className="my-8" />
 
@@ -81,54 +93,24 @@ You can accept or decline a swap request via Telegram.
 1. In the `Telegram` chat, click the "View" button.
 1. Click the decision you want to make.
 
-<Table className="table-fixed border border-border rounded-md">
-  <TableHeader>
-    <TableRow>
-      <TableHead colSpan={2} className="text-sm lg:text-base">Decision</TableHead>
-      <TableHead colSpan={5} className="text-sm lg:text-base">Description</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    <TableRow>
-      <TableCell colSpan={2}>
-        <span className="text-green-600 dark:text-green-400 text-sm lg:text-base font-medium">
-          Accept
-        </span>
-      </TableCell>
-      <TableCell colSpan={5}>
-        <ul className="flex flex-col gap-1">
-          <li className="text-sm lg:text-base text-wrap max-w-lg">For direct requests, notifies the target to proceed with the swap.</li>
-          <li className="text-sm lg:text-base text-wrap max-w-lg">For 3-way swaps, notifies the middleman to proceed with the swap.</li>
-          <li className="text-sm lg:text-base text-wrap pt-2 max-w-lg">If everyone has accepted, the swap will be completed. Message the other participants to proceed with the swap in STARS.</li>
-        </ul>
-      </TableCell>
-    </TableRow>
-    <TableRow>
-      <TableCell colSpan={2}>
-        <span className="text-red-600 dark:text-red-400 text-sm lg:text-base font-medium">
-          Decline This Request
-        </span>
-      </TableCell>
-      <TableCell colSpan={5}>
-        <span className="text-sm lg:text-base break-words max-w-lg block">
-          Only declines this specific request. Your other active requests for this course remain unaffected.
-        </span>
-      </TableCell>
-    </TableRow>
-    <TableRow>
-      <TableCell colSpan={2}>
-        <span className="text-red-600 dark:text-red-400 text-sm lg:text-base font-medium">
-          Decline and Disable Course Requests
-        </span>
-      </TableCell>
-      <TableCell colSpan={5}>
-        <span className="text-sm lg:text-base break-words max-w-lg block">
-          Declines all active requests and disables swap requests for this course entirely.
-        </span>
-      </TableCell>
-    </TableRow>
-  </TableBody>
-</Table>
+<div className="flex flex-col gap-3 mt-4">
+  <div className="rounded-lg border border-border p-4">
+    <span className="block text-green-600 dark:text-green-400 text-sm lg:text-base font-medium mb-2">Accept</span>
+    <ul className="flex flex-col gap-1 text-sm lg:text-base text-muted-foreground list-disc list-inside">
+      <li>For direct requests, notifies the target to proceed with the swap.</li>
+      <li>For 3-way swaps, notifies the middleman to proceed with the swap.</li>
+      <li className="pt-1">If everyone has accepted, the swap will be completed. Message the other participants to proceed with the swap in STARS.</li>
+    </ul>
+  </div>
+  <div className="rounded-lg border border-border p-4">
+    <span className="block text-red-600 dark:text-red-400 text-sm lg:text-base font-medium mb-2">Decline This Request</span>
+    <span className="block text-sm lg:text-base text-muted-foreground">Only declines this specific request. Your other active requests for this course remain unaffected.</span>
+  </div>
+  <div className="rounded-lg border border-border p-4">
+    <span className="block text-red-600 dark:text-red-400 text-sm lg:text-base font-medium mb-2">Decline and Disable Course Requests</span>
+    <span className="block text-sm lg:text-base text-muted-foreground">Declines all active requests and disables swap requests for this course entirely.</span>
+  </div>
+</div>
 
 <Separator className="my-8" />
 
@@ -136,34 +118,52 @@ You can accept or decline a swap request via Telegram.
 
 ## FAQ & Troubleshooting
 
-<div className="flex flex-col gap-4 mt-4">
+<Accordion type="multiple" className="mt-4 space-y-3 pb-1">
+  <AccordionItem value="faq-1" className="rounded-lg border border-border px-4 border-b-0">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      I did not receive a Telegram notification for a swap request.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      Ensure your Telegram DMs are open and your account is correctly linked. If unsure, try unlinking and relinking your Telegram account via the website.
+    </AccordionContent>
+  </AccordionItem>
 
-<div className="rounded-lg border border-border p-4">
-  <p className="font-semibold text-sm lg:text-base mb-1">I did not receive a Telegram notification for a swap request.</p>
-  <p className="text-sm text-muted-foreground">Ensure your Telegram DMs are open and your account is correctly linked. If unsure, try unlinking and relinking your Telegram account via the website.</p>
-</div>
+  <AccordionItem value="faq-2" className="rounded-lg border border-border px-4 border-b-0">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      My swap request is not showing up for other users.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      Check that you have selected both the index you currently hold and at least one index you want. Incomplete requests are not visible to other users.
+    </AccordionContent>
+  </AccordionItem>
 
-<div className="rounded-lg border border-border p-4">
-  <p className="font-semibold text-sm lg:text-base mb-1">My swap request is not showing up for other users.</p>
-  <p className="text-sm text-muted-foreground">Check that you have selected both the index you currently hold and at least one index you want. Incomplete requests are not visible to other users.</p>
-</div>
+  <AccordionItem value="faq-3" className="rounded-lg border border-border px-4 border-b-0">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      I accidentally declined a swap. Can I undo it?
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      If you chose "Decline This Request", only that specific request is declined and your swap listing remains active. If you chose "Decline and Disable Course Requests", you will need to manually re-enable swap requests for that course.
+    </AccordionContent>
+  </AccordionItem>
 
-<div className="rounded-lg border border-border p-4">
-  <p className="font-semibold text-sm lg:text-base mb-1">I accidentally declined a swap. Can I undo it?</p>
-  <p className="text-sm text-muted-foreground">If you chose "Decline This Request", only that specific request is declined and your swap listing remains active. If you chose "Decline and Disable Course Requests", you will need to manually re-enable swap requests for that course.</p>
-</div>
+  <AccordionItem value="faq-4" className="rounded-lg border border-border px-4 border-b-0">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      The <code>/link</code> command is not working in Telegram.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      Enter the exact code shown on the website in the format <code>/link &lt;code&gt;</code>. Codes expire after a short period — if it fails, return to the website and generate a new one.
+    </AccordionContent>
+  </AccordionItem>
 
-<div className="rounded-lg border border-border p-4">
-  <p className="font-semibold text-sm lg:text-base mb-1">The <code>/link</code> command is not working in Telegram.</p>
-  <p className="text-sm text-muted-foreground">Enter the exact code shown on the website in the format <code>/link &lt;code&gt;</code>. Codes expire after a short period — if it fails, return to the website and generate a new one.</p>
-</div>
-
-<div className="rounded-lg border border-border p-4">
-  <p className="font-semibold text-sm lg:text-base mb-1">I cannot sign in with Microsoft.</p>
-  <p className="text-sm text-muted-foreground">Only <code>@e.ntu.edu.sg</code> accounts are supported. Make sure you are signing in with your NTU student email and not a personal Microsoft account.</p>
-</div>
-
-</div>
+  <AccordionItem value="faq-5" className="rounded-lg border border-border px-4 border-b-0">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      I cannot sign in with Microsoft.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      Only <code>@e.ntu.edu.sg</code> accounts are supported. Make sure you are signing in with your NTU student email and not a personal Microsoft account.
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
 
 <Separator className="my-8" />
 
@@ -173,20 +173,20 @@ You can accept or decline a swap request via Telegram.
 
 <div className="flex flex-col gap-3 mt-4">
   <div className="rounded-lg border border-border p-4">
-    <p className="font-semibold text-sm lg:text-base mb-1">Select multiple wanted indexes.</p>
-    <p className="text-sm text-muted-foreground">The more indexes you are willing to accept, the higher your chances of being matched. Do not limit yourself to just one.</p>
+    <span className="block font-semibold text-sm lg:text-base mb-1">Select multiple wanted indexes.</span>
+    <span className="block text-sm text-muted-foreground">The more indexes you are willing to accept, the higher your chances of being matched. Do not limit yourself to just one.</span>
   </div>
   <div className="rounded-lg border border-border p-4">
-    <p className="font-semibold text-sm lg:text-base mb-1">Keep your Telegram DMs open.</p>
-    <p className="text-sm text-muted-foreground">This is the primary way other users will contact you. A closed DM means missed swaps.</p>
+    <span className="block font-semibold text-sm lg:text-base mb-1">Keep your Telegram DMs open.</span>
+    <span className="block text-sm text-muted-foreground">This is the primary way other users will contact you. A closed DM means missed swaps.</span>
   </div>
   <div className="rounded-lg border border-border p-4">
-    <p className="font-semibold text-sm lg:text-base mb-1">Respond to requests quickly.</p>
-    <p className="text-sm text-muted-foreground">Indexes are in high demand during STARS. Delayed responses may result in the other party finding an alternative swap.</p>
+    <span className="block font-semibold text-sm lg:text-base mb-1">Respond to requests quickly.</span>
+    <span className="block text-sm text-muted-foreground">Indexes are in high demand during STARS. Delayed responses may result in the other party finding an alternative swap.</span>
   </div>
   <div className="rounded-lg border border-border p-4">
-    <p className="font-semibold text-sm lg:text-base mb-1">Do not avoid 3-way swaps.</p>
-    <p className="text-sm text-muted-foreground">3-way swaps are common and work well. As long as all three parties respond promptly, they complete without issue.</p>
+    <span className="block font-semibold text-sm lg:text-base mb-1">Do not avoid 3-way swaps.</span>
+    <span className="block text-sm text-muted-foreground">3-way swaps are common and work well. As long as all three parties respond promptly, they complete without issue.</span>
   </div>
 </div>
 
@@ -197,5 +197,10 @@ You can accept or decline a swap request via Telegram.
 ## Contact & Support
 
 <div className="rounded-lg border border-border p-4 mt-4">
-  <p className="text-sm lg:text-base text-muted-foreground">For any feedback, queries, or issues, feel free to reach out to us at <a href="mailto:swaphub.ntu@gmail.com" className="text-blue-400 hover:text-blue-300 hover:underline">swaphub.ntu@gmail.com</a></p>
+  <span className="block text-sm lg:text-base text-muted-foreground">
+    For any feedback, queries, or issues, feel free to reach out to us at{" "}
+    <a href="mailto:swaphub.ntu@gmail.com" className="text-blue-400 hover:text-blue-300 hover:underline">
+      swaphub.ntu@gmail.com
+    </a>
+  </span>
 </div>
