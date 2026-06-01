@@ -10,6 +10,7 @@ import {
 } from "@/components/onboard-form";
 import { redirect } from "next/navigation";
 import { getDefaultUsername } from "@/lib/user";
+import Image from "next/image";
 
 const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
 
@@ -42,42 +43,56 @@ export function PaginationSteps({
 function SignInToMicrosoft({ errorMessages }: { errorMessages: string[] }) {
   const callbackUrl = "/onboard";
   return (
-    <div className="flex flex-col items-center">
-      <div className="flex flex-col gap-12 py-12 max-w-2xl w-full">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
-            Hey! 👋
-          </h1>
-          <p className="text-sm lg:text-base xl:text-lg text-muted-foreground">
-            Let's get you onboarded!
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col">
-            <h2 className="text-base lg:text-lg font-semibold max-w-md">
-              Firstly, sign in with your @e.ntu.edu.sg account.
-            </h2>
+    <div className="flex flex-col items-center lg:h-full">
+      <div className="flex flex-col lg:flex-row gap-12 lg:gap-12 max-w-ui w-full h-full lg:items-center">
+        <div className="flex flex-col gap-12 py-12 w-full px-12 lg:px-4 p-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
+              Hey! 👋
+            </h1>
+            <p className="text-sm lg:text-base xl:text-lg text-muted-foreground">
+              Let's get you onboarded!
+            </p>
           </div>
 
-          {errorMessages.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {errorMessages.map((error, index) => (
-                <Alert variant="destructive" key={index}>
-                  <AlertTitle>{error}</AlertTitle>
-                </Alert>
-              ))}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col">
+              <h2 className="text-base lg:text-lg font-semibold max-w-md">
+                Firstly, sign in with your @e.ntu.edu.sg account.
+              </h2>
             </div>
-          )}
 
-          <SignInButton callbackUrl={callbackUrl} />
+            {errorMessages.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {errorMessages.map((error, index) => (
+                  <Alert variant="destructive" key={index}>
+                    <AlertTitle>{error}</AlertTitle>
+                  </Alert>
+                ))}
+              </div>
+            )}
+
+            <SignInButton callbackUrl={callbackUrl} />
+          </div>
+
+          <div className="flex flex-row items-center justify-center pt-10">
+            <PaginationSteps selectedIndex={0} steps={3} />
+          </div>
         </div>
-
-        <div className="flex flex-row items-center justify-center pt-10">
-          <PaginationSteps selectedIndex={0} steps={3} />
+        <div className="relative w-full h-96 lg:h-full">
+          <Image
+            src="/signup-light.png"
+            alt="Onboard"
+            className="block dark:hidden object-contain"
+            fill
+          />
+          <Image
+            src="/signup-dark.png"
+            alt="Onboard"
+            className="hidden dark:block object-contain"
+            fill
+          />
         </div>
-
-        {/* <OnboardForm /> */}
       </div>
     </div>
   );
@@ -163,7 +178,7 @@ export default async function Page({
   if (!auth) {
     return (
       <main>
-        <ScrollArea className="bg-background text-foreground h-screen p-4">
+        <ScrollArea className="bg-background text-foreground h-screen-safe">
           <SignInToMicrosoft errorMessages={errorMessages} />
         </ScrollArea>
       </main>
@@ -181,7 +196,7 @@ export default async function Page({
 
   return (
     <main>
-      <ScrollArea className="bg-background text-foreground h-screen p-4">
+      <ScrollArea className="bg-background text-foreground h-screen-safe">
         <OnboardingForm
           verifyTelegramNode={<VerifyTelegram />}
           selectSchoolNode={
