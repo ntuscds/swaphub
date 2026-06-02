@@ -75,6 +75,7 @@ export async function proxy(request: NextRequest) {
     }
   } catch (error) {
     console.error(error);
+    return NextResponse.redirect(new URL("/onboard", request.url));
   }
   return NextResponse.next();
 }
