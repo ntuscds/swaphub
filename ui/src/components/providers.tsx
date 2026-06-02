@@ -21,15 +21,47 @@ import { retrieveRawInitData } from "@tma.js/sdk-react";
 import Script from "next/script";
 import { cn } from "@/lib/utils";
 
+type TelegramSafeAreaInset = {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+};
+
+type TelegramWebApp = {
+  ready?: () => void;
+  expand?: () => void;
+  contentSafeAreaInset?: TelegramSafeAreaInset;
+  safeAreaInset?: TelegramSafeAreaInset;
+  onEvent?: (event: string, handler: () => void) => void;
+  offEvent?: (event: string, handler: () => void) => void;
+};
+
 declare global {
   interface Window {
     Telegram?: {
-      WebApp?: {
-        ready?: () => void;
-        expand?: () => void;
-      };
+      WebApp?: TelegramWebApp;
     };
   }
+}
+
+function applyTelegramSafeArea() {
+  if (typeof window === "undefined") return;
+  const webApp = window.Telegram?.WebApp;
+  if (!webApp) return;
+  const top =
+    webApp.contentSafeAreaInset?.top ?? webApp.safeAreaInset?.top ?? 0;
+  const bottom =
+    webApp.contentSafeAreaInset?.bottom ?? webApp.safeAreaInset?.bottom ?? 0;
+  const left =
+    webApp.contentSafeAreaInset?.left ?? webApp.safeAreaInset?.left ?? 0;
+  const right =
+    webApp.contentSafeAreaInset?.right ?? webApp.safeAreaInset?.right ?? 0;
+  const root = document.documentElement;
+  root.style.setProperty("--safe-top", `${top}px`);
+  root.style.setProperty("--safe-bottom", `${bottom}px`);
+  root.style.setProperty("--safe-left", `${left}px`);
+  root.style.setProperty("--safe-right", `${right}px`);
 }
 
 const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL);
@@ -106,6 +138,13 @@ export function Providers({
             webApp.ready?.();
             webApp.expand?.();
           } catch (error) {}
+
+          applyTelegramSafeArea();
+          webApp.onEvent?.("safe_area_changed", applyTelegramSafeArea);
+          webApp.onEvent?.(
+            "content_safe_area_changed",
+            applyTelegramSafeArea
+          );
         }}
         // strategy="beforeInteractive"
       />
@@ -116,7 +155,7 @@ export function Providers({
         >
           <QueryClientProvider client={queryClient}>
             {/* <SelfProvider>{children}</SelfProvider> */}
-            <ThemeProvider className={cn(fontClass, "pt-var(--tg-safe-top)")}>
+            <ThemeProvider className={cn(fontClass, "pt-(--safe-top)")}>
               {children}
             </ThemeProvider>
           </QueryClientProvider>

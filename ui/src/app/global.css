@@ -82,9 +82,10 @@
   --artboard-middleman: var(--secondary-400);
   --artboard-initiator: var(--primary-400);
 
-  --safe-top: var(--tg-safe-top, env(safe-area-inset-top, 0px));
-  /* padding-top: var();
-padding-bottom: var(--tg-safe-bottom); */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 .dark {
