@@ -95,17 +95,17 @@ export function Providers({
       <Script
         src="https://telegram.org/js/telegram-web-app.js"
         strategy="lazyOnload"
-        onLoad={() => {
-          const webApp = window.Telegram?.WebApp;
-          if (!webApp) {
-            return;
-          }
+        // onLoad={() => {
+        //   const webApp = window.Telegram?.WebApp;
+        //   if (!webApp) {
+        //     return;
+        //   }
 
-          try {
-            webApp.ready?.();
-            webApp.expand?.();
-          } catch (error) {}
-        }}
+        //   try {
+        //     webApp.ready?.();
+        //     webApp.expand?.();
+        //   } catch (error) {}
+        // }}
         // strategy="beforeInteractive"
       />
       <QueryClientProvider client={queryClient}>
