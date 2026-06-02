@@ -1,5 +1,5 @@
 import { Suspense, type PropsWithChildren } from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -30,6 +30,14 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   title: "Swap Hub",
   description: "Swap indexes without the chaos",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export async function Navbar({ isLoading }: { isLoading: boolean }) {
@@ -138,7 +146,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const locale = await getLocale();
 
   return (
-    <html lang={locale} suppressHydrationWarning className={cn(inter.variable)}>
+    <html lang={locale} className={cn(inter.variable)}>
       <Providers fontClass={inter.variable}>
         <div className="w-full h-full relative z-10 navbar-height">
           {/* Navbar */}
