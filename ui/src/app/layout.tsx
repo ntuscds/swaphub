@@ -77,11 +77,6 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
                 Help
               </Link>
             </Button>
-            <Button variant="ghost" className="w-full">
-              <Link href="/profile" className="w-full text-start px-2">
-                My Profile
-              </Link>
-            </Button>
           </div>
           <SheetFooter>
             <div className="flex flex-row items-center gap-3">
