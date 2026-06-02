@@ -19,6 +19,7 @@ import z from "zod";
 import { env } from "@/lib/env";
 import { retrieveRawInitData } from "@tma.js/sdk-react";
 import Script from "next/script";
+import { cn } from "@/lib/utils";
 
 declare global {
   interface Window {
@@ -95,17 +96,17 @@ export function Providers({
       <Script
         src="https://telegram.org/js/telegram-web-app.js"
         strategy="lazyOnload"
-        // onLoad={() => {
-        //   const webApp = window.Telegram?.WebApp;
-        //   if (!webApp) {
-        //     return;
-        //   }
+        onLoad={() => {
+          const webApp = window.Telegram?.WebApp;
+          if (!webApp) {
+            return;
+          }
 
-        //   try {
-        //     webApp.ready?.();
-        //     webApp.expand?.();
-        //   } catch (error) {}
-        // }}
+          try {
+            webApp.ready?.();
+            webApp.expand?.();
+          } catch (error) {}
+        }}
         // strategy="beforeInteractive"
       />
       <QueryClientProvider client={queryClient}>
@@ -115,7 +116,9 @@ export function Providers({
         >
           <QueryClientProvider client={queryClient}>
             {/* <SelfProvider>{children}</SelfProvider> */}
-            <ThemeProvider className={fontClass}>{children}</ThemeProvider>
+            <ThemeProvider className={cn(fontClass, "pt-var(--tg-safe-top)")}>
+              {children}
+            </ThemeProvider>
           </QueryClientProvider>
         </ConvexProviderWithAuth>
       </QueryClientProvider>
