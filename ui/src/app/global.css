@@ -82,6 +82,7 @@
   --artboard-middleman: var(--secondary-400);
   --artboard-initiator: var(--primary-400);
 
+  --safe-top: var(--tg-safe-top, env(safe-area-inset-top, 0px));
   /* padding-top: var();
 padding-bottom: var(--tg-safe-bottom); */
 }
@@ -232,5 +233,6 @@ padding-bottom: var(--tg-safe-bottom); */
 }
 
 .h-screen-safe {
-  @apply h-svh lg:h-[calc(100vh-40px-var(--tg-safe-top))] xl:h-[calc(100vh-48px-var(--tg-safe-top))];
+  /* @apply h-svh lg:h-[calc(100vh-40px)] xl:h-[calc(100vh-48px)]; */
+  @apply h-svh lg:h-[calc(100vh-40px-var(--safe-top))] xl:h-[calc(100vh-48px-var(--safe-top))];
 }
