@@ -27,7 +27,7 @@ type ChatMessage = {
 };
 
 const MAX_MESSAGES = 10;
-const MESSAGE_INTERVAL_MS = 1000;
+const MESSAGE_INTERVAL_MS = 700;
 const TIME_INCREMENTS = [0, 20, 30, 50];
 const DURATIONS_IN_MINUTES = [50, 80, 110, 120];
 
