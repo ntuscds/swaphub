@@ -23,13 +23,39 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
-import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Swap Hub",
-  description: "Swap indexes without the chaos",
+  metadataBase: new URL("https://app.swaphub.ntuscds.com"),
+  title: "SwapHub",
+  description: "Stop Wasting Time, Use SwapHub!",
+  applicationName: "SwapHub",
+  authors: [{ name: "SwapHub" }],
+  keywords: ["Swap", "Hub", "ntu", "index swapping", "course planning"],
+  openGraph: {
+    title: "SwapHub — Swap Your Indexes Instantly",
+    description: "Stop Wasting Time, Use SwapHub!",
+    type: "website",
+    locale: "en_US",
+    url: "https://swaphub.ntuscds.com",
+    images: [
+      {
+        url: "/banner.png",
+        width: 800,
+        height: 600,
+        alt: "SwapHub thumbnail",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@acrylic125",
+    creator: "@acrylic125",
+    title: "SwapHub",
+    description: "Stop Wasting Time, Use SwapHub!",
+    images: ["/banner.png"],
+  },
 };
 
 export const viewport: Viewport = {
