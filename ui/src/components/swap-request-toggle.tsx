@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { ChevronsUpDown } from "lucide-react";
+import posthog from "posthog-js";
 import { api } from "../../convex/_generated/api";
 import { CurrentAcadYear } from "@/lib/acad";
 import { Button } from "@/components/ui/button";
@@ -57,17 +58,37 @@ export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
     await handle({ courseCode, hasSwapped: false });
   }, [courseCode, handle]);
 
+  const captureMarkedCompleted = useCallback(
+    (source: "direct" | "confirm", activeRequestsAtClick: number) => {
+      posthog.capture("swap_marked_completed", {
+        course_code: courseCode,
+        acad_year: CurrentAcadYear,
+        source,
+        active_requests_count_at_click: activeRequestsAtClick,
+        had_active_requests: activeRequestsAtClick > 0,
+      });
+    },
+    [courseCode]
+  );
+
   const handleDisable = useCallback(async () => {
     if (activeRequestsCount > 0) {
       setIsDisableWarningOpen(true);
       return;
     }
-    await handle({ courseCode, hasSwapped: true });
-  }, [courseCode, handle, activeRequestsCount]);
+    const result = await handle({ courseCode, hasSwapped: true });
+    if (result !== undefined) {
+      captureMarkedCompleted("direct", 0);
+    }
+  }, [courseCode, handle, activeRequestsCount, captureMarkedCompleted]);
 
   const confirmDisable = useCallback(async () => {
-    await handle({ courseCode, hasSwapped: true });
-  }, [courseCode, handle]);
+    const activeAtClick = activeRequestsCount;
+    const result = await handle({ courseCode, hasSwapped: true });
+    if (result !== undefined) {
+      captureMarkedCompleted("confirm", activeAtClick);
+    }
+  }, [courseCode, handle, activeRequestsCount, captureMarkedCompleted]);
 
   if (swapRequestState === undefined) {
     return <Skeleton className="w-24 h-7" />;

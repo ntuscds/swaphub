@@ -32,12 +32,20 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { SetStateAction, Dispatch, useEffect, useMemo, useState } from "react";
+import {
+  SetStateAction,
+  Dispatch,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   useConvexActionState,
   useConvexMutationState,
 } from "./use-convex-mutation-state";
 import { AcadYear } from "@/lib/acad";
+import posthog from "posthog-js";
 import {
   DirectSwapArtboard,
   ThreeWayCycleArtboard,
@@ -637,6 +645,52 @@ export function CourseSwapMatches({
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  // Capture a "check in" each time the user opens this course's swap page.
+  // Tracking how often a user comes back (and the gap between visits) helps
+  // surface courses where matches are hard to find. We persist the previous
+  // check-in timestamp in localStorage so the time delta survives reloads.
+  const hasCapturedCheckInRef = useRef(false);
+  useEffect(() => {
+    hasCapturedCheckInRef.current = false;
+  }, [code, acadYear]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (hasCapturedCheckInRef.current) return;
+    if (requestsQueryRes.status !== "success") return;
+    hasCapturedCheckInRef.current = true;
+
+    const storageKey = `findex:course_check_in:${acadYear}:${code}`;
+    const now = Date.now();
+    let timeSinceLastCheckInMs: number | null = null;
+    try {
+      const previousRaw = window.localStorage.getItem(storageKey);
+      if (previousRaw) {
+        const previous = Number.parseInt(previousRaw, 10);
+        if (Number.isFinite(previous) && previous > 0 && previous <= now) {
+          timeSinceLastCheckInMs = now - previous;
+        }
+      }
+      window.localStorage.setItem(storageKey, String(now));
+    } catch {
+      // Ignore storage errors (e.g. private browsing / disabled storage)
+    }
+
+    posthog.capture("course_check_in", {
+      course_code: code,
+      acad_year: acadYear,
+      time_since_last_check_in_ms: timeSinceLastCheckInMs,
+      time_since_last_check_in_seconds:
+        timeSinceLastCheckInMs === null
+          ? null
+          : Math.round(timeSinceLastCheckInMs / 1000),
+      is_first_check_in: timeSinceLastCheckInMs === null,
+      has_swapped: requestsQueryRes.data?.course.hasSwapped ?? false,
+      direct_matches_count: requestsQueryRes.data?.directMatches.length ?? 0,
+      three_way_cycle_matches_count:
+        requestsQueryRes.data?.threeWayCycleMatches.length ?? 0,
+    });
+  }, [code, acadYear, requestsQueryRes.status, requestsQueryRes.data]);
 
   if (requestsQueryRes.status === "error") {
     return (

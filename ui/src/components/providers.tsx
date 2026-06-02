@@ -20,6 +20,7 @@ import { env } from "@/lib/env";
 import { retrieveRawInitData } from "@tma.js/sdk-react";
 import Script from "next/script";
 import { cn } from "@/lib/utils";
+import posthog from "posthog-js";
 
 type TelegramSafeAreaInset = {
   top?: number;
@@ -122,6 +123,18 @@ export function Providers({
         },
       })
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Route PostHog through the Next.js rewrite proxy configured in
+    // next.config.ts (see `/relay-AQvm/*`) so requests aren't blocked by
+    // ad/tracker blockers.
+    posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
+      api_host: "/relay-AQvm",
+      ui_host: env.NEXT_PUBLIC_POSTHOG_HOST,
+      defaults: "2025-11-30",
+    });
+  }, []);
 
   return (
     <>
