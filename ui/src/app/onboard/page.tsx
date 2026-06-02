@@ -44,7 +44,7 @@ function SignInToMicrosoft({ errorMessages }: { errorMessages: string[] }) {
   const callbackUrl = "/onboard";
   return (
     <div className="flex flex-col items-center lg:h-full">
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-12 max-w-ui w-full h-full lg:items-center">
+      <div className="flex not-landscape:flex-col landscape:flex-col md:landscape:flex-row gap-4 lg:gap-12 max-w-ui w-full h-full lg:items-center">
         <div className="flex flex-col gap-8 py-12 w-full px-6">
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
@@ -103,7 +103,7 @@ function SignInToMicrosoft({ errorMessages }: { errorMessages: string[] }) {
 function VerifyTelegram() {
   return (
     <div className="flex flex-col items-center lg:h-full">
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-12 max-w-ui w-full h-full lg:items-center">
+      <div className="flex not-landscape:flex-col landscape:flex-col md:landscape:flex-row gap-4 lg:gap-12 max-w-ui w-full h-full lg:items-center">
         <div className="flex flex-col gap-8 py-12 w-full px-6">
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
@@ -147,7 +147,7 @@ function VerifyTelegram() {
 function SetProfile({ defaultUsername }: { defaultUsername?: string }) {
   return (
     <div className="flex flex-col items-center lg:h-full">
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-12 max-w-ui w-full h-full lg:items-center">
+      <div className="flex not-landscape:flex-col landscape:flex-col md:landscape:flex-row gap-4 lg:gap-12 max-w-ui w-full h-full lg:items-center">
         <div className="flex flex-col gap-8 py-12 w-full px-6">
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
@@ -160,10 +160,6 @@ function SetProfile({ defaultUsername }: { defaultUsername?: string }) {
               <SetProfileForm defaultUsername={defaultUsername} />
             </div>
           </div>
-
-          {/* <div className="flex flex-row items-center justify-center pt-10">
-            <PaginationSteps selectedIndex={2} steps={3} />
-          </div> */}
         </div>
         <div className="px-6 lg:px-0 w-full lg:h-full">
           <div className="relative w-full h-96 lg:h-full">
