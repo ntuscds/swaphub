@@ -85,6 +85,15 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
                 Help
               </Link>
             </Button>
+            <Button variant="ghost" className="w-full">
+              <a
+                href={env.NEXT_PUBLIC_FEEDBACK_FORM_URL}
+                target="_blank"
+                className="w-full text-start px-2"
+              >
+                Feedback
+              </a>
+            </Button>
           </div>
           <SheetFooter>
             <div className="flex flex-row items-center gap-3">
@@ -120,6 +129,14 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
               <Link href="/help">
                 <p className="text-sm">Help</p>
               </Link>
+
+              <a
+                href={env.NEXT_PUBLIC_FEEDBACK_FORM_URL}
+                target="_blank"
+                className="text-sm"
+              >
+                Feedback
+              </a>
             </div>
           </div>
           <div className="flex flex-row items-center gap-3">

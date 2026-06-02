@@ -1,7 +1,9 @@
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { env } from "@/lib/env";
 
 # Help
 
@@ -59,11 +61,12 @@ Once onboarded, you can start making swap requests.
 1. Click "Which indexes do you want?", and select the indexes you want.
 1. Click "Request".
 
-<Alert className="my-4 border-yellow-500/50 bg-yellow-500/10">
-  <AlertDescription className="text-sm">
-    <strong>Keep your Telegram DMs open.</strong> Other users will reach out via Telegram when they want to swap with you. If your DMs are closed, you will miss incoming swap requests.
-  </AlertDescription>
-</Alert>
+<div className="rounded-lg border border-yellow-300 dark:border-yellow-700 p-4 bg-yellow-100 dark:bg-yellow-900/20 pb-0">
+<span className="block text-sm lg:text-base font-semibold mb-2 text-yellow-800 dark:text-yellow-200">Keep your Telegram DMs open.</span>
+<span className="block text-sm lg:text-base text-foreground">
+  Other users will reach out via Telegram when they want to swap with you. If your DMs are closed, you will miss incoming swap requests.
+</span>
+</div>
 
 <Separator className="my-8" />
 
@@ -118,8 +121,8 @@ You can accept or decline a swap request via Telegram.
 
 ## FAQ & Troubleshooting
 
-<Accordion type="multiple" className="mt-4 space-y-3 pb-1">
-  <AccordionItem value="faq-1" className="rounded-lg border border-border px-4 border-b-0">
+<Accordion type="multiple" className="mt-4 pb-1 border border-border rounded-lg">
+  <AccordionItem value="faq-1" className="px-4">
     <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
       I did not receive a Telegram notification for a swap request.
     </AccordionTrigger>
@@ -128,7 +131,7 @@ You can accept or decline a swap request via Telegram.
     </AccordionContent>
   </AccordionItem>
 
-  <AccordionItem value="faq-2" className="rounded-lg border border-border px-4 border-b-0">
+  <AccordionItem value="faq-2" className="px-4 border-t border-border">
     <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
       My swap request is not showing up for other users.
     </AccordionTrigger>
@@ -137,7 +140,7 @@ You can accept or decline a swap request via Telegram.
     </AccordionContent>
   </AccordionItem>
 
-  <AccordionItem value="faq-3" className="rounded-lg border border-border px-4 border-b-0">
+  <AccordionItem value="faq-3" className="px-4 border-t border-border">
     <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
       I accidentally declined a swap. Can I undo it?
     </AccordionTrigger>
@@ -146,7 +149,7 @@ You can accept or decline a swap request via Telegram.
     </AccordionContent>
   </AccordionItem>
 
-  <AccordionItem value="faq-4" className="rounded-lg border border-border px-4 border-b-0">
+  <AccordionItem value="faq-4" className="px-4 border-t border-border">
     <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
       The <code>/link</code> command is not working in Telegram.
     </AccordionTrigger>
@@ -155,7 +158,7 @@ You can accept or decline a swap request via Telegram.
     </AccordionContent>
   </AccordionItem>
 
-  <AccordionItem value="faq-5" className="rounded-lg border border-border px-4 border-b-0">
+  <AccordionItem value="faq-5" className="px-4 border-t border-border">
     <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
       I cannot sign in with Microsoft.
     </AccordionTrigger>
@@ -171,24 +174,43 @@ You can accept or decline a swap request via Telegram.
 
 ## Tips
 
-<div className="flex flex-col gap-3 mt-4">
-  <div className="rounded-lg border border-border p-4">
-    <span className="block font-semibold text-sm lg:text-base mb-1">Select multiple wanted indexes.</span>
-    <span className="block text-sm text-muted-foreground">The more indexes you are willing to accept, the higher your chances of being matched. Do not limit yourself to just one.</span>
-  </div>
-  <div className="rounded-lg border border-border p-4">
-    <span className="block font-semibold text-sm lg:text-base mb-1">Keep your Telegram DMs open.</span>
-    <span className="block text-sm text-muted-foreground">This is the primary way other users will contact you. A closed DM means missed swaps.</span>
-  </div>
-  <div className="rounded-lg border border-border p-4">
-    <span className="block font-semibold text-sm lg:text-base mb-1">Respond to requests quickly.</span>
-    <span className="block text-sm text-muted-foreground">Indexes are in high demand during STARS. Delayed responses may result in the other party finding an alternative swap.</span>
-  </div>
-  <div className="rounded-lg border border-border p-4">
-    <span className="block font-semibold text-sm lg:text-base mb-1">Do not avoid 3-way swaps.</span>
-    <span className="block text-sm text-muted-foreground">3-way swaps are common and work well. As long as all three parties respond promptly, they complete without issue.</span>
-  </div>
-</div>
+<Accordion type="multiple" className="mt-4 pb-1 border border-border rounded-lg">
+  <AccordionItem value="tip-1" className="px-4">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      Select multiple wanted indexes.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      The more indexes you are willing to accept, the higher your chances of being matched. Do not limit yourself to just one.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="tip-2" className="px-4 border-t border-border">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      Keep your Telegram DMs open.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      This is the primary way other users will contact you. A closed DM means missed swaps.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="tip-3" className="px-4 border-t border-border">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      Respond to requests quickly.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      Indexes are in high demand during STARS. Delayed responses may result in the other party finding an alternative swap.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="tip-4" className="px-4 border-t border-border">
+    <AccordionTrigger className="text-sm lg:text-base font-semibold hover:no-underline">
+      Make use of 3 way Swaps.
+    </AccordionTrigger>
+    <AccordionContent className="text-sm text-muted-foreground">
+      3-way swaps helps more people get their desired indexes. As long as all three parties respond promptly, they complete without issue.
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
 
 <Separator className="my-8" />
 
@@ -198,9 +220,18 @@ You can accept or decline a swap request via Telegram.
 
 <div className="rounded-lg border border-border p-4 mt-4">
   <span className="block text-sm lg:text-base text-muted-foreground">
-    For any feedback, queries, or issues, feel free to reach out to us at{" "}
-    <a href="mailto:swaphub.ntu@gmail.com" className="text-blue-400 hover:text-blue-300 hover:underline">
-      swaphub.ntu@gmail.com
-    </a>
+    For any feedback, queries, or issues, feel free to reach out to us at
   </span>
+  <div className="w-full flex flex-col items-start">
+    <Button variant="link" className="px-0 text-primary-700 dark:text-primary-400 hover:text-primary-400 hover:underline">
+      <a href={env.NEXT_PUBLIC_FEEDBACK_FORM_URL} target="_blank" rel="noopener noreferrer">
+        Feedback Form
+      </a>
+    </Button>
+    <Button variant="link" className="px-0 text-primary-700 dark:text-primary-400 hover:text-primary-400 hover:underline">
+      <a href="mailto:swaphub.ntu@gmail.com" target="_blank" rel="noopener noreferrer">
+        swaphub.ntu@gmail.com
+      </a>
+    </Button>
+  </div>
 </div>

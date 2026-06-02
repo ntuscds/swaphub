@@ -38,6 +38,7 @@ export const env = createEnv({
       .string()
       .default("false")
       .transform((val) => val === "true"),
+    NEXT_PUBLIC_FEEDBACK_FORM_URL: z.string().default(""),
   },
   runtimeEnv: {
     API_KEY: process.env.API_KEY,
@@ -50,6 +51,7 @@ export const env = createEnv({
     NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:
       process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME,
     NEXT_PUBLIC_ALLOW_MOCK_USER: process.env.NEXT_PUBLIC_ALLOW_MOCK_USER,
+    NEXT_PUBLIC_FEEDBACK_FORM_URL: process.env.NEXT_PUBLIC_FEEDBACK_FORM_URL,
 
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
