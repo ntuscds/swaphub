@@ -446,14 +446,6 @@ export async function refreshSession(
     const refreshed = await refreshMicrosoftAccessToken(decryptedRefreshToken);
     const profile = await fetchMicrosoftUser(refreshed.access_token);
     const accountSetup = await getAccountSetup(profile.email);
-    if (accountSetup.type === "not_setup") {
-      _cookies.delete(AUTH_SESSION_COOKIE);
-      _cookies.delete(AUTH_ENCRYPTED_REFRESH_COOKIE);
-      console.warn(
-        `User ${profile.email} is not setup, deleting session and refresh token`
-      );
-      return null;
-    }
     const currentSession = await buildSession(
       profile,
       refreshed.expires_in,
@@ -464,11 +456,6 @@ export async function refreshSession(
       _cookies,
       refreshed.refresh_token ?? authCookies.refresh
     );
-    // _cookies.set(AUTH_SESSION_COOKIE, await signSession(currentSession));
-    // _cookies.set(
-    //   AUTH_ENCRYPTED_REFRESH_COOKIE,
-    //   await encryptValue(refreshed.refresh_token ?? authCookies.refresh)
-    // );
     return currentSession;
   } catch (error) {
     console.error(error);
