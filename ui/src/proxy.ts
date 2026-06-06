@@ -6,6 +6,8 @@ import {
   MicrosoftSessionSchema,
 } from "./lib/microsoft-auth";
 
+const refreshUrl = "/api/auth/refresh";
+
 // Fast parsing, we cannot rely on the crypto library in proxy.
 function parseJwt(token: string) {
   const base64Url = token.split(".")[1];
@@ -38,7 +40,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/onboard", request.url));
   }
   if (!session) {
-    const refreshUrl = "/api/auth/refresh";
     // Should not happen, but just in case.
     if (request.nextUrl.pathname === refreshUrl) {
       return NextResponse.next();
@@ -55,23 +56,29 @@ export async function proxy(request: NextRequest) {
     const jsonSession = parseJwt(session.value);
 
     const sessionParsed = MicrosoftSessionSchema.parse(jsonSession);
+
+    // Check session expiry
+    if (sessionParsed.expiresAt < Date.now()) {
+      return NextResponse.redirect(
+        new URL(
+          `${refreshUrl}?redirect=${request.nextUrl.toString()}`,
+          request.url
+        )
+      );
+    }
+
     if (
-      request.nextUrl.pathname === "/" &&
+      (request.nextUrl.pathname === "/" ||
+        request.nextUrl.pathname === "/onboard") &&
       sessionParsed.accountSetup.type === "complete"
     ) {
       return NextResponse.redirect(new URL("/swap", request.url));
     }
     if (
-      request.nextUrl.pathname === "/swap" &&
+      request.nextUrl.pathname !== "/onboard" &&
       sessionParsed.accountSetup.type !== "complete"
     ) {
       return NextResponse.redirect(new URL("/onboard", request.url));
-    }
-    if (
-      request.nextUrl.pathname === "/onboard" &&
-      sessionParsed.accountSetup.type === "complete"
-    ) {
-      return NextResponse.redirect(new URL("/swap", request.url));
     }
   } catch (error) {
     console.error(error);
