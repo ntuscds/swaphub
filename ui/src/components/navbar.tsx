@@ -100,17 +100,6 @@ export function ProfileMenu({
   } | null;
   mockUser?: string;
 }) {
-  // const profileInitials = useMemo(() => {
-  //   if (!user) {
-  //     return null;
-  //   }
-  //   let profileInitials = user.username;
-  //   if (!profileInitials) {
-  //     return null;
-  //   }
-  //   return getProfileInitials(profileInitials);
-  // }, [user?.username]);
-
   if (!user) {
     return <Button variant="outline">Get Started</Button>;
   }
@@ -182,9 +171,3 @@ export function ProfileMenu({
     </DropdownMenu>
   );
 }
-
-// export function Navbar() {
-//   return (
-
-//   );
-// }

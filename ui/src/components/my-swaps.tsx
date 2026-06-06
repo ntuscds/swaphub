@@ -99,7 +99,7 @@ export function MySwaps({ className }: { className?: string }) {
           );
         })
       ) : (
-        <div className="text-center text-sm lg:text-base xl:text-lg text-muted-foreground p-4">
+        <div className="text-center text-sm lg:text-base text-muted-foreground p-4">
           No requests yet! Click{" "}
           <span className="text-primary-800 dark:text-primary-400">
             New Swap

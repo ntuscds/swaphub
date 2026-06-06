@@ -101,11 +101,7 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
                 My Swaps
               </Link>
             </Button>
-            <Button variant="ghost" className="w-full">
-              <Link href="/about" className="w-full text-start px-2">
-                About
-              </Link>
-            </Button>
+
             <Button variant="ghost" className="w-full">
               <Link href="/help" className="w-full text-start px-2">
                 Help
@@ -119,6 +115,11 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
               >
                 Feedback
               </a>
+            </Button>
+            <Button variant="ghost" className="w-full">
+              <Link href="/about" className="w-full text-start px-2">
+                About
+              </Link>
             </Button>
           </div>
           <SheetFooter>
@@ -149,13 +150,10 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
               <Link href="/swap">
                 <p className="text-sm">My Swaps</p>
               </Link>
-              <Link href="/about">
-                <p className="text-sm">About</p>
-              </Link>
+
               <Link href="/help">
                 <p className="text-sm">Help</p>
               </Link>
-
               <a
                 href={env.NEXT_PUBLIC_FEEDBACK_FORM_URL}
                 target="_blank"
@@ -163,6 +161,9 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
               >
                 Feedback
               </a>
+              <Link href="/about">
+                <p className="text-sm">About</p>
+              </Link>
             </div>
           </div>
           <div className="flex flex-row items-center gap-3">
