@@ -18,7 +18,10 @@ export async function GET(request: Request) {
   const privateKeyPem = env.CONVEX_JWT_PRIVATE_KEY;
 
   let tokenSubject = session.email;
-  if (env.NEXT_PUBLIC_ALLOW_MOCK_USER) {
+  if (
+    session.accountSetup.type === "complete" &&
+    env.NEXT_PUBLIC_ALLOW_MOCK_USER
+  ) {
     const mockEmail = await getMockUserEmailFromCookieHeader(
       request.headers.get("cookie"),
       env.ENCRYPTION_KEY
