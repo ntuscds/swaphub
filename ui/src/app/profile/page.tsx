@@ -48,11 +48,27 @@ function RelinkTelegramButton() {
           window.open(telegramUrl, "_blank");
         }}
       >
-        <svg className="size-3.5" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-          <path d="M128,0C57.307,0,0,57.307,0,128s57.307,128,128,128s128-57.307,128-128S198.693,0,128,0z" fill="#40B3E0"/>
-          <path d="M190.283,73.631L167.421,188.898c0,0-3.197,7.994-11.99,4.157l-52.758-40.448l-19.184-9.272l-32.294-10.872c0,0-4.956-1.758-5.436-5.595c-0.479-3.837,5.595-5.915,5.595-5.915l128.376-50.401C179.73,70.552,190.283,65.957,190.283,73.631z" fill="#FFFFFF"/>
-          <path d="M98.618,187.604c0,0-1.54-0.144-3.459-6.22c-1.918-6.076-11.67-38.05-11.67-38.05l77.537-49.24c0,0,4.477-2.718,4.317,0c0,0,0.799,0.479-1.599,2.717c-2.398,2.238-60.913,54.834-60.913,54.834" fill="#D2E5F1"/>
-          <path d="M122.901,168.115l-20.868,19.026c0,0-1.631,1.238-3.416,0.463l3.996-35.34" fill="#B5CFE4"/>
+        <svg
+          className="size-3.5"
+          viewBox="0 0 256 256"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M128,0C57.307,0,0,57.307,0,128s57.307,128,128,128s128-57.307,128-128S198.693,0,128,0z"
+            fill="#40B3E0"
+          />
+          <path
+            d="M190.283,73.631L167.421,188.898c0,0-3.197,7.994-11.99,4.157l-52.758-40.448l-19.184-9.272l-32.294-10.872c0,0-4.956-1.758-5.436-5.595c-0.479-3.837,5.595-5.915,5.595-5.915l128.376-50.401C179.73,70.552,190.283,65.957,190.283,73.631z"
+            fill="#FFFFFF"
+          />
+          <path
+            d="M98.618,187.604c0,0-1.54-0.144-3.459-6.22c-1.918-6.076-11.67-38.05-11.67-38.05l77.537-49.24c0,0,4.477-2.718,4.317,0c0,0,0.799,0.479-1.599,2.717c-2.398,2.238-60.913,54.834-60.913,54.834"
+            fill="#D2E5F1"
+          />
+          <path
+            d="M122.901,168.115l-20.868,19.026c0,0-1.631,1.238-3.416,0.463l3.996-35.34"
+            fill="#B5CFE4"
+          />
         </svg>
         {isPending ? "Opening Telegram…" : "Re-link Telegram"}
       </Button>
@@ -120,7 +136,11 @@ function EditProfileForm({
         <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
           School
         </label>
-        <Combobox items={schools} value={school} onValueChange={(v) => setSchool(v ?? currentSchool)}>
+        <Combobox
+          items={schools}
+          value={school}
+          onValueChange={(v) => setSchool(v ?? currentSchool)}
+        >
           <ComboboxInput className="h-9" placeholder="Select your school" />
           <ComboboxContent>
             <ComboboxEmpty>No schools found.</ComboboxEmpty>
@@ -143,7 +163,12 @@ function EditProfileForm({
         <Button size="sm" onClick={handleSave} disabled={isPending}>
           <Check className="size-3.5" /> Save
         </Button>
-        <Button size="sm" variant="outline" onClick={onCancel} disabled={isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isPending}
+        >
           <X className="size-3.5" /> Cancel
         </Button>
       </div>
@@ -153,7 +178,10 @@ function EditProfileForm({
 
 export default function ProfilePage() {
   const self = useQuery(api.tasks.getSelf);
-  const requests = useQuery(api.tasks.getAllRequests, self === undefined || self === null ? "skip" : {});
+  const requests = useQuery(
+    api.tasks.getAllRequests,
+    self === undefined || self === null ? "skip" : {}
+  );
   const [isEditing, setIsEditing] = useState(false);
 
   const activeSwapRequests =
@@ -161,7 +189,8 @@ export default function ProfilePage() {
   const matchesFound =
     requests?.filter((r) => r.type === "swapped").length ?? 0;
 
-  const isLoading = self === undefined || (self !== null && requests === undefined);
+  const isLoading =
+    self === undefined || (self !== null && requests === undefined);
   const username = self && "username" in self ? (self.username ?? "") : "";
   const school = self && "school" in self ? (self.school ?? "") : "";
   const telegramHandle = self && "handle" in self ? (self.handle ?? "") : "";
@@ -170,14 +199,13 @@ export default function ProfilePage() {
     <HydrationSafeScrollArea className="h-screen-safe">
       <div className="flex flex-col items-center">
         <div className="flex flex-col gap-6 py-4 lg:py-6 xl:py-8 max-w-2xl w-full px-4 pb-20">
-
           {/* ── Hero card ── */}
           <div className="w-full flex flex-col bg-card border border-border rounded-md overflow-hidden mt-10 lg:mt-0">
             {/* Coloured banner */}
-            <div className="h-16 bg-gradient-to-r from-primary-700 via-primary-500 to-primary-400" />
+            <div className="h-16 bg-linear-to-r from-primary-700 via-primary-500 to-primary-400" />
             {/* Avatar + name row */}
             <div className="px-5 pb-5 -mt-8 flex flex-row items-end gap-4">
-              <div className="size-16 rounded-full border-4 border-card bg-muted overflow-hidden flex-shrink-0">
+              <div className="size-16 rounded-full border-4 border-card bg-muted overflow-hidden shrink-0">
                 {isLoading ? (
                   <Skeleton className="size-full rounded-full" />
                 ) : username ? (
@@ -285,14 +313,20 @@ export default function ProfilePage() {
                 <>
                   {/* Email */}
                   <div className="flex flex-row items-center justify-between gap-4 px-4 py-3 border-b border-border">
-                    <span className="text-sm text-muted-foreground shrink-0">Email</span>
-                    <span className="text-sm font-medium text-right break-all min-w-0">{self?.email ?? "—"}</span>
+                    <span className="text-sm text-muted-foreground shrink-0">
+                      Email
+                    </span>
+                    <span className="text-sm font-medium text-right break-all min-w-0">
+                      {self?.email ?? "—"}
+                    </span>
                   </div>
 
                   {/* Telegram */}
                   <div className="flex flex-col px-4 py-3 gap-3 border-b border-border">
                     <div className="flex flex-row items-center justify-between gap-4">
-                      <span className="text-sm text-muted-foreground shrink-0">Telegram</span>
+                      <span className="text-sm text-muted-foreground shrink-0">
+                        Telegram
+                      </span>
                       <span className="text-sm font-medium text-right break-all min-w-0">
                         {telegramHandle ? `@${telegramHandle}` : "—"}
                       </span>
@@ -311,12 +345,20 @@ export default function ProfilePage() {
                   ) : (
                     <>
                       <div className="flex flex-row items-center justify-between gap-4 px-4 py-3 border-b border-border">
-                        <span className="text-sm text-muted-foreground shrink-0">Username</span>
-                        <span className="text-sm font-medium text-right break-all min-w-0">{username || "—"}</span>
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          Username
+                        </span>
+                        <span className="text-sm font-medium text-right break-all min-w-0">
+                          {username || "—"}
+                        </span>
                       </div>
                       <div className="flex flex-row items-center justify-between gap-4 px-4 py-3">
-                        <span className="text-sm text-muted-foreground shrink-0">School</span>
-                        <span className="text-sm font-medium text-right">{school || "—"}</span>
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          School
+                        </span>
+                        <span className="text-sm font-medium text-right">
+                          {school || "—"}
+                        </span>
                       </div>
                     </>
                   )}
@@ -347,7 +389,6 @@ export default function ProfilePage() {
               </a>
             </div>
           </div>
-
         </div>
       </div>
     </HydrationSafeScrollArea>

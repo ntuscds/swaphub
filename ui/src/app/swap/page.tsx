@@ -5,6 +5,7 @@ import { MySwaps } from "@/components/my-swaps";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/microsoft-auth";
+import Image from "next/image";
 
 export async function SwapRequestModalAsync({ label }: { label?: string }) {
   const courses = await fetchQuery(api.tasks.getCourses, {});
@@ -45,13 +46,23 @@ export default async function Page() {
       </div>
       {/* Desktop View */}
       <div className="py-4">
-        <div className="hidden lg:flex flex-col xl:gap-1 h-64 p-20 items-center justify-center flex-1 border border-border rounded-md bg-card">
-          <h2 className="text-lg lg:text-xl xl:text-2xl text-primary-700 dark:text-primary-400">
-            No Course Selected
-          </h2>
-          <p className="text-sm lg:text-base xl:text-lg text-muted-foreground">
-            Please select a course to view its swaps.
-          </p>
+        <div className="hidden lg:flex flex-col gap-8 h-fit p-12 items-center justify-center flex-1 border border-border rounded-md bg-card">
+          <div className="relative w-full aspect-607/463 max-w-sm">
+            <Image
+              src="/no-course-selected.png"
+              alt="No Course Selected"
+              fill
+              className="object-contain"
+            />
+          </div>
+          <div className="flex flex-col xl:gap-1 items-center justify-center">
+            <h2 className="text-lg lg:text-xl xl:text-2xl text-primary-700 dark:text-primary-400">
+              No Course Selected
+            </h2>
+            <p className="text-sm lg:text-base xl:text-lg text-muted-foreground">
+              Please select a course to view its swaps.
+            </p>
+          </div>
         </div>
       </div>
     </>

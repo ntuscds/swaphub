@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import Image from "next/image";
 
 export function MySwaps({ className }: { className?: string }) {
   const res = useStableQueryWithStatus(api.tasks.getAllRequests);
@@ -99,12 +100,14 @@ export function MySwaps({ className }: { className?: string }) {
           );
         })
       ) : (
-        <div className="text-center text-sm lg:text-base text-muted-foreground p-4">
-          No requests yet! Click{" "}
-          <span className="text-primary-800 dark:text-primary-400">
-            New Swap
-          </span>{" "}
-          to request a swap.
+        <div className="flex flex-col gap-4 items-center justify-center">
+          <div className="text-center text-sm lg:text-base text-muted-foreground p-4">
+            No requests yet! Click{" "}
+            <span className="text-primary-800 dark:text-primary-400">
+              New Swap
+            </span>{" "}
+            to request a swap.
+          </div>
         </div>
       )}
     </div>
