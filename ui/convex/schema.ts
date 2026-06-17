@@ -38,65 +38,6 @@ export default defineSchema({
     .index("by_index_courseId", ["index", "courseId"])
     .index("by_courseId", ["courseId"]),
 
-  course_index_sources: defineTable({
-    indexId: v.id("course_index"),
-    source: v.id("programs"),
-  }).index("by_indexId_source", ["indexId", "source"]),
-
-  course_index_classes: defineTable({
-    indexId: v.id("course_index"),
-    timeFromHour: v.number(),
-    timeFromMinute: v.number(),
-    timeToHour: v.number(),
-    timeToMinute: v.number(),
-    venue: v.string(),
-    day: v.number(),
-    type: v.string(),
-    remarks: v.string(),
-    weeks: v.array(v.number()),
-  }).index("by_indexId", ["indexId"]),
-
-  campuses: defineTable({
-    name: v.string(),
-    mazeMapCampusId: v.number(),
-  }).index("by_name", ["name"]),
-
-  locations: defineTable({
-    name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    building: v.optional(v.string()),
-    floorName: v.optional(v.string()),
-    campusId: v.id("campuses"),
-    latitude: v.number(),
-    longitude: v.number(),
-    z: v.optional(v.number()),
-    mazeMapPoiId: v.number(),
-    mazeMapIdentifier: v.optional(v.string()),
-  })
-    .index("by_campusId", ["campusId"])
-    .index("by_mazeMapPoiId", ["mazeMapPoiId"]),
-
-  location_types: defineTable({
-    name: v.string(),
-  }).index("by_name", ["name"]),
-
-  location_type_locations: defineTable({
-    locationId: v.id("locations"),
-    typeId: v.id("location_types"),
-  }).index("by_locationId_typeId", ["locationId", "typeId"]),
-
-  location_images: defineTable({
-    locationId: v.id("locations"),
-    imageUrl: v.string(),
-  }).index("by_locationId_imageUrl", ["locationId", "imageUrl"]),
-
-  location_alt_names: defineTable({
-    locationId: v.id("locations"),
-    altName: v.string(),
-  })
-    .index("by_locationId", ["locationId"])
-    .index("by_altName", ["altName"]),
-
   // FIndex swap / matching tables
   users: defineTable({
     handle: v.string(),
@@ -106,7 +47,8 @@ export default defineSchema({
     school: v.string(),
   })
     .index("by_handle", ["handle"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_username", ["username"]),
 
   // Telegram user verification
   telegram_user_verification: defineTable({
