@@ -129,30 +129,6 @@ function EditProfileForm({
         : schools[0],
     },
   });
-  // const [username, setUsername] = useState(currentUsername);
-  // const [school, setSchool] = useState<string>(currentSchool);
-  // const [isPending, setIsPending] = useState(false);
-  // const [error, setError] = useState<string | null>(null);
-
-  // async function handleSave() {
-  //   if (!username.trim()) {
-  //     setError("Username must not be empty.");
-  //     return;
-  //   }
-  //   setIsPending(true);
-  //   setError(null);
-  //   try {
-  //     await setProfile({
-  //       username: username.trim(),
-  //       school: school as (typeof schools)[number],
-  //     });
-  //     onSaved();
-  //   } catch (e: unknown) {
-  //     setError(e instanceof Error ? e.message : "Something went wrong.");
-  //   } finally {
-  //     setIsPending(false);
-  //   }
-  // }
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
     void handle({ username: data.username, school: data.school });
@@ -237,62 +213,6 @@ function EditProfileForm({
       </div>
     </form>
   );
-  // return (
-  //   <div className="flex flex-col gap-4 p-4">
-  //     <div className="flex flex-col gap-1.5">
-  //       <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-  //         Username
-  //       </label>
-  //       <Input
-  //         value={username}
-  //         onChange={(e) => setUsername(e.target.value)}
-  //         className="h-9"
-  //         placeholder="Your username"
-  //         maxLength={24}
-  //       />
-  //     </div>
-  //     <div className="flex flex-col gap-1.5">
-  //       <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-  //         School
-  //       </label>
-  //       <Combobox
-  //         items={schools}
-  //         value={school}
-  //         onValueChange={(v) => setSchool(v ?? currentSchool)}
-  //       >
-  //         <ComboboxInput className="h-9" placeholder="Select your school" />
-  //         <ComboboxContent>
-  //           <ComboboxEmpty>No schools found.</ComboboxEmpty>
-  //           <ComboboxList>
-  //             {(item) => (
-  //               <ComboboxItem key={item} value={item}>
-  //                 {item}
-  //               </ComboboxItem>
-  //             )}
-  //           </ComboboxList>
-  //         </ComboboxContent>
-  //       </Combobox>
-  //     </div>
-  //     {error && (
-  //       <Alert variant="destructive">
-  //         <AlertDescription>{error}</AlertDescription>
-  //       </Alert>
-  //     )}
-  //     <div className="flex flex-row gap-2">
-  //       <Button size="sm" onClick={handleSave} disabled={isPending}>
-  //         <Check className="size-3.5" /> Save
-  //       </Button>
-  //       <Button
-  //         size="sm"
-  //         variant="outline"
-  //         onClick={onCancel}
-  //         disabled={isPending}
-  //       >
-  //         <X className="size-3.5" /> Cancel
-  //       </Button>
-  //     </div>
-  //   </div>
-  // );
 }
 
 export default function ProfilePage() {
@@ -383,7 +303,7 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-col gap-1 bg-card border border-border rounded-md p-4">
               <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                Matches Found
+                Swapped
               </span>
               {isLoading ? (
                 <Skeleton className="h-8 w-10" />
