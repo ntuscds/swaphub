@@ -2,7 +2,7 @@ export const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
 
 export function isAllowedUsername(_username: string) {
   const username = _username.trim();
-  if (!/^[a-zA-Z0-9 ]+$/.test(username)) {
+  if (!/^[a-zA-Z0-9 _-]+$/.test(username)) {
     return {
       type: "error" as const,
       message: "Username must be alphanumeric and not empty.",
@@ -30,7 +30,7 @@ export function isAllowedUsername(_username: string) {
 
 export function getDefaultUsername(username: string) {
   // Make sure it's alphanumeric and not empty.
-  username = username.replace(/[^a-zA-Z0-9 ]/g, "");
+  username = username.replace(/[^a-zA-Z0-9 _-]/g, "");
   // Truncate to 24 characters.
   username = username.slice(0, 24);
   // Trim whitespace.

@@ -33,7 +33,7 @@ const FormSchema = z.object({
     .trim()
     .min(1, { message: "Username must not be empty" })
     .max(24, { message: "Username must be <= 24 characters" })
-    .regex(/^[a-zA-Z0-9 ]+$/, {
+    .regex(/^[a-zA-Z0-9 _-]+$/, {
       message: "Username must be alphanumeric and not empty",
     }),
   school: z.enum(schools, { message: "School is required" }),

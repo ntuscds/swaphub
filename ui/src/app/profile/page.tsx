@@ -22,7 +22,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge"; // used in stats cards
 import { getProfileImageUrl } from "@/lib/user";
 import { env } from "@/lib/env";
-import { useConvexActionState } from "@/components/use-convex-mutation-state";
+import {
+  useConvexActionState,
+  useConvexMutationState,
+} from "@/components/use-convex-mutation-state";
+import { Controller, useForm } from "react-hook-form";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 
 function RelinkTelegramButton() {
   const requestLinkTelegramAccount = useAction(
@@ -81,6 +88,18 @@ function RelinkTelegramButton() {
   );
 }
 
+const FormSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(1, { message: "Username must not be empty" })
+    .max(24, { message: "Username must be <= 24 characters" })
+    .regex(/^[a-zA-Z0-9 _-]+$/, {
+      message: "Username must be alphanumeric and not empty",
+    }),
+  school: z.enum(schools, { message: "School is required" }),
+});
+
 function EditProfileForm({
   currentUsername,
   currentSchool,
@@ -93,87 +112,187 @@ function EditProfileForm({
   onSaved: () => void;
 }) {
   const setProfile = useMutation(api.tasks.setProfile);
-  const [username, setUsername] = useState(currentUsername);
-  const [school, setSchool] = useState<string>(currentSchool);
-  const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { handle, error, isSuccess, isPending } = useConvexMutationState(
+    setProfile,
+    {
+      onSuccess: async () => {
+        onSaved();
+      },
+    }
+  );
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      username: currentUsername ?? "",
+      school: schools.includes(currentSchool as (typeof schools)[number])
+        ? (currentSchool as (typeof schools)[number])
+        : schools[0],
+    },
+  });
+  // const [username, setUsername] = useState(currentUsername);
+  // const [school, setSchool] = useState<string>(currentSchool);
+  // const [isPending, setIsPending] = useState(false);
+  // const [error, setError] = useState<string | null>(null);
 
-  async function handleSave() {
-    if (!username.trim()) {
-      setError("Username must not be empty.");
-      return;
-    }
-    setIsPending(true);
-    setError(null);
-    try {
-      await setProfile({
-        username: username.trim(),
-        school: school as (typeof schools)[number],
-      });
-      onSaved();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
-      setIsPending(false);
-    }
+  // async function handleSave() {
+  //   if (!username.trim()) {
+  //     setError("Username must not be empty.");
+  //     return;
+  //   }
+  //   setIsPending(true);
+  //   setError(null);
+  //   try {
+  //     await setProfile({
+  //       username: username.trim(),
+  //       school: school as (typeof schools)[number],
+  //     });
+  //     onSaved();
+  //   } catch (e: unknown) {
+  //     setError(e instanceof Error ? e.message : "Something went wrong.");
+  //   } finally {
+  //     setIsPending(false);
+  //   }
+  // }
+
+  function onSubmit(data: z.infer<typeof FormSchema>) {
+    void handle({ username: data.username, school: data.school });
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-          Username
-        </label>
-        <Input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="h-9"
-          placeholder="Your username"
-          maxLength={24}
-        />
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="flex flex-col gap-4 p-4"
+    >
+      <Controller
+        name="username"
+        control={form.control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <FieldLabel
+              htmlFor="form-rhf-username"
+              className="text-xs text-muted-foreground font-medium uppercase tracking-wide"
+            >
+              Username
+            </FieldLabel>
+            <Input
+              id="form-rhf-username"
+              placeholder="Enter your username"
+              className="h-10"
+              value={field.value}
+              onChange={field.onChange}
+            />
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
+      <Controller
+        name="school"
+        control={form.control}
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <FieldLabel
+              htmlFor="form-rhf-school"
+              className="text-xs text-muted-foreground font-medium uppercase tracking-wide"
+            >
+              School
+            </FieldLabel>
+            <Combobox
+              items={schools}
+              onValueChange={field.onChange}
+              value={field.value}
+            >
+              <ComboboxInput className="h-9" placeholder="Select your school" />
+              <ComboboxContent>
+                <ComboboxEmpty>No schools found.</ComboboxEmpty>
+                <ComboboxList>
+                  {(item) => (
+                    <ComboboxItem key={item} value={item}>
+                      {item}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+          </Field>
+        )}
+      />
+      <div className="flex flex-col gap-2">
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Error!</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="w-full flex">
+          <Button
+            type="submit"
+            className="h-10 w-fit px-4"
+            disabled={isPending || isSuccess}
+          >
+            Done
+          </Button>
+        </div>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-          School
-        </label>
-        <Combobox
-          items={schools}
-          value={school}
-          onValueChange={(v) => setSchool(v ?? currentSchool)}
-        >
-          <ComboboxInput className="h-9" placeholder="Select your school" />
-          <ComboboxContent>
-            <ComboboxEmpty>No schools found.</ComboboxEmpty>
-            <ComboboxList>
-              {(item) => (
-                <ComboboxItem key={item} value={item}>
-                  {item}
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
-        </Combobox>
-      </div>
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      <div className="flex flex-row gap-2">
-        <Button size="sm" onClick={handleSave} disabled={isPending}>
-          <Check className="size-3.5" /> Save
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isPending}
-        >
-          <X className="size-3.5" /> Cancel
-        </Button>
-      </div>
-    </div>
+    </form>
   );
+  // return (
+  //   <div className="flex flex-col gap-4 p-4">
+  //     <div className="flex flex-col gap-1.5">
+  //       <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+  //         Username
+  //       </label>
+  //       <Input
+  //         value={username}
+  //         onChange={(e) => setUsername(e.target.value)}
+  //         className="h-9"
+  //         placeholder="Your username"
+  //         maxLength={24}
+  //       />
+  //     </div>
+  //     <div className="flex flex-col gap-1.5">
+  //       <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+  //         School
+  //       </label>
+  //       <Combobox
+  //         items={schools}
+  //         value={school}
+  //         onValueChange={(v) => setSchool(v ?? currentSchool)}
+  //       >
+  //         <ComboboxInput className="h-9" placeholder="Select your school" />
+  //         <ComboboxContent>
+  //           <ComboboxEmpty>No schools found.</ComboboxEmpty>
+  //           <ComboboxList>
+  //             {(item) => (
+  //               <ComboboxItem key={item} value={item}>
+  //                 {item}
+  //               </ComboboxItem>
+  //             )}
+  //           </ComboboxList>
+  //         </ComboboxContent>
+  //       </Combobox>
+  //     </div>
+  //     {error && (
+  //       <Alert variant="destructive">
+  //         <AlertDescription>{error}</AlertDescription>
+  //       </Alert>
+  //     )}
+  //     <div className="flex flex-row gap-2">
+  //       <Button size="sm" onClick={handleSave} disabled={isPending}>
+  //         <Check className="size-3.5" /> Save
+  //       </Button>
+  //       <Button
+  //         size="sm"
+  //         variant="outline"
+  //         onClick={onCancel}
+  //         disabled={isPending}
+  //       >
+  //         <X className="size-3.5" /> Cancel
+  //       </Button>
+  //     </div>
+  //   </div>
+  // );
 }
 
 export default function ProfilePage() {

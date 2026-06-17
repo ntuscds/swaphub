@@ -1,5 +1,6 @@
 "use client";
 
+import { getConvexErrorMessage } from "@/lib/convex-error";
 import { useCallback, useRef, useState } from "react";
 
 export type UseConvexMutationStateOptions<R> = {
@@ -46,9 +47,7 @@ export function useConvexMutationState<
         optionsRef.current?.onSuccess?.(result);
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : String(err ?? "Request failed")
-        );
+        setError(getConvexErrorMessage(err));
         return undefined;
       } finally {
         setIsPending(false);
@@ -109,9 +108,7 @@ export function useConvexActionState<
         optionsRef.current?.onSuccess?.(result);
         return result;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : String(err ?? "Request failed")
-        );
+        setError(getConvexErrorMessage(err));
         return undefined;
       } finally {
         setIsPending(false);
