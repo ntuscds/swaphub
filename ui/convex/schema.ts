@@ -26,6 +26,7 @@ export default defineSchema({
     isSelfPaced: v.boolean(),
   })
     .index("by_code_ay_semester", ["code", "ay", "semester"])
+    .index("by_ay_semester", ["ay", "semester"])
     .searchIndex("search_text", {
       searchField: "searchText",
       filterFields: ["code", "ay", "semester"],

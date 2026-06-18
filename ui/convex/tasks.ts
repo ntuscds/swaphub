@@ -1,24 +1,12 @@
 import { CurrentAcadYear } from "@/lib/acad";
 import { schools } from "@/lib/types";
-import {
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-} from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import {
-  COMMAND_PREFIX,
-  deserializeAccept,
-  deserializeDecline,
-  getAction,
-  serializeAccept,
-  serializeDecline,
-} from "@/telegram/callbacks";
 import { getAccountSetupFromUser, getAuth, getIdentity } from "./utils";
 import { env } from "@/lib/env-convex";
 import { isAllowedUsername } from "@/lib/user";
+import { getAll } from "convex-helpers/server/relationships";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -106,10 +94,25 @@ export const getAllRequests = query({
   handler: async (ctx) => {
     const { user } = await getAuth(ctx);
 
-    const allMySwappers = await ctx.db
-      .query("swapper")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
+    let [allMySwappers, allCourses] = await Promise.all([
+      ctx.db
+        .query("swapper")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .collect(),
+      ctx.db
+        .query("courses")
+        .withIndex("by_ay_semester", (q) =>
+          q
+            .eq("ay", CurrentAcadYear.ay)
+            .eq("semester", CurrentAcadYear.semester)
+        )
+        .collect(),
+    ]);
+
+    // Remove any swapper requests that doesnt match any course in the current acad year and semester
+    allMySwappers = allMySwappers.filter((swapper) => {
+      return allCourses.some((course) => course._id === swapper.courseId);
+    });
 
     return Promise.all(
       allMySwappers.map(async (request) => {
@@ -149,11 +152,6 @@ export const getAllRequests = query({
                 q.eq("courseId", request.courseId)
               )
               .filter((q) => {
-                // return q.or(
-                //   q.eq(q.field("targetSwapper"), request._id),
-                //   q.eq(q.field("initiator"), request._id),
-                //   q.eq(q.field("middlemanSwapper"), request._id)
-                // );
                 return q.and(
                   q.or(
                     q.eq(q.field("targetSwapper"), request._id),
