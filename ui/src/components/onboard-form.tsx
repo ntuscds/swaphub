@@ -187,7 +187,7 @@ export function VerifyTelegramForm() {
       <Button
         type="button"
         size="lg"
-        className="w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-200 dark:bg-background-800"
+        className="w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-200 dark:bg-background-800 text-foreground"
         disabled={isPending}
         onClick={async () => {
           let rawInitData = undefined;
