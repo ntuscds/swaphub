@@ -4,6 +4,8 @@ export type AcadYear = {
 };
 
 export const CurrentAcadYear: AcadYear = {
-  ay: "25/26",
-  semester: "2",
+  // ay: "25/26",
+  // semester: "2",
+  ay: "26/27",
+  semester: "1",
 };
