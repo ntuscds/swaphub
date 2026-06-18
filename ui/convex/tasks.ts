@@ -1225,10 +1225,7 @@ export const getActiveSwapRequestCount = query({
       )
       .unique();
     if (!mySwapper) {
-      return {
-        activeRequestsCount: 0,
-        hasSwapped: false,
-      };
+      return null;
     }
 
     const activeRequests = await ctx.db

@@ -27,13 +27,18 @@ import { useConvexActionState } from "./use-convex-mutation-state";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertTitle } from "./ui/alert";
+import { toast } from "sonner";
 
 export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
   const [isDisableWarningOpen, setIsDisableWarningOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const toggleSwapRequestAction = useAction(api.actions.toggleSwapRequest);
   const { handle, isPending, isSuccess, error, setError } =
-    useConvexActionState(toggleSwapRequestAction);
+    useConvexActionState(toggleSwapRequestAction, {
+      onError: (error) => {
+        toast.error(`Toggle swap request failed: ${error}`);
+      },
+    });
   const [sheetSide, setSheetSide] = useState<"bottom" | "right">("bottom");
 
   useEffect(() => {
@@ -92,6 +97,10 @@ export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
 
   if (swapRequestState === undefined) {
     return <Skeleton className="w-24 h-7" />;
+  }
+
+  if (swapRequestState === null) {
+    return null;
   }
 
   return (

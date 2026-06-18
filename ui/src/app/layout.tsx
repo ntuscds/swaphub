@@ -202,7 +202,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           </Suspense>
           {children}
         </div>
-        <Toaster />
+        <Toaster richColors />
       </Providers>
     </html>
   );

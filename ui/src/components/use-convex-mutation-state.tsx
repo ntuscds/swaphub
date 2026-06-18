@@ -15,6 +15,10 @@ export type UseConvexActionStateOptions<R> = {
    * Called after a successful action with the server return value.
    */
   onSuccess?: (data: R) => void;
+  /**
+   * Called after a successful action with the server return value.
+   */
+  onError?: (error: string) => void;
 };
 
 /**
@@ -109,6 +113,7 @@ export function useConvexActionState<
         return result;
       } catch (err) {
         setError(getConvexErrorMessage(err));
+        optionsRef.current?.onError?.(getConvexErrorMessage(err));
         return undefined;
       } finally {
         setIsPending(false);
