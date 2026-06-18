@@ -12,7 +12,7 @@ export async function SwapRequestModalAsync({ label }: { label?: string }) {
   return (
     <SwapRequestModal
       courses={courses.map((course) => ({
-        id: course._id,
+        id: course.id,
         code: course.code,
         name: course.name,
       }))}

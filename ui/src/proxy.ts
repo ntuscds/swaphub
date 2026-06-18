@@ -5,6 +5,7 @@ import {
   AUTH_SESSION_COOKIE,
   MicrosoftSessionSchema,
 } from "./lib/microsoft-auth";
+import { ALLOWED_DOMAINS } from "./lib/user";
 
 const refreshUrl = "/api/auth/refresh";
 
@@ -62,6 +63,22 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(
         new URL(
           `${refreshUrl}?redirect=${request.nextUrl.toString()}`,
+          request.url
+        )
+      );
+    }
+
+    // Check email domain. If fail, logout with redirect to /onboard?error=email_not_allowed
+    const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
+      sessionParsed.email.endsWith(domain)
+    );
+    if (!isAllowedDomain) {
+      const callbackUrl = encodeURIComponent(
+        "/onboard?error=email_not_allowed"
+      );
+      return NextResponse.redirect(
+        new URL(
+          `/api/auth/microsoft/logout?callbackUrl=${callbackUrl}`,
           request.url
         )
       );

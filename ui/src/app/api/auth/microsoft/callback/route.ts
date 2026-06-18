@@ -16,6 +16,7 @@ import {
   setSessionCookie,
 } from "@/lib/microsoft-auth";
 import { cookies } from "next/headers";
+import { ALLOWED_DOMAINS } from "@/lib/user";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -67,6 +68,17 @@ export async function GET(request: Request) {
       authCookies.verifier
     );
     const profile = await fetchMicrosoftUser(exchanged.access_token);
+
+    // Verify email domain.
+    const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
+      profile.email.endsWith(domain)
+    );
+    if (!isAllowedDomain) {
+      return NextResponse.redirect(
+        new URL("/onboard?error=email_not_allowed", getBaseUrl(request))
+      );
+    }
+
     const accountSetup = await getAccountSetup(profile.email);
     const session = await buildSession(
       profile,

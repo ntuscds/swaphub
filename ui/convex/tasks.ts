@@ -76,15 +76,25 @@ export const getCourses = query({
   },
   handler: async (ctx, args) => {
     const resolvedAcadYear = resolveAcadYear(args.acadYear);
-    return await ctx.db
+    const courses = await ctx.db
       .query("courses")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("ay"), resolvedAcadYear.ay),
-          q.eq(q.field("semester"), resolvedAcadYear.semester)
-        )
+      // .filter((q) =>
+      //   q.and(
+      //     q.eq(q.field("ay"), resolvedAcadYear.ay),
+      //     q.eq(q.field("semester"), resolvedAcadYear.semester)
+      //   )
+      // )
+      .withIndex("by_ay_semester", (q) =>
+        q
+          .eq("ay", resolvedAcadYear.ay)
+          .eq("semester", resolvedAcadYear.semester)
       )
       .collect();
+    return courses.map((course) => ({
+      id: course._id,
+      code: course.code,
+      name: course.name,
+    }));
   },
 });
 

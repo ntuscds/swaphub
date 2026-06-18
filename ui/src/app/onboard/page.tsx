@@ -9,10 +9,8 @@ import {
   VerifyTelegramForm,
 } from "@/components/onboard-form";
 import { redirect } from "next/navigation";
-import { getDefaultUsername } from "@/lib/user";
+import { ALLOWED_DOMAINS, getDefaultUsername } from "@/lib/user";
 import Image from "next/image";
-
-const ALLOWED_DOMAINS = ["@ntu.edu.sg", "@e.ntu.edu.sg"];
 
 export function PaginationSteps({
   selectedIndex,
@@ -192,7 +190,13 @@ export default async function Page({
   let errorMessages = [];
   const { error } = await searchParams;
   if (error) {
-    errorMessages.push(error);
+    if (error === "email_not_allowed") {
+      errorMessages.push(
+        "Oh no! Please sign in with your @e.ntu.edu.sg account."
+      );
+    } else {
+      errorMessages.push(error);
+    }
   }
 
   const auth = await getAuth();
