@@ -6,7 +6,6 @@ import { Id } from "./_generated/dataModel";
 import { getAccountSetupFromUser, getAuth, getIdentity } from "./utils";
 import { env } from "@/lib/env-convex";
 import { isAllowedUsername } from "@/lib/user";
-import { getAll } from "convex-helpers/server/relationships";
 
 const schoolValidator = v.union(...schools.map((school) => v.literal(school)));
 
@@ -93,6 +92,7 @@ export const getAllRequests = query({
   args: {},
   handler: async (ctx) => {
     const { user } = await getAuth(ctx);
+    const resolvedAcadYear = resolveAcadYear(CurrentAcadYear);
 
     let [allMySwappers, allCourses] = await Promise.all([
       ctx.db
@@ -103,8 +103,8 @@ export const getAllRequests = query({
         .query("courses")
         .withIndex("by_ay_semester", (q) =>
           q
-            .eq("ay", CurrentAcadYear.ay)
-            .eq("semester", CurrentAcadYear.semester)
+            .eq("ay", resolvedAcadYear.ay)
+            .eq("semester", resolvedAcadYear.semester)
         )
         .collect(),
     ]);
@@ -1666,7 +1666,11 @@ export const setProfile = mutation({
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", username))
       .collect();
-    if (existingUsers.length > 0) {
+    if (
+      existingUsers.length > 0 &&
+      // Check if the user is not the owner of the username
+      !existingUsers.some((u) => u._id === user._id)
+    ) {
       throw new ConvexError("Username already taken.");
     }
 
