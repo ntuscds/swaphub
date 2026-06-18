@@ -33,6 +33,9 @@ export const metadata: Metadata = {
   applicationName: "SwapHub",
   authors: [{ name: "SwapHub" }],
   keywords: ["Swap", "Hub", "ntu", "index swapping", "course planning"],
+  icons: {
+    icon: "/favicon.ico",
+  },
   openGraph: {
     title: "SwapHub — Swap Your Indexes Instantly",
     description: "Stop Wasting Time, Use SwapHub!",
