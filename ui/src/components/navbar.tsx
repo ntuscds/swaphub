@@ -1,8 +1,7 @@
 "use client";
 
 import { LogOut, Moon, Plus, Sun, User, UserRound } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
-import { useThemeStore } from "@/components/theme-provider";
+import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,22 +13,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMemo } from "react";
 import { Badge } from "./ui/badge";
 import { env } from "@/lib/env";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { setMockUserEmail } from "@/app/admin/actions";
-import { getProfileImageUrl, getProfileInitials } from "@/lib/user";
+import { getProfileImageUrl } from "@/lib/user";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export function ThemeSwitcher() {
-  const { theme, setTheme } = useThemeStore(
-    useShallow(({ theme, setTheme }) => ({ theme, setTheme }))
-  );
+  const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
 
-  const isLightTheme = theme === "light";
+  // Very irritating hydration issue fix.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  if (!mounted) {
+    return null;
+  }
+  const isLightTheme = resolvedTheme === "light";
 
   return (
     <Button

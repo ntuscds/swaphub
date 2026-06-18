@@ -193,17 +193,19 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={cn(inter.variable)}>
-      <Providers fontClass={inter.variable}>
-        <div className="w-full h-full relative z-10 navbar-height">
-          {/* Navbar */}
-          <Suspense fallback={<Navbar isLoading={true} />}>
-            <Navbar isLoading={false} />
-          </Suspense>
-          {children}
-        </div>
-        <Toaster richColors />
-      </Providers>
+    <html lang={locale} className={cn(inter.variable)} suppressHydrationWarning>
+      <body className={cn(inter.variable, "pt-(--safe-top)")}>
+        <Providers>
+          <div className="w-full h-full relative z-10 navbar-height">
+            {/* Navbar */}
+            <Suspense fallback={<Navbar isLoading={true} />}>
+              <Navbar isLoading={false} />
+            </Suspense>
+            {children}
+          </div>
+          <Toaster richColors />
+        </Providers>
+      </body>
     </html>
   );
 }

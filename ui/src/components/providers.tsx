@@ -19,7 +19,6 @@ import z from "zod";
 import { env } from "@/lib/env";
 import { retrieveRawInitData } from "@tma.js/sdk-react";
 import Script from "next/script";
-import { cn } from "@/lib/utils";
 import posthog from "posthog-js";
 
 type TelegramSafeAreaInset = {
@@ -105,13 +104,7 @@ function useAuthFromProviderMicrosoft() {
   };
 }
 
-export function Providers({
-  children,
-  fontClass,
-}: {
-  children: React.ReactNode;
-  fontClass: string;
-}) {
+export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -168,9 +161,7 @@ export function Providers({
         >
           <QueryClientProvider client={queryClient}>
             {/* <SelfProvider>{children}</SelfProvider> */}
-            <ThemeProvider className={cn(fontClass, "pt-(--safe-top)")}>
-              {children}
-            </ThemeProvider>
+            <ThemeProvider>{children}</ThemeProvider>
           </QueryClientProvider>
         </ConvexProviderWithAuth>
       </QueryClientProvider>
