@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
@@ -34,6 +27,10 @@ type Course = {
   name: string;
 };
 
+function stripZeros(code: string): string {
+  return code.replace(/^([A-Z]+)0+(\d+)$/, "$1$2");
+}
+
 function SelectCourseCommand({
   value,
   onChange,
@@ -58,7 +55,11 @@ function SelectCourseCommand({
         },
         {
           name: "code",
-          weight: 3,
+          weight: 5,
+          getFn: (course) => {
+            const s = [course.code, stripZeros(course.code)];
+            return Array.from(new Set(s));
+          },
         },
       ],
     });
