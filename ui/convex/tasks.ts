@@ -547,6 +547,8 @@ export const getCourseRequestAndMatches = query({
     const wantIndexesSet = new Set(
       allSwapperWants
         .filter((w) => w.swapperId === mySwapper._id)
+        // Ignore your own index.
+        .filter((w) => w.wantIndex !== mySwapper.index)
         .map((w) => w.wantIndex)
     );
 

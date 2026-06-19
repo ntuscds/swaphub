@@ -14,7 +14,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "./ui/command";
-import { ChevronsUpDown, Send } from "lucide-react";
+import { AlertTriangle, ChevronsUpDown, Send } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -43,11 +43,16 @@ function SelectCourseIndexCommand({
   onChange,
   courseIndexes,
   limit,
+  warnings,
 }: {
   value: CourseIndex[];
   onChange: (value: CourseIndex[]) => void;
   courseIndexes: CourseIndex[];
   limit: number;
+  warnings: {
+    type: "your-index";
+    indexId: Id<"course_index">;
+  }[];
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -147,7 +152,18 @@ function SelectCourseIndexCommand({
                 disabled={value?.length >= limit && !isSelected && limit > 1}
               >
                 <div className="py-1.5 px-2 w-full truncate flex flex-row gap-2 justify-between items-center">
-                  <span className="text-sm">{courseIndex.index}</span>
+                  <div className="flex flex-row gap-2 items-center">
+                    <span className="text-sm">{courseIndex.index}</span>
+
+                    {warnings.some(
+                      (w) =>
+                        w.type === "your-index" && w.indexId === courseIndex.id
+                    ) && (
+                      <span className="text-yellow-600 dark:text-yellow-400 text-xs">
+                        You have this, you don't need to request it!
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex flex-row gap-2">
                     {courseIndex.wantCount > 0 && (
@@ -184,12 +200,19 @@ export function SelectCourseIndexCombobox({
   courseIndexes,
   limit,
   disabled,
+  warnings,
+  showInputButtonWarning,
 }: {
   value: CourseIndex[];
   onChange: (value: CourseIndex[]) => void;
   courseIndexes: CourseIndex[];
   limit: number;
   disabled?: boolean;
+  warnings: {
+    type: "your-index";
+    indexId: Id<"course_index">;
+  }[];
+  showInputButtonWarning?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -223,11 +246,16 @@ export function SelectCourseIndexCombobox({
             ref={buttonRef}
           >
             <span
-              className={cn("flex flex-row gap-2", {
+              className={cn("flex flex-row gap-2 items-center", {
                 "text-foreground": value !== null,
                 "text-muted-foreground": value === null,
               })}
             >
+              {showInputButtonWarning && (
+                <span className="text-yellow-600 dark:text-yellow-400">
+                  <AlertTriangle className="size-3.5" />
+                </span>
+              )}
               {value.length > 0
                 ? `${value
                     .slice(0, 3)
@@ -252,6 +280,7 @@ export function SelectCourseIndexCombobox({
           onChange={onChange}
           courseIndexes={courseIndexes}
           limit={limit}
+          warnings={warnings}
         />
       </PopoverContent>
     </Popover>
@@ -336,6 +365,7 @@ export function SwapRequestForm({
       wantIndexIds: defaultWantIndexIds,
     },
   });
+  const yourIndexWatch = form.watch("haveIndexId") as Id<"course_index">;
 
   function onSubmit(data: z.infer<typeof SwapRequestFormSchema>) {
     void setRequest({
@@ -348,6 +378,18 @@ export function SwapRequestForm({
         .map((index) => index.index),
     });
   }
+
+  const wantWarnings = useMemo(() => {
+    if (yourIndexWatch === "") {
+      return [];
+    }
+    return [
+      {
+        type: "your-index",
+        indexId: yourIndexWatch,
+      } as const,
+    ];
+  }, [yourIndexWatch]);
 
   return (
     <form
@@ -373,6 +415,7 @@ export function SwapRequestForm({
                 }}
                 courseIndexes={courseIndexes}
                 limit={1}
+                warnings={[]}
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -386,6 +429,9 @@ export function SwapRequestForm({
           const wantIndexes = courseIndexes.filter((index) =>
             field.value.includes(index.id)
           );
+          const didUserSelectYourIndex = wantWarnings.some((w) =>
+            field.value.includes(w.indexId)
+          );
           return (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="form-rhf-school">
@@ -396,6 +442,8 @@ export function SwapRequestForm({
                 onChange={(value) => field.onChange(value.map((v) => v.id))}
                 courseIndexes={courseIndexes}
                 limit={16}
+                warnings={wantWarnings}
+                showInputButtonWarning={didUserSelectYourIndex}
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
