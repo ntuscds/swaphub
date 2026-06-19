@@ -39,7 +39,7 @@ export default async function Page() {
           <MySwaps />
         </div>
       </div>
-      <div className="lg:hidden fixed bottom-8 right-8">
+      <div className="lg:hidden fixed bottom-12 right-8">
         <Suspense fallback={<SwapRequestModal courses={[]} />}>
           <SwapRequestModalAsync />
         </Suspense>

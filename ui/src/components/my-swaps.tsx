@@ -8,7 +8,6 @@ import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { useStableQueryWithStatus } from "./use-stable-query";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import Image from "next/image";
 
 export function MySwaps({ className }: { className?: string }) {
   const res = useStableQueryWithStatus(api.tasks.getAllRequests);
