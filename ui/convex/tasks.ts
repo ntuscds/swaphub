@@ -1832,46 +1832,46 @@ function nameMockEmail(email: string, number: number) {
   return `MOCK_${number}:${email}`;
 }
 
-export const getAllMockAccounts = query({
-  args: {},
-  handler: async (ctx) => {
-    const { user } = await getAuth(ctx);
-    const realEmail = user.email.replaceAll(/^MOCK_\d+:/g, "");
+// export const getAllMockAccounts = query({
+//   args: {},
+//   handler: async (ctx) => {
+//     const { user } = await getAuth(ctx);
+//     const realEmail = user.email.replaceAll(/^MOCK_\d+:/g, "");
 
-    const accounts = await ctx.db.query("users").collect();
-    return accounts.filter(
-      (u) => u.email.startsWith("MOCK_") && u.email.endsWith(`:${realEmail}`)
-    );
-  },
-});
+//     const accounts = await ctx.db.query("users").collect();
+//     return accounts.filter(
+//       (u) => u.email.startsWith("MOCK_") && u.email.endsWith(`:${realEmail}`)
+//     );
+//   },
+// });
 
-export const duplicateAccount = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const { user } = await getAuth(ctx);
+// export const duplicateAccount = mutation({
+//   args: {},
+//   handler: async (ctx) => {
+//     const { user } = await getAuth(ctx);
 
-    const realEmail = user.email.replaceAll(/^MOCK_\d+:/g, "");
-    const realUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", realEmail))
-      .first();
-    if (!realUser) {
-      throw new ConvexError("Real user not found");
-    }
+//     const realEmail = user.email.replaceAll(/^MOCK_\d+:/g, "");
+//     const realUser = await ctx.db
+//       .query("users")
+//       .withIndex("by_email", (q) => q.eq("email", realEmail))
+//       .first();
+//     if (!realUser) {
+//       throw new ConvexError("Real user not found");
+//     }
 
-    const countUsers = await ctx.db.query("users").collect();
-    const existingUsers = countUsers.filter(
-      (u) => u.email.startsWith("MOCK_") && u.email.endsWith(`:${realEmail}`)
-    );
-    const newEmail = nameMockEmail(realEmail, existingUsers.length + 1);
-    const newHandle = `${realUser.handle} (${existingUsers.length + 1})`;
-    const newUsername = `${realUser.username} (${existingUsers.length + 1})`;
-    await ctx.db.insert("users", {
-      email: newEmail,
-      handle: newHandle,
-      username: newUsername,
-      telegramUserId: realUser.telegramUserId,
-      school: "CCDS",
-    });
-  },
-});
+//     const countUsers = await ctx.db.query("users").collect();
+//     const existingUsers = countUsers.filter(
+//       (u) => u.email.startsWith("MOCK_") && u.email.endsWith(`:${realEmail}`)
+//     );
+//     const newEmail = nameMockEmail(realEmail, existingUsers.length + 1);
+//     const newHandle = `${realUser.handle} (${existingUsers.length + 1})`;
+//     const newUsername = `${realUser.username} (${existingUsers.length + 1})`;
+//     await ctx.db.insert("users", {
+//       email: newEmail,
+//       handle: newHandle,
+//       username: newUsername,
+//       telegramUserId: realUser.telegramUserId,
+//       school: "CCDS",
+//     });
+//   },
+// });

@@ -1,11 +1,10 @@
 "use client";
 
-import { LogOut, Moon, Plus, Sun, User, UserRound } from "lucide-react";
+import { LogOut, Moon, Sun, User, UserRound } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -13,12 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "./ui/badge";
 import { env } from "@/lib/env";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useStableQueryWithStatus } from "./use-stable-query";
-import { setMockUserEmail } from "@/app/admin/actions";
 import { getProfileImageUrl } from "@/lib/user";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -52,48 +46,48 @@ export function ThemeSwitcher() {
   );
 }
 
-export function MockAccountsMenu({ mockUser }: { mockUser?: string }) {
-  const mockAccounts = useStableQueryWithStatus(
-    api.tasks.getAllMockAccounts,
-    {}
-  );
-  const duplicateAccount = useMutation(api.tasks.duplicateAccount);
-  return (
-    <DropdownMenuGroup>
-      <DropdownMenuLabel className="font-normal">
-        Mock Accounts <Badge variant="secondary">Temporary</Badge>
-      </DropdownMenuLabel>
-      <DropdownMenuCheckboxItem
-        checked={mockUser === undefined}
-        onClick={async () => {
-          const formData = new FormData();
-          await setMockUserEmail(formData);
-          window.location.reload();
-        }}
-      >
-        Default Account
-      </DropdownMenuCheckboxItem>
-      {mockAccounts.data?.map((account) => (
-        <DropdownMenuCheckboxItem
-          key={account.email}
-          checked={account.email === mockUser}
-          onClick={async () => {
-            const formData = new FormData();
-            formData.set("mockUserEmail", account.email);
-            await setMockUserEmail(formData);
-            window.location.reload();
-          }}
-        >
-          {account.email}
-        </DropdownMenuCheckboxItem>
-      ))}
-      <DropdownMenuItem onClick={() => duplicateAccount({})}>
-        <Plus className="size-4" />
-        New Mock Account
-      </DropdownMenuItem>
-    </DropdownMenuGroup>
-  );
-}
+// export function MockAccountsMenu({ mockUser }: { mockUser?: string }) {
+//   const mockAccounts = useStableQueryWithStatus(
+//     api.tasks.getAllMockAccounts,
+//     {}
+//   );
+//   const duplicateAccount = useMutation(api.tasks.duplicateAccount);
+//   return (
+//     <DropdownMenuGroup>
+//       <DropdownMenuLabel className="font-normal">
+//         Mock Accounts <Badge variant="secondary">Temporary</Badge>
+//       </DropdownMenuLabel>
+//       <DropdownMenuCheckboxItem
+//         checked={mockUser === undefined}
+//         onClick={async () => {
+//           const formData = new FormData();
+//           await setMockUserEmail(formData);
+//           window.location.reload();
+//         }}
+//       >
+//         Default Account
+//       </DropdownMenuCheckboxItem>
+//       {mockAccounts.data?.map((account) => (
+//         <DropdownMenuCheckboxItem
+//           key={account.email}
+//           checked={account.email === mockUser}
+//           onClick={async () => {
+//             const formData = new FormData();
+//             formData.set("mockUserEmail", account.email);
+//             await setMockUserEmail(formData);
+//             window.location.reload();
+//           }}
+//         >
+//           {account.email}
+//         </DropdownMenuCheckboxItem>
+//       ))}
+//       <DropdownMenuItem onClick={() => duplicateAccount({})}>
+//         <Plus className="size-4" />
+//         New Mock Account
+//       </DropdownMenuItem>
+//     </DropdownMenuGroup>
+//   );
+// }
 
 export function ProfileMenu({
   user,
@@ -150,9 +144,9 @@ export function ProfileMenu({
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {env.NEXT_PUBLIC_ALLOW_MOCK_USER && (
+        {/* {env.NEXT_PUBLIC_ALLOW_MOCK_USER && (
           <MockAccountsMenu mockUser={mockUser} />
-        )}
+        )} */}
 
         <DropdownMenuSeparator />
         <DropdownMenuItem
