@@ -160,7 +160,10 @@ function SelectCourseIndexCommand({
                         w.type === "your-index" && w.indexId === courseIndex.id
                     ) && (
                       <span className="text-yellow-600 dark:text-yellow-400 text-xs">
-                        You have this, you don't need to request it!
+                        <span className="block lg:hidden">You have this!</span>
+                        <span className="hidden lg:block">
+                          You have this, you don't need to request it!
+                        </span>
                       </span>
                     )}
                   </div>
