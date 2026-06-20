@@ -452,11 +452,10 @@ export async function refreshSession(
       refreshed.expires_in,
       accountSetup
     );
-    setSessionCookie(_cookies, currentSession);
-    setRefreshTokenCookie(
-      _cookies,
-      refreshed.refresh_token ?? authCookies.refresh
-    );
+    await setSessionCookie(_cookies, currentSession);
+    if (refreshed.refresh_token) {
+      await setRefreshTokenCookie(_cookies, refreshed.refresh_token);
+    }
     return currentSession;
   } catch (error) {
     console.error(error);

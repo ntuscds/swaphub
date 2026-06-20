@@ -5,9 +5,10 @@ import { SwapRequestModal } from "@/components/swap-request-modal";
 import { MySwaps } from "@/components/my-swaps";
 import { Suspense } from "react";
 import type { PropsWithChildren } from "react";
+import { getCourses } from "@/lib/courses";
 
 export async function SwapRequestModalAsync({ label }: { label?: string }) {
-  const courses = await fetchQuery(api.tasks.getCourses, {});
+  const courses = await getCourses();
   return (
     <SwapRequestModal
       courses={courses.map((course) => ({

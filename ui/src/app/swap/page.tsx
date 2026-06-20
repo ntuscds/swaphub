@@ -6,9 +6,10 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/microsoft-auth";
 import Image from "next/image";
+import { getCourses } from "@/lib/courses";
 
 export async function SwapRequestModalAsync({ label }: { label?: string }) {
-  const courses = await fetchQuery(api.tasks.getCourses, {});
+  const courses = await getCourses();
   return (
     <SwapRequestModal
       courses={courses.map((course) => ({

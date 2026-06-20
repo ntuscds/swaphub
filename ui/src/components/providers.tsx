@@ -150,10 +150,8 @@ export function Providers({
           client={convex}
           useAuth={useAuthFromProviderMicrosoft}
         >
-          <QueryClientProvider client={queryClient}>
-            {/* <SelfProvider>{children}</SelfProvider> */}
-            <ThemeProvider>{children}</ThemeProvider>
-          </QueryClientProvider>
+          {/* <SelfProvider>{children}</SelfProvider> */}
+          <ThemeProvider>{children}</ThemeProvider>
         </ConvexProviderWithAuth>
       </QueryClientProvider>
     </>

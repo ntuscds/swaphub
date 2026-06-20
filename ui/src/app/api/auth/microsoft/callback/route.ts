@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       new URL(callbackUrl, getBaseUrl(request))
     );
     clearAuthFlowCookies(_cookies);
-    setSessionCookie(_cookies, session);
+    await setSessionCookie(_cookies, session);
     if (exchanged.refresh_token) {
       await setRefreshTokenCookie(_cookies, exchanged.refresh_token);
     } else {
