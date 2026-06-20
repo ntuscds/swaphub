@@ -1,23 +1,15 @@
 "use client";
+
 import {
   QueryClient,
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "./theme-provider";
 import z from "zod";
 import { env } from "@/lib/env";
-import { retrieveRawInitData } from "@tma.js/sdk-react";
 import Script from "next/script";
 import posthog from "posthog-js";
 
@@ -44,25 +36,6 @@ declare global {
     };
   }
 }
-
-// function applyTelegramSafeArea() {
-//   if (typeof window === "undefined") return;
-//   const webApp = window.Telegram?.WebApp;
-//   if (!webApp) return;
-//   const top =
-//     webApp.contentSafeAreaInset?.top ?? webApp.safeAreaInset?.top ?? 0;
-//   const bottom =
-//     webApp.contentSafeAreaInset?.bottom ?? webApp.safeAreaInset?.bottom ?? 0;
-//   const left =
-//     webApp.contentSafeAreaInset?.left ?? webApp.safeAreaInset?.left ?? 0;
-//   const right =
-//     webApp.contentSafeAreaInset?.right ?? webApp.safeAreaInset?.right ?? 0;
-//   const root = document.documentElement;
-//   root.style.setProperty("--safe-top", `${top}px`);
-//   root.style.setProperty("--safe-bottom", `${bottom}px`);
-//   root.style.setProperty("--safe-left", `${left}px`);
-//   root.style.setProperty("--safe-right", `${right}px`);
-// }
 
 const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL);
 
@@ -135,7 +108,7 @@ export function Providers({
     posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
       api_host: "/relay-AQvm",
       ui_host: env.NEXT_PUBLIC_POSTHOG_HOST,
-      defaults: "2025-11-30",
+      defaults: "2026-01-30",
     });
   }, [user]);
 
