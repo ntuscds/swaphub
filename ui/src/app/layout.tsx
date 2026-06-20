@@ -4,6 +4,7 @@ import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./global.css";
+import { verify as jwtVerify } from "jsonwebtoken";
 import { Providers } from "@/components/providers";
 import { ProfileMenu, ThemeSwitcher } from "@/components/navbar";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import {
   AUTH_SESSION_COOKIE,
+  fromJwtPayloadToSession,
   getAuth,
   MicrosoftSessionSchema,
 } from "@/lib/microsoft-auth";
@@ -206,10 +208,9 @@ export default async function RootLayout({ children }: PropsWithChildren) {
     | undefined = undefined;
   if (session) {
     try {
-      const sessionParsed = MicrosoftSessionSchema.parse(
-        JSON.parse(session.value)
-      );
-      if (sessionParsed.accountSetup.type !== "not_setup") {
+      const parsedJwt = jwtVerify(session.value, env.ENCRYPTION_KEY);
+      const sessionParsed = fromJwtPayloadToSession(parsedJwt);
+      if (sessionParsed && sessionParsed.accountSetup.type !== "not_setup") {
         user = {
           id: sessionParsed.accountSetup.id,
           email: sessionParsed.email,

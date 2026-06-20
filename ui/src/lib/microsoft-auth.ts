@@ -346,7 +346,7 @@ export async function signSession(session: MicrosoftSession) {
   });
 }
 
-function fromJwtPayloadToSession(
+export function fromJwtPayloadToSession(
   payload: JwtPayload | string
 ): MicrosoftSession | null {
   if (!payload || typeof payload === "string") return null;
