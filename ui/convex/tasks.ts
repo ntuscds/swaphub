@@ -64,6 +64,7 @@ export const getAccountSetup = query({
       };
     }
     return {
+      id: user._id,
       type: getAccountSetupFromUser(user),
       username: user.username,
     };

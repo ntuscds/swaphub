@@ -104,7 +104,17 @@ function useAuthFromProviderMicrosoft() {
   };
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -127,7 +137,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
       ui_host: env.NEXT_PUBLIC_POSTHOG_HOST,
       defaults: "2025-11-30",
     });
-  }, []);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    posthog.identify(user.id, {
+      email: user.email,
+      name: user.name,
+    });
+  }, [user]);
 
   return (
     <>

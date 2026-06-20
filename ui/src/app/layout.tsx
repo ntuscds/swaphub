@@ -9,7 +9,11 @@ import { ProfileMenu, ThemeSwitcher } from "@/components/navbar";
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { getAuth } from "@/lib/microsoft-auth";
+import {
+  AUTH_SESSION_COOKIE,
+  getAuth,
+  MicrosoftSessionSchema,
+} from "@/lib/microsoft-auth";
 import { getMockUserEmailFromCookieStore } from "@/lib/mock-user";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
@@ -72,10 +76,9 @@ export const viewport: Viewport = {
 export async function Navbar({ isLoading }: { isLoading: boolean }) {
   const auth = isLoading ? null : await getAuth();
   const cookieStore = await cookies();
-  const mockUser = await getMockUserEmailFromCookieStore(
-    cookieStore,
-    env.ENCRYPTION_KEY
-  );
+  const mockUser = env.NEXT_PUBLIC_ALLOW_MOCK_USER
+    ? await getMockUserEmailFromCookieStore(cookieStore, env.ENCRYPTION_KEY)
+    : null;
   return (
     <>
       <Sheet>
@@ -191,11 +194,37 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
 
 export default async function RootLayout({ children }: PropsWithChildren) {
   const locale = await getLocale();
+  const _cookies = await cookies();
+
+  const session = _cookies.get(AUTH_SESSION_COOKIE);
+  let user:
+    | {
+        id: string;
+        email: string;
+        name: string;
+      }
+    | undefined = undefined;
+  if (session) {
+    try {
+      const sessionParsed = MicrosoftSessionSchema.parse(
+        JSON.parse(session.value)
+      );
+      if (sessionParsed.accountSetup.type !== "not_setup") {
+        user = {
+          id: sessionParsed.accountSetup.id,
+          email: sessionParsed.email,
+          name: sessionParsed.accountSetup.username,
+        };
+      }
+    } catch (error) {
+      console.warn(error);
+    }
+  }
 
   return (
     <html lang={locale} className={cn(inter.variable)} suppressHydrationWarning>
       <body className={cn(inter.variable, "pt-(--safe-top)")}>
-        <Providers>
+        <Providers user={user}>
           <div className="w-full h-full relative z-10 navbar-height">
             {/* Navbar */}
             <Suspense fallback={<Navbar isLoading={true} />}>

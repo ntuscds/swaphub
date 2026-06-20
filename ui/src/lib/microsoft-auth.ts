@@ -58,6 +58,7 @@ export const MicrosoftSessionSchema = z.object({
         z.literal("school_not_setup"),
         z.literal("complete"),
       ]),
+      id: z.string(),
       username: z.string(),
     }),
   ]),
