@@ -207,10 +207,10 @@ export function Chat(props: ChatProps) {
   return (
     <div className="w-full max-w-[1440px] gap-0 rounded-lg border border-border bg-transparent lg:border-2">
       <div className="flex flex-row px-4 items-center gap-4 rounded-t-lg border-b bg-card py-4 lg:border-b-2">
-        <img src="/favicon.ico" alt="SwapHub" className="size-12" />
+        <img src="/monkey.png" alt="SwapHub" className="size-12 rounded-md" />
         <div className="flex flex-col">
           <h2 className="text-lg font-bold">Spam AF</h2>
-          <p className="text-sm text-muted-foreground">69420 Messages</p>
+          <p className="text-sm text-muted-foreground">676767 Messages</p>
         </div>
       </div>
 
@@ -260,10 +260,24 @@ export function Chat(props: ChatProps) {
       </div>
 
       <div className="rounded-b-lg border-t bg-card p-4 lg:border-t-2">
-        <form className="flex w-full items-end gap-4">
+        <form
+          className="flex w-full items-end gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setMessages((currentMessages) =>
+              appendMessage(currentMessages, {
+                id: nextMessageId++,
+                author: "You",
+                body: draft,
+                isSelf: true,
+              })
+            );
+            setDraft("");
+          }}
+        >
           <Input
             value={draft}
-            onChange={(event) => setDraft("")}
+            onChange={(event) => setDraft(event.target.value)}
             placeholder="Write a message..."
           />
           <Button type="submit" size="lg" className="shrink-0">
