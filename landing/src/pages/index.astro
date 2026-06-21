@@ -144,7 +144,7 @@ const TEAM = [
       <div class="relative w-full flex flex-row max-w-ui">
         <div
           id="hero-section-animation-sm"
-          class="absolute top-1/7 left-0 w-full h-3/7 xl:hidden overflow-visible pointer-events-none"
+          class="absolute top-1/7 left-0 w-full h-3/7 xl:hidden overflow-hidden pointer-events-none"
         >
           <div id="hero-plane-sm-1" class="absolute will-change-transform">
             <svg
@@ -166,7 +166,10 @@ const TEAM = [
                 fill="#172554"></path>
             </svg>
           </div>
-          <div id="hero-plane-sm-2" class="absolute will-change-transform">
+          <div
+            id="hero-plane-sm-2"
+            class="absolute overflow-hidden will-change-transform"
+          >
             <svg
               width="98"
               height="56"
@@ -544,7 +547,7 @@ const TEAM = [
               >
                 <div
                   id="cta-section-animation-sm"
-                  class="absolute top-2/7 left-0 w-full h-3/7 xl:hidden overflow-visible pointer-events-none"
+                  class="absolute top-2/7 left-0 w-full h-3/7 xl:hidden overflow-hidden pointer-events-none"
                 >
                   <div
                     id="cta-plane-sm-1"
@@ -571,7 +574,7 @@ const TEAM = [
                   </div>
                   <div
                     id="cta-plane-sm-2"
-                    class="absolute will-change-transform"
+                    class="absolute will-change-transform overflow-hidden"
                   >
                     <svg
                       width="97"
