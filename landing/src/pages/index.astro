@@ -143,6 +143,51 @@ const TEAM = [
     <main class="relative z-10 flex flex-col gap-12 items-center w-full">
       <div class="relative w-full flex flex-row max-w-ui">
         <div
+          id="hero-section-animation-sm"
+          class="absolute top-1/7 left-0 w-full h-3/7 xl:hidden overflow-visible pointer-events-none"
+        >
+          <div id="hero-plane-sm-1" class="absolute will-change-transform">
+            <svg
+              width="98"
+              height="56"
+              viewBox="0 0 196 112"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M56.5963 55.5207L23.2302 0L193.842 55.5207L0 110.079L56.5963 55.5207Z"
+                fill="#1E3B8A"></path>
+              <path
+                d="M0 110.079L54.774 55.5205H194.87L0 110.079Z"
+                fill="#172554"></path>
+              <path
+                d="M25.7441 65.8602L55.5292 57.1194L25.7443 45.2935L25.7441 65.8602Z"
+                fill="#172554"></path>
+            </svg>
+          </div>
+          <div id="hero-plane-sm-2" class="absolute will-change-transform">
+            <svg
+              width="98"
+              height="56"
+              viewBox="0 0 196 112"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M56.5963 55.5207L23.2302 0L193.842 55.5207L0 110.079L56.5963 55.5207Z"
+                fill="#1E3B8A"></path>
+              <path
+                d="M0 110.079L54.774 55.5205H194.87L0 110.079Z"
+                fill="#172554"></path>
+              <path
+                d="M25.7441 65.8602L55.5292 57.1194L25.7443 45.2935L25.7441 65.8602Z"
+                fill="#172554"></path>
+            </svg>
+          </div>
+        </div>
+        <div
           class="absolute top-0 left-0 w-full h-full hidden xl:block overflow-visible pointer-events-none"
           id="hero-section-animation-lg"
         >
@@ -495,10 +540,61 @@ const TEAM = [
                 </div>
               </section>
               <section
-                class="w-full flex flex-col gap-8 items-center max-w-ui py-16 md:py-20 lg:py-24 px-8 md:px-12 lg:px-16 z-10"
+                class="relative w-full flex flex-col gap-8 items-center max-w-ui py-16 md:py-20 lg:py-24 px-8 md:px-12 lg:px-16 z-10"
               >
+                <div
+                  id="cta-section-animation-sm"
+                  class="absolute top-2/7 left-0 w-full h-3/7 xl:hidden overflow-visible pointer-events-none"
+                >
+                  <div
+                    id="cta-plane-sm-1"
+                    class="absolute will-change-transform"
+                  >
+                    <svg
+                      width="97"
+                      height="55"
+                      viewBox="0 0 193 110"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M136.537 54.7458L169.438 0L1.20723 54.7458L192.344 108.542L136.537 54.7458Z"
+                        fill="#861336"></path>
+                      <path
+                        d="M192.344 108.542L138.334 54.7451H0.193497L192.344 108.542Z"
+                        fill="#4D0519"></path>
+                      <path
+                        d="M166.958 64.9408L137.589 56.322L166.958 44.6611L166.958 64.9408Z"
+                        fill="#4D0519"></path>
+                    </svg>
+                  </div>
+                  <div
+                    id="cta-plane-sm-2"
+                    class="absolute will-change-transform"
+                  >
+                    <svg
+                      width="97"
+                      height="55"
+                      viewBox="0 0 193 110"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M136.537 54.7458L169.438 0L1.20723 54.7458L192.344 108.542L136.537 54.7458Z"
+                        fill="#861336"></path>
+                      <path
+                        d="M192.344 108.542L138.334 54.7451H0.193497L192.344 108.542Z"
+                        fill="#4D0519"></path>
+                      <path
+                        d="M166.958 64.9408L137.589 56.322L166.958 44.6611L166.958 64.9408Z"
+                        fill="#4D0519"></path>
+                    </svg>
+                  </div>
+                </div>
                 <header
-                  class="flex flex-col items-center gap-1 lg:gap-3 text-center max-w-3xl"
+                  class="flex flex-col items-center gap-1 lg:gap-3 text-center max-w-3xl z-10"
                 >
                   <span
                     class="text-primary-500 font-semibold text-xs md:text-sm lg:text-base xl:text-lg uppercase"
@@ -514,7 +610,7 @@ const TEAM = [
                   </h2>
                 </header>
                 <div
-                  class="flex flex-col lg:flex-row gap-2 items-center pb-48 lg:pb-72"
+                  class="flex flex-col lg:flex-row gap-2 items-center pb-48 lg:pb-72 z-10"
                 >
                   <a
                     href="https://t.me/swaphub_ntu_bot/app"
@@ -704,6 +800,160 @@ const TEAM = [
             rx: (width * 2) / 3,
             ry: height / 2,
           }),
+        });
+
+        const initSmallPlanePathAnimation = ({
+          containerId,
+          planeConfigs,
+          direction = "ltr",
+          planeWidth = 98,
+          pathDurationMs = 8000,
+          rotationOffset = 0,
+        }) => {
+          const smQuery = window.matchMedia("(max-width: 1279px)");
+
+          const container = document.getElementById(containerId);
+          if (!container) return;
+
+          const randomCoeff = () => Math.random() * 2 - 1;
+
+          const createPathParams = () => ({
+            a: randomCoeff(),
+            b: randomCoeff(),
+            c: randomCoeff(),
+          });
+
+          const toTheta = (x, width) => (x / width) * (2 * Math.PI);
+
+          const pathY = (x, width, params) => {
+            const theta = toTheta(x, width);
+            return (
+              (1 / 3) * Math.sin(params.a * theta) +
+              (1 / 3) * Math.sin(params.b * theta) +
+              (1 / 3) * Math.sin(params.c * theta)
+            );
+          };
+
+          const pathDerivative = (x, width, params) => {
+            const theta = toTheta(x, width);
+            const dThetaDx = (2 * Math.PI) / width;
+            return (
+              dThetaDx *
+              ((1 / 3) * params.a * Math.cos(params.a * theta) +
+                (1 / 3) * params.b * Math.cos(params.b * theta) +
+                (1 / 3) * params.c * Math.cos(params.c * theta))
+            );
+          };
+
+          const applyPlaneTransform = (plane, px, py, rotationDeg) => {
+            plane.style.left = `${px}px`;
+            plane.style.top = `${py}px`;
+            plane.style.transform = `translate(-50%, -50%) rotate(${rotationDeg}deg)`;
+          };
+
+          const getPathBounds = (width) => {
+            const xStart =
+              direction === "ltr" ? -planeWidth : width + planeWidth;
+            const xEnd = direction === "ltr" ? width + planeWidth : -planeWidth;
+            return { xStart, xEnd, pathWidth: xEnd - xStart };
+          };
+
+          const getRotation = (px, width, height, params) => {
+            const { pathWidth } = getPathBounds(width);
+            const amplitude = height * 0.45;
+            const dydx = pathDerivative(px, width, params);
+            const dydt = amplitude * dydx * pathWidth;
+            return (
+              (Math.atan2(dydt, pathWidth) * 180) / Math.PI + rotationOffset
+            );
+          };
+
+          for (const { id, delayMs } of planeConfigs) {
+            const plane = document.getElementById(id);
+            if (!plane) continue;
+
+            let state = "delay";
+            let pathParams = createPathParams();
+            let animStartTime = 0;
+            let pauseEndTime = 0;
+            let delayEndTime = performance.now() + delayMs;
+
+            const tick = (now) => {
+              if (!smQuery.matches) {
+                requestAnimationFrame(tick);
+                return;
+              }
+
+              const { width, height } = container.getBoundingClientRect();
+              const midY = height / 2;
+              const amplitude = height * 0.45;
+              const { xStart, pathWidth } = getPathBounds(width);
+
+              if (state === "delay") {
+                if (now < delayEndTime) {
+                  applyPlaneTransform(
+                    plane,
+                    xStart,
+                    midY,
+                    getRotation(xStart, width, height, pathParams)
+                  );
+                  requestAnimationFrame(tick);
+                  return;
+                }
+                state = "animate";
+                animStartTime = now;
+                pathParams = createPathParams();
+              }
+
+              if (state === "pause") {
+                if (now < pauseEndTime) {
+                  requestAnimationFrame(tick);
+                  return;
+                }
+                state = "animate";
+                animStartTime = now;
+                pathParams = createPathParams();
+              }
+
+              const elapsed = now - animStartTime;
+              const t = clamp(elapsed / pathDurationMs, 0, 1);
+              const px = xStart + t * pathWidth;
+              const py = midY + amplitude * pathY(px, width, pathParams);
+              const rotation = getRotation(px, width, height, pathParams);
+
+              applyPlaneTransform(plane, px, py, rotation);
+
+              if (t >= 1) {
+                state = "pause";
+                pauseEndTime = now + Math.random() * 1000;
+              }
+
+              requestAnimationFrame(tick);
+            };
+
+            requestAnimationFrame(tick);
+          }
+        };
+
+        initSmallPlanePathAnimation({
+          containerId: "hero-section-animation-sm",
+          planeConfigs: [
+            { id: "hero-plane-sm-1", delayMs: 0 },
+            { id: "hero-plane-sm-2", delayMs: 2000 },
+          ],
+          direction: "ltr",
+          planeWidth: 98,
+        });
+
+        initSmallPlanePathAnimation({
+          containerId: "cta-section-animation-sm",
+          planeConfigs: [
+            { id: "cta-plane-sm-1", delayMs: 0 },
+            { id: "cta-plane-sm-2", delayMs: 2000 },
+          ],
+          direction: "rtl",
+          planeWidth: 97,
+          rotationOffset: 180,
         });
       })();
     </script>
