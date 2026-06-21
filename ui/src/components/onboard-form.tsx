@@ -170,7 +170,7 @@ export function VerifyTelegramForm() {
   let url: string | undefined;
   if (data) {
     const command = `/link ${data.email} ${data.code}`;
-    url = `https://t.me/Findex_ntu_bot?text=${encodeURIComponent(command)}`;
+    url = `https://t.me/${env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?text=${encodeURIComponent(command)}`;
   }
 
   return (
@@ -208,7 +208,19 @@ export function VerifyTelegramForm() {
           const url = `https://t.me/${env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?text=${encodeURIComponent(command)}`;
           // Open in new tab
           /* https://t.me/Findex_ntu_bot?text=/hello%20world# */
-          window.open(url, "_blank");
+          const width = 600;
+          const height = 700;
+          const left = Math.round(
+            window.screenX + (window.outerWidth - width) / 2
+          );
+          const top = Math.round(
+            window.screenY + (window.outerHeight - height) / 2
+          );
+          window.open(
+            url,
+            "telegram-link",
+            `noopener,noreferrer,width=${width},height=${height},left=${left},top=${top}`
+          );
         }}
       >
         <svg

@@ -33,7 +33,7 @@ export const env = createEnv({
     NEXT_PUBLIC_CONVEX_URL: z.string(),
     NEXT_PUBLIC_CONVEX_SITE_URL: z.string(),
 
-    NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().default("Findex_ntu_bot"),
+    NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string(),
     NEXT_PUBLIC_ALLOW_MOCK_USER: z
       .string()
       .default("false")
