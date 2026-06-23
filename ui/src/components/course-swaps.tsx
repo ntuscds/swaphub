@@ -874,8 +874,22 @@ export function CourseSwapMatches({
             </Button>
           </Link>
         </div>
+
         {yourRequestElement}
       </div>
+      {requestsQuery !== undefined &&
+        !requestsQuery.course.hasSwapped &&
+        requestsQuery?.directMatches.length === 0 &&
+        requestsQuery?.threeWayCycleMatches.length === 0 && (
+          <div className="bg-primary-100 dark:bg-primary rounded-md p-4 w-full flex flex-col gap-0.5 border border-border">
+            <h3 className="text-base lg:text-lg font-bold">No matches yet!</h3>
+            <p className="text-sm lg:text-base text-muted-foreground">
+              You will be notified when someone requests a swap with you.
+              Alternatively, check back in later and request a swap yourself!
+            </p>
+          </div>
+        )}
+
       <div className="flex flex-col gap-2">
         <h2 className="text-base lg:text-lg xl:text-xl font-bold">
           Direct Matches
