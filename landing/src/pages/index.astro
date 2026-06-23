@@ -7,6 +7,7 @@ import HeroImage from "@/../public/signup-dark.png";
 import Step1Image from "@/../public/see-1.png";
 import Step2Image from "@/../public/see-2.png";
 import Step3Image from "@/../public/see-3.png";
+import Favicon from "@/../public/favicon.ico";
 
 const SIGNIN_URL = `${import.meta.env.MAIN_APP_URL}/api/auth/microsoft/login?callbackUrl=${encodeURIComponent("/onboard")}`;
 
@@ -87,7 +88,7 @@ const TEAM = [
 <html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- <link rel="icon" type="image/svg+xml" href="/favicon.svg" /> -->
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
@@ -666,9 +667,11 @@ const TEAM = [
         <div class="flex flex-col lg:flex-row gap-8 items-stretch">
           <!-- Left: Logo + name + email -->
           <div class="flex flex-row gap-4 items-center flex-2 pr-10">
-            <img
-              src="/favicon.ico"
+            <Image
+              src={Favicon}
               alt="SCDS Club Logo"
+              width={80}
+              height={80}
               class="h-20 aspect-square"
             />
             <div class="flex flex-col gap-1.5">
