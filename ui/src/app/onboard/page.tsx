@@ -11,6 +11,7 @@ import {
 import { redirect } from "next/navigation";
 import { ALLOWED_DOMAINS, getDefaultUsername } from "@/lib/user";
 import Image from "next/image";
+import Link from "next/link";
 
 export function PaginationSteps({
   selectedIndex,
@@ -71,6 +72,15 @@ function SignInToMicrosoft({ errorMessages }: { errorMessages: string[] }) {
             )}
 
             <SignInButton callbackUrl={callbackUrl} />
+
+            <Link
+              href="/tos"
+              className="text-sm text-primary-700 dark:text-primary-400 hover:text-primary-400 hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              By Signing Up, You Agree to Our Terms of Service
+            </Link>
           </div>
 
           {/* <div className="flex flex-row items-center justify-center pt-10">
