@@ -129,6 +129,11 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
                 About
               </Link>
             </Button>
+            <Button variant="ghost" className="w-full">
+              <Link href="/tos" className="w-full text-start px-2">
+                TOS
+              </Link>
+            </Button>
           </div>
           <SheetFooter>
             <div className="flex flex-row items-center gap-3">
@@ -171,6 +176,9 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
               </a>
               <Link href="/about">
                 <p className="text-sm">About</p>
+              </Link>
+              <Link href="/tos">
+                <p className="text-sm">TOS</p>
               </Link>
             </div>
           </div>
