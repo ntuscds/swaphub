@@ -39,6 +39,16 @@ export type GetSwapRequestByIdResult = {
     | undefined;
 };
 
+function getParticipantRole(
+  request: Doc<"swap_requests">,
+  swapperId: Id<"swapper">
+): "initiator" | "target" | "middleman" {
+  if (request.initiator === swapperId) return "initiator";
+  if (request.targetSwapper === swapperId) return "target";
+  if (request.middlemanSwapper === swapperId) return "middleman";
+  throw new ConvexError("You are not a participant in this swap request.");
+}
+
 export const getSwapRequestById = internalQuery({
   args: {
     requestId: v.id("swap_requests"),
@@ -77,12 +87,7 @@ export const getSwapRequestById = internalQuery({
       throw new ConvexError("Swap request participants not found.");
     }
 
-    let iam: "initiator" | "target" | "middleman" = "initiator";
-    if (middlemanSwapper?._id === args.swapperId) {
-      iam = "middleman";
-    } else if (targetSwapper._id === args.swapperId) {
-      iam = "target";
-    }
+    const iam = getParticipantRole(request, args.swapperId);
 
     let status: "pending" | "accepted" | "declined" = "pending";
     if (request.isCompleted) {
@@ -185,14 +190,7 @@ export const handleSwapRequestDecision = internalMutation({
       swapperId = _user.swapperId;
     }
 
-    let iam: "initiator" | "target" | "middleman" = "initiator";
-    if (request.initiator === swapperId) {
-      iam = "initiator";
-    } else if (request.targetSwapper === swapperId) {
-      iam = "target";
-    } else if (request.middlemanSwapper === swapperId) {
-      iam = "middleman";
-    }
+    const iam = getParticipantRole(request, swapperId);
 
     const [initiatorSwapper, targetSwapper, middlemanSwapper] =
       await Promise.all([

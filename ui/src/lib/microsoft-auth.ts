@@ -89,9 +89,14 @@ export function getBaseUrl(request: Request) {
   const url = new URL(request.url);
   const forwardedProto = request.headers.get("x-forwarded-proto");
   const forwardedHost = request.headers.get("x-forwarded-host");
-  const protocol = forwardedProto ?? url.protocol.replace(":", "");
-  const host = forwardedHost ?? request.headers.get("host") ?? url.host;
-  return `${protocol}://${host}`;
+  const requestOrigin = `${forwardedProto ?? url.protocol.replace(":", "")}://${
+    forwardedHost ?? request.headers.get("host") ?? url.host
+  }`;
+  const canonicalOrigin = new URL(env.APP_ORIGIN).origin;
+  if (new URL(requestOrigin).origin !== canonicalOrigin) {
+    throw new Error("Unexpected request origin");
+  }
+  return canonicalOrigin;
 }
 
 export function getMicrosoftCallbackUrl(request: Request) {

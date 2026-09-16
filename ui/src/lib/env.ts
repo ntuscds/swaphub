@@ -3,6 +3,7 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
+    APP_ORIGIN: z.url().default("https://app.swaphub.ntuscds.com"),
     API_KEY: z.string(),
     ENCRYPTION_KEY: z.string(),
 
@@ -41,6 +42,7 @@ export const env = createEnv({
     NEXT_PUBLIC_FEEDBACK_FORM_URL: z.string().default(""),
   },
   runtimeEnv: {
+    APP_ORIGIN: process.env.APP_ORIGIN,
     API_KEY: process.env.API_KEY,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 

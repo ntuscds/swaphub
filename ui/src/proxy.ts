@@ -3,6 +3,7 @@ import { NextResponse, NextRequest } from "next/server";
 import {
   AUTH_ENCRYPTED_REFRESH_COOKIE,
   AUTH_SESSION_COOKIE,
+  getBaseUrl,
   MicrosoftSessionSchema,
 } from "./lib/microsoft-auth";
 import { ALLOWED_DOMAINS } from "./lib/user";
@@ -30,6 +31,12 @@ function parseJwt(token: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  let canonicalOrigin: string;
+  try {
+    canonicalOrigin = getBaseUrl(request);
+  } catch {
+    return new NextResponse("Invalid host", { status: 400 });
+  }
   const _cookies = await cookies();
   const refreshToken = _cookies.get(AUTH_ENCRYPTED_REFRESH_COOKIE);
   const session = _cookies.get(AUTH_SESSION_COOKIE);
@@ -38,7 +45,7 @@ export async function proxy(request: NextRequest) {
     if (request.nextUrl.pathname === "/onboard") {
       return NextResponse.next();
     }
-    return NextResponse.redirect(new URL("/onboard", request.url));
+    return NextResponse.redirect(new URL("/onboard", canonicalOrigin));
   }
   if (!session) {
     // Should not happen, but just in case.
@@ -47,7 +54,7 @@ export async function proxy(request: NextRequest) {
     }
     const encodedRedirectUrl = encodeURIComponent(request.nextUrl.toString());
     return NextResponse.redirect(
-      new URL(`${refreshUrl}?redirect=${encodedRedirectUrl}`, request.url)
+      new URL(`${refreshUrl}?redirect=${encodedRedirectUrl}`, canonicalOrigin)
     );
   }
   // If '/' is used, redirect to /swap. Should not happen.
@@ -63,7 +70,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(
         new URL(
           `${refreshUrl}?redirect=${request.nextUrl.toString()}`,
-          request.url
+          canonicalOrigin
         )
       );
     }
@@ -79,7 +86,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(
         new URL(
           `/api/auth/microsoft/logout?callbackUrl=${callbackUrl}`,
-          request.url
+          canonicalOrigin
         )
       );
     }
@@ -89,17 +96,17 @@ export async function proxy(request: NextRequest) {
         request.nextUrl.pathname === "/onboard") &&
       sessionParsed.accountSetup.type === "complete"
     ) {
-      return NextResponse.redirect(new URL("/swap", request.url));
+      return NextResponse.redirect(new URL("/swap", canonicalOrigin));
     }
     if (
       request.nextUrl.pathname !== "/onboard" &&
       sessionParsed.accountSetup.type !== "complete"
     ) {
-      return NextResponse.redirect(new URL("/onboard", request.url));
+      return NextResponse.redirect(new URL("/onboard", canonicalOrigin));
     }
   } catch (error) {
     console.error(error);
-    return NextResponse.redirect(new URL("/onboard", request.url));
+    return NextResponse.redirect(new URL("/onboard", canonicalOrigin));
   }
   return NextResponse.next();
 }

@@ -12,6 +12,7 @@ import z from "zod";
 import { env } from "@/lib/env";
 import Script from "next/script";
 import posthog from "posthog-js";
+import { usePathname } from "next/navigation";
 
 type TelegramSafeAreaInset = {
   top?: number;
@@ -88,6 +89,7 @@ export function Providers({
     name: string;
   };
 }) {
+  const pathname = usePathname();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -122,29 +124,23 @@ export function Providers({
 
   return (
     <>
-      <Script
-        src="https://telegram.org/js/telegram-web-app.js"
-        strategy="lazyOnload"
-        onLoad={() => {
-          const webApp = window.Telegram?.WebApp;
-          if (!webApp) {
-            return;
-          }
+      {pathname === "/onboard" && (
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="lazyOnload"
+          onLoad={() => {
+            const webApp = window.Telegram?.WebApp;
+            if (!webApp) {
+              return;
+            }
 
-          try {
-            webApp.ready?.();
-            webApp.expand?.();
-          } catch (error) {}
-
-          // applyTelegramSafeArea();
-          // webApp.onEvent?.("safe_area_changed", applyTelegramSafeArea);
-          // webApp.onEvent?.(
-          //   "content_safe_area_changed",
-          //   applyTelegramSafeArea
-          // );
-        }}
-        // strategy="beforeInteractive"
-      />
+            try {
+              webApp.ready?.();
+              webApp.expand?.();
+            } catch (error) {}
+          }}
+        />
+      )}
       <QueryClientProvider client={queryClient}>
         <ConvexProviderWithAuth
           client={convex}

@@ -42,11 +42,8 @@ export async function getAuth(ctx: QueryCtx, requiresComplete: boolean = true) {
     throw new ConvexError("User not found");
   }
 
-  if (requiresComplete && !user.telegramUserId) {
-    throw new ConvexError("Telegram not setup");
-  }
-  if (requiresComplete && !user.school) {
-    throw new ConvexError("School not setup");
+  if (requiresComplete && getAccountSetupFromUser(user) !== "complete") {
+    throw new ConvexError("Account setup is incomplete");
   }
 
   const isAllowedDomain = ALLOWED_DOMAINS.some((domain) =>
