@@ -42,6 +42,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  verification: {
+    google: "4XCpWGlkSydDocPfvf6b1da29Ern8s4OeUVymB3ztNM",
+  },
   openGraph: {
     title: "SwapHub — Swap Your Indexes Instantly",
     description: "Stop Wasting Time, Use SwapHub!",
