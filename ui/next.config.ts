@@ -12,7 +12,11 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://api.dicebear.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site",
+  `connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site${
+    process.env.NEXT_PUBLIC_E2E_MODE === "true"
+      ? " http://localhost:3210 ws://localhost:3210"
+      : ""
+  }`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

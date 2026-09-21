@@ -186,10 +186,19 @@ function EditProfileForm({
             </FieldLabel>
             <Combobox
               items={schools}
+              onInputValueChange={(inputValue) => {
+                if (!schools.includes(inputValue as (typeof schools)[number])) {
+                  field.onChange(undefined);
+                }
+              }}
               onValueChange={field.onChange}
               value={field.value}
             >
-              <ComboboxInput className="h-9" placeholder="Select your school" />
+              <ComboboxInput
+                id="form-rhf-school"
+                className="h-9"
+                placeholder="Select your school"
+              />
               <ComboboxContent>
                 <ComboboxEmpty>No schools found.</ComboboxEmpty>
                 <ComboboxList>

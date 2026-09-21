@@ -189,6 +189,7 @@ export function SelectCourseIndexCombobox({
   disabled,
   warnings,
   showInputButtonWarning,
+  ariaLabel,
 }: {
   value: CourseIndex[];
   onChange: (value: CourseIndex[]) => void;
@@ -200,6 +201,7 @@ export function SelectCourseIndexCombobox({
     indexId: Id<"course_index">;
   }[];
   showInputButtonWarning?: boolean;
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -229,6 +231,7 @@ export function SelectCourseIndexCombobox({
             variant="ghost"
             className="flex-row w-full h-12 border border-input rounded-md flex items-center justify-between px-3 truncate"
             disabled={disabled}
+            aria-label={ariaLabel}
             // onClick={() => setOpen(true)}
             ref={buttonRef}
           >
@@ -403,6 +406,7 @@ export function SwapRequestForm({
                 courseIndexes={courseIndexes}
                 limit={1}
                 warnings={[]}
+                ariaLabel="Have index"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -431,6 +435,7 @@ export function SwapRequestForm({
                 limit={16}
                 warnings={wantWarnings}
                 showInputButtonWarning={didUserSelectYourIndex}
+                ariaLabel="Wanted indexes"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>

@@ -10,6 +10,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "../../convex/_generated/api";
 import z from "zod";
 import { cache } from "react";
+import { convexServerOptions } from "@/lib/convex-server";
 
 export const MICROSOFT_AUTH_BASE_PATH = "/api/auth/microsoft";
 export const MICROSOFT_SCOPE = "openid profile email offline_access User.Read";
@@ -444,6 +445,22 @@ export async function refreshSession(
     _cookies.delete(AUTH_ENCRYPTED_REFRESH_COOKIE);
     return null;
   }
+  if (env.E2E_MODE && authCookies.session) {
+    const previous = await verifySession(authCookies.session, { allowExpired: true });
+    if (!previous) return null;
+    const currentSession = await buildSession(
+      {
+        sub: previous.sub,
+        email: previous.email,
+        name: previous.name,
+        picture: previous.picture,
+      },
+      SESSION_MAX_AGE_IN_SECONDS,
+      await getAccountSetup(previous.email)
+    );
+    await setSessionCookie(_cookies, currentSession);
+    return currentSession;
+  }
   try {
     const decryptedRefreshToken = await decryptValue(
       authCookies.refresh,
@@ -494,5 +511,5 @@ export async function getAccountSetup(email: string) {
   return fetchQuery(api.tasks.getAccountSetup, {
     email: email,
     apiKey: env.API_KEY,
-  });
+  }, convexServerOptions());
 }

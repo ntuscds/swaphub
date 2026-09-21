@@ -13,7 +13,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Button } from "./ui/button";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -106,10 +106,16 @@ export function SetProfileForm({
             </FieldLabel>
             <Combobox
               items={schools}
+              onInputValueChange={(inputValue) => {
+                if (!schools.includes(inputValue as (typeof schools)[number])) {
+                  field.onChange(undefined);
+                }
+              }}
               onValueChange={field.onChange}
               value={field.value}
             >
               <ComboboxInput
+                id="form-rhf-school"
                 className="h-10"
                 placeholder="Select your school"
               />
@@ -160,6 +166,7 @@ export function SetProfileForm({
 }
 
 export function VerifyTelegramForm() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const requestLinkTelegramAccount = useAction(
     api.actions.requestLinkTelegramAccount
   );
@@ -188,7 +195,7 @@ export function VerifyTelegramForm() {
         type="button"
         size="lg"
         className="w-fit px-4 py-2.5 h-fit flex flex-row gap-2 lg:gap-2.5 items-center bg-background-200 dark:bg-background-800 text-foreground"
-        disabled={isPending}
+        disabled={isPending || isAuthLoading || !isAuthenticated}
         onClick={async () => {
           let rawInitData = undefined;
           try {
@@ -205,7 +212,9 @@ export function VerifyTelegramForm() {
             return;
           }
           const command = `/link ${result.email} ${result.code}`;
-          const url = `https://t.me/${env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?text=${encodeURIComponent(command)}`;
+          const url = env.NEXT_PUBLIC_E2E_MODE
+            ? `/e2e/telegram?command=${encodeURIComponent(command)}`
+            : `https://t.me/${env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?text=${encodeURIComponent(command)}`;
           // Open in new tab
           /* https://t.me/Findex_ntu_bot?text=/hello%20world# */
           const width = 600;

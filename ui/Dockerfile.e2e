@@ -1,0 +1,59 @@
+FROM node:22-bookworm-slim AS deps
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable && corepack prepare pnpm@10.26.0 --activate
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS builder
+COPY . .
+ENV NODE_ENV=production
+ENV APP_ORIGIN=http://localhost:3000
+ENV API_KEY=e2e-api-key
+ENV ENCRYPTION_KEY=e2e-encryption-key-at-least-32-characters
+ENV TELEGRAM_WEBHOOK_SECRET=e2e-telegram-secret
+ENV AZURE_AD_CLIENT_ID=e2e
+ENV AZURE_AD_CLIENT_SECRET=e2e
+ENV AZURE_AD_TENANT_ID=e2e
+ENV CONVEX_JWT_AUDIENCE=swaphub-e2e
+ENV CONVEX_JWT_ISSUER=http://localhost:3000
+ENV CONVEX_JWT_PRIVATE_KEY=build-time-placeholder
+ENV CONVEX_JWT_PUBLIC_KEY=build-time-placeholder
+ENV CONVEX_JWT_KID=swaphub-e2e
+ENV SECURE_COOKIES=false
+ENV E2E_MODE=true
+ENV NEXT_PUBLIC_E2E_MODE=true
+ENV NEXT_PUBLIC_POSTHOG_KEY=e2e
+ENV NEXT_PUBLIC_POSTHOG_HOST=http://localhost:3000
+ENV NEXT_PUBLIC_CONVEX_URL=http://localhost:3210
+ENV NEXT_PUBLIC_CONVEX_SITE_URL=http://localhost:3211
+ENV NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=swaphub_e2e_bot
+ENV NEXT_PUBLIC_ALLOW_MOCK_USER=false
+ENV NEXT_PUBLIC_FEEDBACK_FORM_URL=http://localhost:3000
+RUN pnpm build
+
+FROM node:22-bookworm-slim AS runner
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable && corepack prepare pnpm@10.26.0 --activate && apt-get update && apt-get install -y --no-install-recommends curl openssl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY e2e/app-entrypoint.sh /usr/local/bin/app-entrypoint
+RUN chmod +x /usr/local/bin/app-entrypoint
+EXPOSE 3000
+ENTRYPOINT ["app-entrypoint"]
+CMD ["pnpm", "start"]
+
+FROM ghcr.io/get-convex/convex-backend:latest AS setup
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/* && npm install --global pnpm@10.26.0
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+COPY e2e/setup.sh /usr/local/bin/e2e-setup
+RUN chmod +x /usr/local/bin/e2e-setup && ln -s /convex/generate_key /usr/local/bin/convex-generate-key
+ENTRYPOINT ["e2e-setup"]

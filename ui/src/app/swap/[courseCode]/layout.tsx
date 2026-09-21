@@ -11,9 +11,10 @@ import {
   DynLinkWithBackTo,
 } from "@/components/dyn-back-to-button";
 import { SwapRequestToggle } from "@/components/swap-request-toggle";
+import { convexServerOptions } from "@/lib/convex-server";
 
 const loadCourseHeader = cache((courseCode: string, acadYear: AcadYear) =>
-  fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode, acadYear })
+  fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode, acadYear }, convexServerOptions())
 );
 
 function EditCourseHeaderFallback() {

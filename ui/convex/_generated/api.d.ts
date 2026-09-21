@@ -9,6 +9,7 @@
  */
 
 import type * as actions from "../actions.js";
+import type * as e2e from "../e2e.js";
 import type * as http from "../http.js";
 import type * as swapRequests from "../swapRequests.js";
 import type * as tasks from "../tasks.js";
@@ -22,6 +23,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   actions: typeof actions;
+  e2e: typeof e2e;
   http: typeof http;
   swapRequests: typeof swapRequests;
   tasks: typeof tasks;

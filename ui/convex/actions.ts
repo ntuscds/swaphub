@@ -7,8 +7,7 @@ import { bot } from "@/telegram/telegram";
 import { internal } from "./_generated/api";
 import { env } from "@/lib/env-convex";
 import crypto from "crypto";
-import { redis } from "@/db/upstash";
-import { Lock } from "@upstash/lock";
+import { createLock } from "@/db/lock";
 import { isValid, parse } from "@tma.js/init-data-node";
 import {
   MESSAGE_TEMPLATES,
@@ -56,11 +55,7 @@ export const sendSwapRequest = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
-    const lock = new Lock({
-      id: `findex:send_swap_request:${args.targetSwapperId}`,
-      lease: 5000,
-      redis,
-    });
+    const lock = createLock(`findex:send_swap_request:${args.targetSwapperId}`);
     try {
       if (!(await lock.acquire())) {
         throw new ConvexError("Failed to acquire lock");
@@ -378,11 +373,7 @@ async function processSwapRequestDecision(
     lockId: string;
   }
 ): Promise<GetSwapRequestByIdResult> {
-  const lock = new Lock({
-    id: `swap_decision:${args.lockId}`,
-    lease: 5000,
-    redis,
-  });
+  const lock = createLock(`swap_decision:${args.lockId}`);
   try {
     if (!(await lock.acquire())) {
       throw new ConvexError("Failed to acquire lock");

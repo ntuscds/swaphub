@@ -13,8 +13,10 @@ const ICC_COURSES = new Set([
   "CC0001",
   "CC0002",
   "CC0003",
+  "CC0005",
   "CC0006",
   "CC0007",
+  "CC0008",
   "CC0015",
   "ML0004",
 ]);
@@ -643,8 +645,21 @@ export const getCourseRequestAndMatches = query({
       // TAG: Personal check
       if (otherSwapper.userId === user._id) continue;
 
-      // ICC courses can only swap within same school
-      if (isICC && user.school !== otherUser.school) {
+      const myMatchRequestWithOther = allMyRequests.find(
+        (r) =>
+          (r.initiator === otherSwapper._id ||
+            r.targetSwapper === otherSwapper._id) &&
+          // We will deal with 3 way swaps later.
+          r.middlemanSwapper === undefined
+      );
+
+      // ICC courses can only create matches within the same school. Existing
+      // requests stay visible if a participant changes school afterward.
+      if (
+        isICC &&
+        user.school !== otherUser.school &&
+        myMatchRequestWithOther === undefined
+      ) {
         continue;
       }
 
@@ -664,13 +679,6 @@ export const getCourseRequestAndMatches = query({
 
       // Now we check the availability of the match.
       const isAvailable = !mySwapper.hasSwapped && !otherSwapper.hasSwapped;
-      const myMatchRequestWithOther = allMyRequests.find(
-        (r) =>
-          (r.initiator === otherSwapper._id ||
-            r.targetSwapper === otherSwapper._id) &&
-          // We will deal with 3 way swaps later.
-          r.middlemanSwapper === undefined
-      );
       // New direct requests must be reciprocal. Existing requests remain visible
       // so participants can complete or decline them.
       if (!isPerfectMatchWithOther && myMatchRequestWithOther === undefined) {
@@ -801,19 +809,6 @@ export const getCourseRequestAndMatches = query({
         const middlemanUser = userMap.get(_middleman.userId);
         if (!middlemanUser) continue;
 
-        // ICC courses can only swap within same school
-        if (
-          isICC &&
-          (user.school !== otherUser.school ||
-            user.school !== middlemanUser.school)
-        ) {
-          continue;
-        }
-
-        const middlemanWants = wantsBySwapperId.get(_middleman._id);
-        if (!middlemanWants?.has(haveIndex)) continue;
-        if (!otherWants.has(_middleman.index)) continue;
-
         const canonicalId = [
           mySwapper._id,
           otherSwapper._id,
@@ -829,6 +824,22 @@ export const getCourseRequestAndMatches = query({
             (id, index) => id === canonicalId[index]
           );
         });
+
+        // School equality applies when discovering a new ICC cycle, not when
+        // rendering a request that was already sent.
+        if (
+          isICC &&
+          (user.school !== otherUser.school ||
+            user.school !== middlemanUser.school) &&
+          myMatchRequestWithBothOthers === undefined
+        ) {
+          continue;
+        }
+
+        const middlemanWants = wantsBySwapperId.get(_middleman._id);
+        if (!middlemanWants?.has(haveIndex)) continue;
+        if (!otherWants.has(_middleman.index)) continue;
+
         const isAvailable =
           !mySwapper.hasSwapped &&
           !otherSwapper.hasSwapped &&

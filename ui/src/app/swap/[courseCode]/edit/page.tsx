@@ -6,12 +6,13 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getAuth } from "@/lib/microsoft-auth";
 import { CurrentAcadYear } from "@/lib/acad";
+import { convexServerOptions } from "@/lib/convex-server";
 
 async function EditCourseFormSection({ courseCode }: { courseCode: string }) {
   const indexes = await fetchQuery(api.tasks.getCourseIndexesForEdit, {
     courseCode,
     acadYear: CurrentAcadYear,
-  });
+  }, convexServerOptions());
   return (
     <SwapRequestFormWithPrefill
       courseId={indexes.course.id}
