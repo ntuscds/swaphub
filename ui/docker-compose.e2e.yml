@@ -1,0 +1,74 @@
+services:
+  convex:
+    image: ghcr.io/get-convex/convex-backend:latest
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "3210:3210"
+      - "3211:3211"
+    env_file: .env.e2e
+    environment:
+      CONVEX_CLOUD_ORIGIN: http://localhost:3210
+      CONVEX_SITE_ORIGIN: http://localhost:3211
+      DO_NOT_REQUIRE_SSL: "true"
+    volumes:
+      - convex_data:/convex/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3210/version"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+      target: runner
+    env_file: .env.e2e
+    environment:
+      CONVEX_SERVER_URL: http://convex:3210
+      CONVEX_SITE_URL: http://convex:3211
+    ports:
+      - "3000:3000"
+    volumes:
+      - e2e_config:/e2e-config
+    depends_on:
+      convex:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/onboard"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+
+  setup:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+      target: setup
+    env_file: .env.e2e
+    environment:
+      CONVEX_SELF_HOSTED_URL: http://convex:3210
+      CONVEX_SITE_URL: http://convex:3211
+    volumes:
+      - e2e_config:/e2e-config
+    depends_on:
+      convex:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+
+  dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    profiles: [debug]
+    ports:
+      - "6791:6791"
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: http://localhost:3210
+    depends_on:
+      convex:
+        condition: service_healthy
+
+volumes:
+  convex_data:
+  e2e_config:

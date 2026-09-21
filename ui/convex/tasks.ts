@@ -13,8 +13,10 @@ const ICC_COURSES = new Set([
   "CC0001",
   "CC0002",
   "CC0003",
+  "CC0005",
   "CC0006",
   "CC0007",
+  "CC0008",
   "CC0015",
   "ML0004",
 ]);
@@ -277,16 +279,39 @@ export const getCourseHeaderByCode = query({
       .withIndex("by_courseId_index", (q) => q.eq("courseId", course._id))
       .collect();
 
+    const activeSwappers = swappers.filter((swapper) => !swapper.hasSwapped);
+    const activeSwapperIdsWithWants = new Set<Id<"swapper">>();
+    if (activeSwappers.length > 0) {
+      const wants = await ctx.db
+        .query("swapper_wants")
+        .filter((q) =>
+          q.or(
+            ...activeSwappers.map((swapper) =>
+              q.eq(q.field("swapperId"), swapper._id)
+            )
+          )
+        )
+        .collect();
+      for (const want of wants) {
+        activeSwapperIdsWithWants.add(want.swapperId);
+      }
+    }
+    const activeUserCount = new Set(
+      activeSwappers
+        .filter((swapper) => activeSwapperIdsWithWants.has(swapper._id))
+        .map((swapper) => swapper.userId)
+    ).size;
+
     return {
       courseId: course._id,
       code: course.code,
       name: course.name,
-      swappersCount: swappers.length,
+      isHot: activeUserCount > 10,
     };
   },
 });
 
-/** Indexes for a course with aggregate have/want counts (edit form). */
+/** Indexes for a course (edit form). */
 export const getCourseIndexesForEdit = query({
   args: {
     courseCode: v.string(),
@@ -313,29 +338,6 @@ export const getCourseIndexesForEdit = query({
       .withIndex("by_courseId", (q) => q.eq("courseId", courseId))
       .collect();
 
-    const allSwappers = await ctx.db
-      .query("swapper")
-      .withIndex("by_courseId", (q) => q.eq("courseId", courseId))
-      .collect();
-    const allWants = await ctx.db
-      .query("swapper_wants")
-      .filter((q) =>
-        q.or(...allSwappers.map((s) => q.eq(q.field("swapperId"), s._id)))
-      )
-      .collect();
-
-    const haveCountByIndex = new Map<string, number>();
-    for (const s of allSwappers) {
-      haveCountByIndex.set(s.index, (haveCountByIndex.get(s.index) ?? 0) + 1);
-    }
-    const wantCountByIndex = new Map<string, number>();
-    for (const w of allWants) {
-      wantCountByIndex.set(
-        w.wantIndex,
-        (wantCountByIndex.get(w.wantIndex) ?? 0) + 1
-      );
-    }
-
     return {
       course: {
         id: courseId,
@@ -345,8 +347,6 @@ export const getCourseIndexesForEdit = query({
       indexes: courseIndexes.map((r) => ({
         id: r._id,
         index: r.index,
-        haveCount: haveCountByIndex.get(r.index) ?? 0,
-        wantCount: wantCountByIndex.get(r.index) ?? 0,
       })),
     };
   },
@@ -399,7 +399,8 @@ export const setRequest = mutation({
     wantIndexes: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.wantIndexes.length > 16) {
+    const uniqueWantIndexes = [...new Set(args.wantIndexes)];
+    if (uniqueWantIndexes.length > 16) {
       throw new ConvexError("At most 16 wanted indexes are allowed.");
     }
 
@@ -410,6 +411,21 @@ export const setRequest = mutation({
     }
 
     const courseId = course._id;
+
+    const validCourseIndexes = await ctx.db
+      .query("course_index")
+      .withIndex("by_courseId", (q) => q.eq("courseId", courseId))
+      .collect();
+    const validIndexValues = new Set(validCourseIndexes.map((row) => row.index));
+    if (!validIndexValues.has(args.haveIndex)) {
+      throw new ConvexError("Held index does not belong to this course.");
+    }
+    if (uniqueWantIndexes.some((index) => !validIndexValues.has(index))) {
+      throw new ConvexError("A wanted index does not belong to this course.");
+    }
+    if (uniqueWantIndexes.includes(args.haveIndex)) {
+      throw new ConvexError("Your held index cannot also be a wanted index.");
+    }
 
     const mySwappers = await ctx.db
       .query("swapper")
@@ -438,10 +454,10 @@ export const setRequest = mutation({
       .collect();
     const wantsForCourse = myWants;
 
-    const wantSet = new Set(args.wantIndexes);
+    const wantSet = new Set(uniqueWantIndexes);
     const toRemove = wantsForCourse.filter((w) => !wantSet.has(w.wantIndex));
     const currentWantStrings = new Set(wantsForCourse.map((w) => w.wantIndex));
-    const toAdd = args.wantIndexes.filter(
+    const toAdd = uniqueWantIndexes.filter(
       (idx) => !currentWantStrings.has(idx)
     );
 
@@ -601,6 +617,7 @@ export const getCourseRequestAndMatches = query({
       theyHaveWhatIWant: boolean;
       iam: "initiator" | "target";
     })[] = [];
+    const threeWayCandidateSwapperIds: Id<"swapper">[] = [];
     const threeWayCycleMatches: (BaseMatch & {
       middleman: {
         id: Id<"swapper">;
@@ -628,8 +645,21 @@ export const getCourseRequestAndMatches = query({
       // TAG: Personal check
       if (otherSwapper.userId === user._id) continue;
 
-      // ICC courses can only swap within same school
-      if (isICC && user.school !== otherUser.school) {
+      const myMatchRequestWithOther = allMyRequests.find(
+        (r) =>
+          (r.initiator === otherSwapper._id ||
+            r.targetSwapper === otherSwapper._id) &&
+          // We will deal with 3 way swaps later.
+          r.middlemanSwapper === undefined
+      );
+
+      // ICC courses can only create matches within the same school. Existing
+      // requests stay visible if a participant changes school afterward.
+      if (
+        isICC &&
+        user.school !== otherUser.school &&
+        myMatchRequestWithOther === undefined
+      ) {
         continue;
       }
 
@@ -643,17 +673,15 @@ export const getCourseRequestAndMatches = query({
       const haveWhatTheyWant = otherWants.has(haveIndex);
       const isPerfectMatchWithOther = haveWhatTheyWant && haveWhatIWant;
 
+      if (haveWhatIWant) {
+        threeWayCandidateSwapperIds.push(otherSwapper._id);
+      }
+
       // Now we check the availability of the match.
       const isAvailable = !mySwapper.hasSwapped && !otherSwapper.hasSwapped;
-      const myMatchRequestWithOther = allMyRequests.find(
-        (r) =>
-          (r.initiator === otherSwapper._id ||
-            r.targetSwapper === otherSwapper._id) &&
-          // We will deal with 3 way swaps later.
-          r.middlemanSwapper === undefined
-      );
-      // If not a potential match AND there is no request for this match, continue.
-      if (!haveWhatIWant && myMatchRequestWithOther === undefined) {
+      // New direct requests must be reciprocal. Existing requests remain visible
+      // so participants can complete or decline them.
+      if (!isPerfectMatchWithOther && myMatchRequestWithOther === undefined) {
         continue;
       }
       // We show IF there was previously a request for this match, but not if the match is available.
@@ -759,15 +787,12 @@ export const getCourseRequestAndMatches = query({
     }
 
     // Three-way cycle matches.
-    const threeWayConsideredMatches = directMatches.filter(
-      (m) => m.theyHaveWhatIWant
-    );
     // Find a middleman who wants what you have
     // and has an index that can be given to
     // someone else who has what you want.
 
-    for (const mainTargetSwapper of threeWayConsideredMatches) {
-      const otherSwapper = swapperById.get(mainTargetSwapper.target.id);
+    for (const targetSwapperId of threeWayCandidateSwapperIds) {
+      const otherSwapper = swapperById.get(targetSwapperId);
       if (!otherSwapper) continue;
 
       const otherUser = userMap.get(otherSwapper.userId);
@@ -784,19 +809,6 @@ export const getCourseRequestAndMatches = query({
         const middlemanUser = userMap.get(_middleman.userId);
         if (!middlemanUser) continue;
 
-        // ICC courses can only swap within same school
-        if (
-          isICC &&
-          (user.school !== otherUser.school ||
-            user.school !== middlemanUser.school)
-        ) {
-          continue;
-        }
-
-        const middlemanWants = wantsBySwapperId.get(_middleman._id);
-        if (!middlemanWants?.has(haveIndex)) continue;
-        if (!otherWants.has(_middleman.index)) continue;
-
         const canonicalId = [
           mySwapper._id,
           otherSwapper._id,
@@ -812,6 +824,22 @@ export const getCourseRequestAndMatches = query({
             (id, index) => id === canonicalId[index]
           );
         });
+
+        // School equality applies when discovering a new ICC cycle, not when
+        // rendering a request that was already sent.
+        if (
+          isICC &&
+          (user.school !== otherUser.school ||
+            user.school !== middlemanUser.school) &&
+          myMatchRequestWithBothOthers === undefined
+        ) {
+          continue;
+        }
+
+        const middlemanWants = wantsBySwapperId.get(_middleman._id);
+        if (!middlemanWants?.has(haveIndex)) continue;
+        if (!otherWants.has(_middleman.index)) continue;
+
         const isAvailable =
           !mySwapper.hasSwapped &&
           !otherSwapper.hasSwapped &&
@@ -1134,7 +1162,7 @@ export const getCourseRequestHistory = query({
           if (!userId) return undefined;
           const user = userMap.get(userId);
           if (!user) return undefined;
-          return user.handle;
+          return h.status === "accepted" ? user.handle : user.username;
         })
         .filter((handle) => handle !== undefined);
       return {
@@ -1453,6 +1481,53 @@ export const requestSwap = internalMutation({
       );
     }
 
+    if (meSwapper.hasSwapped) {
+      throw new ConvexError("You are no longer looking to swap this course.");
+    }
+
+    const participantSwappers = [targetSwapper, middlemanSwapper].filter(
+      (swapper): swapper is NonNullable<typeof swapper> => swapper !== null
+    );
+    const participantWants = await Promise.all(
+      [meSwapper, ...participantSwappers].map(async (swapper) => {
+        const wants = await ctx.db
+          .query("swapper_wants")
+          .withIndex("by_swapperId", (q) => q.eq("swapperId", swapper._id))
+          .collect();
+        return [
+          swapper._id,
+          new Set(wants.map((want) => want.wantIndex)),
+        ] as const;
+      })
+    );
+    const wantsBySwapper = new Map(participantWants);
+    const myWants = wantsBySwapper.get(meSwapper._id);
+    const targetWants = wantsBySwapper.get(targetSwapper._id);
+    if (!myWants || !targetWants) {
+      throw new ConvexError("Swap preferences could not be verified.");
+    }
+
+    if (middlemanSwapper) {
+      const middlemanWants = wantsBySwapper.get(middlemanSwapper._id);
+      const isValidThreeWayMatch =
+        myWants.has(targetSwapper.index) &&
+        targetWants.has(middlemanSwapper.index) &&
+        Boolean(middlemanWants?.has(meSwapper.index));
+      if (!isValidThreeWayMatch) {
+        throw new ConvexError(
+          "These participants no longer form a valid three-way match."
+        );
+      }
+    } else {
+      const isValidDirectMatch =
+        myWants.has(targetSwapper.index) && targetWants.has(meSwapper.index);
+      if (!isValidDirectMatch) {
+        throw new ConvexError(
+          "These participants no longer form a valid direct match."
+        );
+      }
+    }
+
     const existingRequests = await ctx.db
       .query("swap_requests")
       .filter((q) => {
@@ -1769,6 +1844,14 @@ export const verifyTelegramAccount = internalMutation({
         .first();
 
       if (existingUser) {
+        if (
+          existingUser.telegramUserId >= 0 &&
+          existingUser.telegramUserId !== args.telegramUserId
+        ) {
+          throw new ConvexError(
+            "This account is already linked to a different Telegram account."
+          );
+        }
         await ctx.db.patch(existingUser._id, {
           telegramUserId: args.telegramUserId,
           handle: args.telegramHandle,
@@ -1794,6 +1877,14 @@ export const verifyTelegramAccount = internalMutation({
       return { success: false };
     }
 
+    if (
+      existing._creationTime <=
+      Date.now() - VERIFICATION_CODE_EXPIRATION_TIME_MS
+    ) {
+      await ctx.db.delete(existing._id);
+      return { success: false };
+    }
+
     await ctx.db.delete(existing._id);
     const existingUser = await ctx.db
       .query("users")
@@ -1801,6 +1892,15 @@ export const verifyTelegramAccount = internalMutation({
       .first();
     if (!existingUser) {
       throw new ConvexError("User not found");
+    }
+
+    if (
+      existingUser.telegramUserId >= 0 &&
+      existingUser.telegramUserId !== args.telegramUserId
+    ) {
+      throw new ConvexError(
+        "This account is already linked to a different Telegram account."
+      );
     }
 
     await ctx.db.patch(existingUser._id, {

@@ -22,7 +22,6 @@ import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldLabel } from "./ui/field";
-import { Badge } from "@/components/ui/badge";
 import { useMutation, useQuery } from "convex/react";
 import { api as convexApi } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -34,8 +33,6 @@ import { useStableQueryWithStatus } from "./use-stable-query";
 export type CourseIndex = {
   id: string;
   index: string;
-  haveCount: number;
-  wantCount: number;
 };
 
 function SelectCourseIndexCommand({
@@ -168,19 +165,6 @@ function SelectCourseIndexCommand({
                     )}
                   </div>
 
-                  <div className="flex flex-row gap-2">
-                    {courseIndex.wantCount > 0 && (
-                      <Badge variant="secondary">
-                        {courseIndex.wantCount} want
-                      </Badge>
-                    )}
-
-                    {courseIndex.haveCount > 0 && (
-                      <Badge variant="default">
-                        {courseIndex.haveCount} have
-                      </Badge>
-                    )}
-                  </div>
                 </div>
               </CommandItemBase>
             );
@@ -205,6 +189,7 @@ export function SelectCourseIndexCombobox({
   disabled,
   warnings,
   showInputButtonWarning,
+  ariaLabel,
 }: {
   value: CourseIndex[];
   onChange: (value: CourseIndex[]) => void;
@@ -216,6 +201,7 @@ export function SelectCourseIndexCombobox({
     indexId: Id<"course_index">;
   }[];
   showInputButtonWarning?: boolean;
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -245,6 +231,7 @@ export function SelectCourseIndexCombobox({
             variant="ghost"
             className="flex-row w-full h-12 border border-input rounded-md flex items-center justify-between px-3 truncate"
             disabled={disabled}
+            aria-label={ariaLabel}
             // onClick={() => setOpen(true)}
             ref={buttonRef}
           >
@@ -419,6 +406,7 @@ export function SwapRequestForm({
                 courseIndexes={courseIndexes}
                 limit={1}
                 warnings={[]}
+                ariaLabel="Have index"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -447,6 +435,7 @@ export function SwapRequestForm({
                 limit={16}
                 warnings={wantWarnings}
                 showInputButtonWarning={didUserSelectYourIndex}
+                ariaLabel="Wanted indexes"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>

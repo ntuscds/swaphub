@@ -97,4 +97,10 @@ export default defineSchema({
   telegram_callback_data: defineTable({
     callbackData: v.string(),
   }),
+
+  e2e_telegram_outbox: defineTable({
+    telegramUserId: v.string(),
+    text: v.string(),
+    options: v.optional(v.any()),
+  }).index("by_telegramUserId", ["telegramUserId"]),
 });

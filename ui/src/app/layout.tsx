@@ -217,10 +217,12 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         name: string;
       }
     | undefined = undefined;
+  let authIdentity: string | undefined;
   if (session) {
     try {
       const parsedJwt = jwtVerify(session.value, env.ENCRYPTION_KEY);
       const sessionParsed = fromJwtPayloadToSession(parsedJwt);
+      authIdentity = sessionParsed?.email;
       if (sessionParsed && sessionParsed.accountSetup.type !== "not_setup") {
         user = {
           id: sessionParsed.accountSetup.id,
@@ -236,7 +238,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang={locale} className={cn(inter.variable)} suppressHydrationWarning>
       <body className={cn(inter.variable, "pt-(--safe-top)")}>
-        <Providers user={user}>
+        <Providers user={user} authIdentity={authIdentity}>
           <div className="w-full h-full relative z-10 navbar-height">
             {/* Navbar */}
             <Suspense fallback={<Navbar isLoading={true} />}>

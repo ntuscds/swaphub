@@ -7,8 +7,7 @@ import { bot } from "@/telegram/telegram";
 import { internal } from "./_generated/api";
 import { env } from "@/lib/env-convex";
 import crypto from "crypto";
-import { redis } from "@/db/upstash";
-import { Lock } from "@upstash/lock";
+import { createLock } from "@/db/lock";
 import { isValid, parse } from "@tma.js/init-data-node";
 import {
   MESSAGE_TEMPLATES,
@@ -27,6 +26,26 @@ type ToggleSwapRequestResult = {
   toggledTo: boolean;
 };
 
+function redactParticipantContact<
+  T extends { handle: string; telegramUserId: bigint },
+>(participant: T) {
+  const { handle: _handle, telegramUserId: _telegramUserId, ...safe } =
+    participant;
+  return safe;
+}
+
+function toClientSwapRequest(result: GetSwapRequestByIdResult) {
+  if (result.status === "accepted") return result;
+  return {
+    ...result,
+    initiator: redactParticipantContact(result.initiator),
+    target: redactParticipantContact(result.target),
+    middleman: result.middleman
+      ? redactParticipantContact(result.middleman)
+      : undefined,
+  };
+}
+
 export const sendSwapRequest = action({
   args: {
     targetSwapperId: v.id("swapper"),
@@ -36,11 +55,7 @@ export const sendSwapRequest = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError("Unauthorized");
 
-    const lock = new Lock({
-      id: `findex:send_swap_request:${args.targetSwapperId}`,
-      lease: 5000,
-      redis,
-    });
+    const lock = createLock(`findex:send_swap_request:${args.targetSwapperId}`);
     try {
       if (!(await lock.acquire())) {
         throw new ConvexError("Failed to acquire lock");
@@ -315,7 +330,7 @@ export const getSwapRequestByEncryptedPayload = action({
         swapperId: payload.swapperId as Id<"swapper">,
       }
     );
-    return result;
+    return toClientSwapRequest(result);
   },
 });
 
@@ -358,11 +373,7 @@ async function processSwapRequestDecision(
     lockId: string;
   }
 ): Promise<GetSwapRequestByIdResult> {
-  const lock = new Lock({
-    id: `swap_decision:${args.lockId}`,
-    lease: 5000,
-    redis,
-  });
+  const lock = createLock(`swap_decision:${args.lockId}`);
   try {
     if (!(await lock.acquire())) {
       throw new ConvexError("Failed to acquire lock");
@@ -559,7 +570,7 @@ export const handleSwapRequestDecisionByEncryptedPayload = action({
     action: v.union(v.literal("accept"), v.literal("decline")),
     shouldMarkAsSwappedIfDecline: v.boolean(),
   },
-  handler: async (ctx, args): Promise<GetSwapRequestByIdResult> => {
+  handler: async (ctx, args) => {
     const decryptedPayload = await decryptValue(
       args.encryptedPayload,
       env.ENCRYPTION_KEY
@@ -567,7 +578,7 @@ export const handleSwapRequestDecisionByEncryptedPayload = action({
     const payload = SwapRequestPayloadSchema.parse(
       JSON.parse(decryptedPayload)
     );
-    return await processSwapRequestDecision(ctx, {
+    const result = await processSwapRequestDecision(ctx, {
       // request: {
       //   type: "id",
       //   id: payload.requestId as Id<"swap_requests">,
@@ -581,6 +592,7 @@ export const handleSwapRequestDecisionByEncryptedPayload = action({
       shouldMarkAsSwappedIfDecline: args.shouldMarkAsSwappedIfDecline,
       lockId: String(payload.requestId),
     });
+    return toClientSwapRequest(result);
   },
 });
 
@@ -590,10 +602,10 @@ export const handleSwapRequestDecision = action({
     action: v.union(v.literal("accept"), v.literal("decline")),
     shouldMarkAsSwappedIfDecline: v.boolean(),
   },
-  handler: async (ctx, args): Promise<GetSwapRequestByIdResult> => {
+  handler: async (ctx, args) => {
     const { email } = await getIdentityFromAction(ctx);
 
-    return await processSwapRequestDecision(ctx, {
+    const result = await processSwapRequestDecision(ctx, {
       requestId: args.requestId,
       user: {
         type: "user",
@@ -603,6 +615,7 @@ export const handleSwapRequestDecision = action({
       shouldMarkAsSwappedIfDecline: args.shouldMarkAsSwappedIfDecline,
       lockId: `${args.requestId}`,
     });
+    return toClientSwapRequest(result);
   },
 });
 
@@ -640,6 +653,15 @@ export const handleTelegramWebhookCommand = internalAction({
     }
 
     const chatId = args.chatId ?? args.fromId;
+    if (chatId !== args.fromId) {
+      await bot
+        .sendMessage(
+          chatId,
+          "For your privacy, account linking is only available in a private chat with this bot."
+        )
+        .catch(() => {});
+      return { ok: true as const };
+    }
     if (params.length < 2) {
       await bot
         .sendMessage(

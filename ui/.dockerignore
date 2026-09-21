@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+.env-prod.local
+.env.e2e
+test-results
+playwright-report
+*.pem
+certificates

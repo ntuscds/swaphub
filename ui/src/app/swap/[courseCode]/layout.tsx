@@ -11,9 +11,10 @@ import {
   DynLinkWithBackTo,
 } from "@/components/dyn-back-to-button";
 import { SwapRequestToggle } from "@/components/swap-request-toggle";
+import { convexServerOptions } from "@/lib/convex-server";
 
 const loadCourseHeader = cache((courseCode: string, acadYear: AcadYear) =>
-  fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode, acadYear })
+  fetchQuery(api.tasks.getCourseHeaderByCode, { courseCode, acadYear }, convexServerOptions())
 );
 
 function EditCourseHeaderFallback() {
@@ -30,18 +31,12 @@ async function EditCourseHeader({ courseCode }: { courseCode: string }) {
   if (!data) {
     notFound();
   }
-  let swappersText: string | null = null;
-  if (data.swappersCount === 1) {
-    swappersText = "1 swapper";
-  } else if (data.swappersCount > 0) {
-    swappersText = `${data.swappersCount} swappers`;
-  }
   return (
     <div className="flex flex-col gap-2">
       <h1 className="text-xl lg:text-2xl xl:text-3xl font-bold">
         {data.code} {data.name}
       </h1>
-      {swappersText && <Badge variant="secondary">{swappersText}</Badge>}
+      {data.isHot && <Badge variant="secondary">HOT!</Badge>}
     </div>
   );
 }

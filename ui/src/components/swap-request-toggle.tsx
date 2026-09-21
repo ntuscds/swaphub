@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { ChevronsUpDown } from "lucide-react";
 import posthog from "posthog-js";
 import { api } from "../../convex/_generated/api";
@@ -30,6 +30,7 @@ import { Alert, AlertTitle } from "./ui/alert";
 import { toast } from "sonner";
 
 export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
+  const { isAuthenticated } = useConvexAuth();
   const [isDisableWarningOpen, setIsDisableWarningOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const toggleSwapRequestAction = useAction(api.actions.toggleSwapRequest);
@@ -50,10 +51,15 @@ export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const swapRequestState = useQuery(api.tasks.getActiveSwapRequestCount, {
-    courseCode,
-    acadYear: CurrentAcadYear,
-  });
+  const swapRequestState = useQuery(
+    api.tasks.getActiveSwapRequestCount,
+    isAuthenticated
+      ? {
+          courseCode,
+          acadYear: CurrentAcadYear,
+        }
+      : "skip"
+  );
 
   const activeRequestsCount = swapRequestState?.activeRequestsCount ?? 0;
   const hasSwapped = swapRequestState?.hasSwapped ?? false;
@@ -92,6 +98,7 @@ export function SwapRequestToggle({ courseCode }: { courseCode: string }) {
     const result = await handle({ courseCode, hasSwapped: true });
     if (result !== undefined) {
       captureMarkedCompleted("confirm", activeAtClick);
+      setIsDisableWarningOpen(false);
     }
   }, [courseCode, handle, activeRequestsCount, captureMarkedCompleted]);
 

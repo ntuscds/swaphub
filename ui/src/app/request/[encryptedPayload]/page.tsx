@@ -7,6 +7,7 @@ import z from "zod";
 import { api } from "../../../../convex/_generated/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import Script from "next/script";
+import { convexServerOptions } from "@/lib/convex-server";
 
 export const SwapRequestPayloadSchema = z.object({
   requestId: z.string(),
@@ -24,7 +25,8 @@ export async function Request({
       {
         encryptedPayload,
         apiKey: env.API_KEY,
-      }
+      },
+      convexServerOptions()
     );
     return (
       <SwapRequestDecision

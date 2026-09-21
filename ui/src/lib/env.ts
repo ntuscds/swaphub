@@ -3,8 +3,10 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
+    APP_ORIGIN: z.url().default("https://app.swaphub.ntuscds.com"),
     API_KEY: z.string(),
     ENCRYPTION_KEY: z.string(),
+    TELEGRAM_WEBHOOK_SECRET: z.string().default(""),
 
     AZURE_AD_CLIENT_ID: z.string().default(""),
     AZURE_AD_CLIENT_SECRET: z.string().default(""),
@@ -24,6 +26,12 @@ export const env = createEnv({
       .string()
       .default("true")
       .transform((val) => val === "true"),
+    E2E_MODE: z
+      .string()
+      .default("false")
+      .transform((val) => val === "true"),
+    CONVEX_SERVER_URL: z.string().optional(),
+    CONVEX_SITE_URL: z.string().optional(),
   },
   clientPrefix: "NEXT_PUBLIC_",
   client: {
@@ -38,11 +46,17 @@ export const env = createEnv({
       .string()
       .default("false")
       .transform((val) => val === "true"),
+    NEXT_PUBLIC_E2E_MODE: z
+      .string()
+      .default("false")
+      .transform((val) => val === "true"),
     NEXT_PUBLIC_FEEDBACK_FORM_URL: z.string().default(""),
   },
   runtimeEnv: {
+    APP_ORIGIN: process.env.APP_ORIGIN,
     API_KEY: process.env.API_KEY,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+    TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
 
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -51,6 +65,7 @@ export const env = createEnv({
     NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:
       process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME,
     NEXT_PUBLIC_ALLOW_MOCK_USER: process.env.NEXT_PUBLIC_ALLOW_MOCK_USER,
+    NEXT_PUBLIC_E2E_MODE: process.env.NEXT_PUBLIC_E2E_MODE,
     NEXT_PUBLIC_FEEDBACK_FORM_URL: process.env.NEXT_PUBLIC_FEEDBACK_FORM_URL,
 
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
@@ -64,6 +79,9 @@ export const env = createEnv({
     CONVEX_JWT_KID: process.env.CONVEX_JWT_KID,
 
     SECURE_COOKIES: process.env.SECURE_COOKIES,
+    E2E_MODE: process.env.E2E_MODE,
+    CONVEX_SERVER_URL: process.env.CONVEX_SERVER_URL,
+    CONVEX_SITE_URL: process.env.CONVEX_SITE_URL,
   },
 
   /**

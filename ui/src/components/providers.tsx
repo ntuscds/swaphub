@@ -5,13 +5,14 @@ import {
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "./theme-provider";
 import z from "zod";
 import { env } from "@/lib/env";
 import Script from "next/script";
 import posthog from "posthog-js";
+import { usePathname } from "next/navigation";
 
 type TelegramSafeAreaInset = {
   top?: number;
@@ -38,14 +39,16 @@ declare global {
 }
 
 const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL);
+const AuthIdentityContext = createContext<string | undefined>(undefined);
 
 const ConvexTokenResponseSchema = z.object({
   token: z.string().optional(),
 });
 
 function useAuthFromProviderMicrosoft() {
+  const authIdentity = useContext(AuthIdentityContext);
   const refreshTokenQuery = useQuery({
-    queryKey: ["refreshToken"],
+    queryKey: ["refreshToken", authIdentity ?? "anonymous"],
     queryFn: async () => {
       const res = await fetch("/api/convex/token", {
         method: "GET",
@@ -67,12 +70,12 @@ function useAuthFromProviderMicrosoft() {
       }
       return refreshTokenQuery.data ?? null;
     },
-    []
+    [refreshTokenQuery.data, refreshTokenQuery.refetch]
   );
 
   return {
     isLoading: refreshTokenQuery.isLoading,
-    isAuthenticated: refreshTokenQuery.data !== null,
+    isAuthenticated: typeof refreshTokenQuery.data === "string",
     fetchAccessToken: refetchAccessToken,
   };
 }
@@ -80,14 +83,17 @@ function useAuthFromProviderMicrosoft() {
 export function Providers({
   children,
   user,
+  authIdentity,
 }: {
   children: React.ReactNode;
+  authIdentity?: string;
   user?: {
     id: string;
     email: string;
     name: string;
   };
 }) {
+  const pathname = usePathname();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -102,6 +108,7 @@ export function Providers({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (env.NEXT_PUBLIC_E2E_MODE) return;
     // Route PostHog through the Next.js rewrite proxy configured in
     // next.config.ts (see `/relay-AQvm/*`) so requests aren't blocked by
     // ad/tracker blockers.
@@ -122,37 +129,33 @@ export function Providers({
 
   return (
     <>
-      <Script
-        src="https://telegram.org/js/telegram-web-app.js"
-        strategy="lazyOnload"
-        onLoad={() => {
-          const webApp = window.Telegram?.WebApp;
-          if (!webApp) {
-            return;
-          }
+      {pathname === "/onboard" && !env.NEXT_PUBLIC_E2E_MODE && (
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="lazyOnload"
+          onLoad={() => {
+            const webApp = window.Telegram?.WebApp;
+            if (!webApp) {
+              return;
+            }
 
-          try {
-            webApp.ready?.();
-            webApp.expand?.();
-          } catch (error) {}
-
-          // applyTelegramSafeArea();
-          // webApp.onEvent?.("safe_area_changed", applyTelegramSafeArea);
-          // webApp.onEvent?.(
-          //   "content_safe_area_changed",
-          //   applyTelegramSafeArea
-          // );
-        }}
-        // strategy="beforeInteractive"
-      />
+            try {
+              webApp.ready?.();
+              webApp.expand?.();
+            } catch (error) {}
+          }}
+        />
+      )}
       <QueryClientProvider client={queryClient}>
-        <ConvexProviderWithAuth
-          client={convex}
-          useAuth={useAuthFromProviderMicrosoft}
-        >
-          {/* <SelfProvider>{children}</SelfProvider> */}
-          <ThemeProvider>{children}</ThemeProvider>
-        </ConvexProviderWithAuth>
+        <AuthIdentityContext.Provider value={authIdentity}>
+          <ConvexProviderWithAuth
+            client={convex}
+            useAuth={useAuthFromProviderMicrosoft}
+          >
+            {/* <SelfProvider>{children}</SelfProvider> */}
+            <ThemeProvider>{children}</ThemeProvider>
+          </ConvexProviderWithAuth>
+        </AuthIdentityContext.Provider>
       </QueryClientProvider>
     </>
   );

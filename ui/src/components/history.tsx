@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { CurrentAcadYear } from "@/lib/acad";
 import { Badge } from "@/components/ui/badge";
@@ -48,10 +48,16 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function History({ courseCode }: { courseCode: string }) {
-  const historyQuery = useQuery(api.tasks.getCourseRequestHistory, {
-    courseCode,
-    acadYear: CurrentAcadYear,
-  });
+  const { isAuthenticated } = useConvexAuth();
+  const historyQuery = useQuery(
+    api.tasks.getCourseRequestHistory,
+    isAuthenticated
+      ? {
+          courseCode,
+          acadYear: CurrentAcadYear,
+        }
+      : "skip"
+  );
 
   if (historyQuery === undefined) {
     return <Skeleton className="h-48 w-full" />;
