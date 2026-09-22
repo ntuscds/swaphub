@@ -1,14 +1,10 @@
 "use node";
 
 import { env } from "@/lib/env-convex";
-import TelegramBot from "node-telegram-bot-api";
+import TelegramBot, { type Message } from "node-telegram-bot-api";
 
-const e2eBot = {
-  async sendMessage(
-    telegramUserId: number,
-    text: string,
-    options?: TelegramBot.SendMessageOptions
-  ) {
+const e2eBot: Pick<TelegramBot, "sendMessage"> = {
+  async sendMessage(telegramUserId, text, options) {
     const response = await fetch(env.UPSTASH_REDIS_REST_URL, {
       method: "POST",
       headers: {
@@ -22,7 +18,7 @@ const e2eBot = {
       }),
     });
     if (!response.ok) throw new Error(`Failed to record Telegram message: ${response.status}`);
-    return {} as TelegramBot.Message;
+    return {} as Message;
   },
 };
 
