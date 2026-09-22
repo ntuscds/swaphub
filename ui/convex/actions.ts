@@ -138,7 +138,7 @@ export const sendSwapRequest = action({
           bot
             .sendMessage(Number(middleman.telegramUserId), middlemanMessage, {
               parse_mode: "Markdown",
-              disable_web_page_preview: true,
+              link_preview_options: { is_disabled: true },
               reply_markup: {
                 inline_keyboard: [
                   [
@@ -161,7 +161,7 @@ export const sendSwapRequest = action({
           bot
             .sendMessage(Number(target.telegramUserId), targetMessage, {
               parse_mode: "Markdown",
-              disable_web_page_preview: true,
+              link_preview_options: { is_disabled: true },
               reply_markup: {
                 inline_keyboard: [
                   [
@@ -204,7 +204,7 @@ export const sendSwapRequest = action({
         await bot
           .sendMessage(Number(target.telegramUserId), targetMessage, {
             parse_mode: "Markdown",
-            disable_web_page_preview: true,
+            link_preview_options: { is_disabled: true },
             reply_markup: {
               inline_keyboard: [
                 [
@@ -262,7 +262,7 @@ export const toggleSwapRequest = action({
       await bot
         .sendMessage(Number(userId), msg, {
           parse_mode: "Markdown",
-          disable_web_page_preview: true,
+          link_preview_options: { is_disabled: true },
         })
         .catch((error) => {
           console.error(`Error sending message to ${userId}:`, error);
@@ -514,7 +514,7 @@ async function processSwapRequestDecision(
       await bot
         .sendMessage(Number(userId), msg, {
           parse_mode: "Markdown",
-          disable_web_page_preview: true,
+          link_preview_options: { is_disabled: true },
         })
         .catch((error) => {
           console.error(`Error sending message to ${userId}:`, error);
