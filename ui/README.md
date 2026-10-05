@@ -31,12 +31,11 @@ lock adapter, rather than distributed Upstash behavior.
 | Duplicate filing, direct/three-way decisions, cancellation and participant checks | `tests/integration/convex/requests.test.ts` |
 | Lock ownership and concurrent contenders | `tests/integration/lock.test.ts` |
 
-The school-change regression currently fails: an already-sent ICC three-way
-request disappears when its target changes school. The request is filed through
-the real authenticated handler before the school changes. An unsent match is
-correctly excluded after the same school change. The expected retained pending row is
-required by [the product test plan](../plans/E2E_TESTS.md). The assertion remains
-enabled; test setup does not change production behavior to make it pass.
+School-change tests file an ICC three-way request through the authenticated
+handler before changing the initiator's, target's, or middleman's school. Every
+participant must still see the sent request with its original roles and pending
+acceptance flags. Unsent matches are excluded after the same school changes, as
+required by [the product test plan](../plans/E2E_TESTS.md).
 
 These fast tests validate backend state and handler checks. The browser suite
 below covers deployed auth, onboarding and UI journeys. Neither suite alone

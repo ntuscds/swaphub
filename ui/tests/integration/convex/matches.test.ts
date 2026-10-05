@@ -37,10 +37,10 @@ test.each(["CC0006", "SC1003"])("%s returns the exact eligible direct and three-
   expect([...result.wantIndexes].sort()).toEqual(["2", "3"]);
 });
 
-test("an already-sent ICC three-way request stays visible after its target changes school", async () => {
+test.each(["initiator", "target", "middleman"] as const)("an already-sent ICC three-way request stays visible to every participant after its %s changes school", async changedRole => {
   // CC0006: Alice 1→2, Bob 2→3, Carol 3→1, all CCDS.
-  // - Alice files the request through requestSwap; Bob then changes school to NBS.
-  // Expect the already-sent request to remain pending and visible to Alice.
+  // - Alice files; Alice (initiator), Bob (target), or Carol (middleman) moves to NBS.
+  // Expect the sent request to remain pending and visible with each viewer's role.
   const t = createBackend();
   const id = await course(t, "CC0006");
   const alice = await student(t, id, "alice", "1", ["2"]);
@@ -56,25 +56,27 @@ test("an already-sent ICC three-way request stays visible after its target chang
     middlemanSwapper: carol, acceptedByInitiator: true,
     acceptedByTargetSwapper: false, acceptedByMiddlemanSwapper: false, isCompleted: false,
   });
-  await t.run(async ctx => {
-    const s = await ctx.db.get(bob);
-    await ctx.db.patch(s!.userId, { school: "NBS" });
+  const participants = { initiator: "alice", target: "bob", middleman: "carol" } as const;
+  await asUser(t, participants[changedRole]).mutation(api.tasks.setProfile, {
+    username: participants[changedRole], school: "NBS",
   });
-  const result = await asUser(t, "alice").query(api.tasks.getCourseRequestAndMatches, { courseCode: "CC0006" });
-  // Product contract: school restrictions apply to new matches, retaining sent requests.
-  // Observed defect: candidate filtering currently drops this pending cycle entirely.
-  expect(result.threeWayCycleMatches).toEqual([{
-    initiator: { id: alice, username: "alice", index: "1", hasAccepted: true },
-    target: { id: bob, username: "bob", index: "2", hasAccepted: false },
-    middleman: { id: carol, username: "carol", index: "3", hasAccepted: false },
-    iam: "initiator", status: "pending", requestId: pending, isCompleted: false,
-  }]);
+  // Each participant must retain the sent row, including original roles and flags.
+  // Regression: the direct-school filter used to remove three-way candidates early.
+  for (const role of ["initiator", "target", "middleman"] as const) {
+    const result = await asUser(t, participants[role]).query(api.tasks.getCourseRequestAndMatches, { courseCode: "CC0006" });
+    expect(result.threeWayCycleMatches).toEqual([{
+      initiator: { id: alice, username: "alice", index: "1", hasAccepted: true },
+      target: { id: bob, username: "bob", index: "2", hasAccepted: false },
+      middleman: { id: carol, username: "carol", index: "3", hasAccepted: false },
+      iam: role, status: "pending", requestId: pending, isCompleted: false,
+    }]);
+  }
 });
 
-test("an unsent ICC three-way match disappears after its target changes school", async () => {
+test.each(["initiator", "target", "middleman"] as const)("an unsent ICC three-way match disappears for every participant after its %s changes school", async changedRole => {
   // CC0006: Alice 1→2, Bob 2→3, Carol 3→1, all initially CCDS.
-  // - No one files a request; Bob changes school to NBS before sending.
-  // Expect no eligible three-way row and no stored swap request.
+  // - No request is sent; Alice, Bob, or Carol moves to NBS before sending.
+  // Expect no eligible three-way row for any viewer and no stored swap request.
   const t = createBackend();
   const id = await course(t, "CC0006");
   const alice = await student(t, id, "alice", "1", ["2"]);
@@ -89,11 +91,13 @@ test("an unsent ICC three-way match disappears after its target changes school",
   }]);
   expect(await t.run(ctx => ctx.db.query("swap_requests").collect())).toEqual([]);
   // Discovery alone creates no request, so current-school eligibility still applies.
-  await t.run(async ctx => {
-    const s = await ctx.db.get(bob);
-    await ctx.db.patch(s!.userId, { school: "NBS" });
+  const participants = { initiator: "alice", target: "bob", middleman: "carol" } as const;
+  await asUser(t, participants[changedRole]).mutation(api.tasks.setProfile, {
+    username: participants[changedRole], school: "NBS",
   });
-  const after = await asUser(t, "alice").query(api.tasks.getCourseRequestAndMatches, { courseCode: "CC0006" });
-  expect(after.threeWayCycleMatches).toEqual([]);
+  for (const role of ["initiator", "target", "middleman"] as const) {
+    const after = await asUser(t, participants[role]).query(api.tasks.getCourseRequestAndMatches, { courseCode: "CC0006" });
+    expect(after.threeWayCycleMatches).toEqual([]);
+  }
   expect(await t.run(ctx => ctx.db.query("swap_requests").collect())).toEqual([]);
 });

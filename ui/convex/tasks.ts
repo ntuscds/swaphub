@@ -653,16 +653,6 @@ export const getCourseRequestAndMatches = query({
           r.middlemanSwapper === undefined
       );
 
-      // ICC courses can only create matches within the same school. Existing
-      // requests stay visible if a participant changes school afterward.
-      if (
-        isICC &&
-        user.school !== otherUser.school &&
-        myMatchRequestWithOther === undefined
-      ) {
-        continue;
-      }
-
       // First check if this is a potential match. A potential match
       // is one where the other swapper's index is in my want indexes.
       const haveWhatIWant = wantIndexesSet.has(otherSwapper.index);
@@ -674,7 +664,19 @@ export const getCourseRequestAndMatches = query({
       const isPerfectMatchWithOther = haveWhatTheyWant && haveWhatIWant;
 
       if (haveWhatIWant) {
+        // Three-way cycles check school eligibility after finding any sent
+        // request below; direct-match filtering must not discard their peers.
         threeWayCandidateSwapperIds.push(otherSwapper._id);
+      }
+
+      // ICC courses can only create direct matches within the same school.
+      // Already-sent direct requests stay visible after a school change.
+      if (
+        isICC &&
+        user.school !== otherUser.school &&
+        myMatchRequestWithOther === undefined
+      ) {
+        continue;
       }
 
       // Now we check the availability of the match.
