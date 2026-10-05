@@ -8,10 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:integration": "tsx --test tests/integration/**/*.test.ts",
+    "test:integration": "tsx --test tests/integration/lock.test.ts",
     "e2e:up": "sh e2e/up.sh",
     "e2e:test": "playwright test",
-    "e2e:down": "docker compose -f docker-compose.e2e.yml down --volumes --remove-orphans"
+    "e2e:down": "docker compose -f docker-compose.e2e.yml down --volumes --remove-orphans",
+    "test": "pnpm test:integration && pnpm test:convex",
+    "test:convex": "vitest run"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
@@ -66,17 +68,21 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^24",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "convex-test": "^0.0.60",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.6",
     "postcss": "^8",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   }
 }
