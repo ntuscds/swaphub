@@ -158,11 +158,11 @@ export async function Navbar({ isLoading }: { isLoading: boolean }) {
       </Sheet>
       <div className="hidden lg:flex navbar-height bg-background border-b border-border flex-col items-center justify-center">
         <div className="w-full max-w-ui px-4 flex flex-row items-center justify-between">
-          <div className="flex flex-row items-center gap-4">
+          <div className="flex flex-row items-center gap-6">
             <Link href="/swap">
               <h2 className="font-bold">SWAPHUB</h2>
             </Link>
-            <div className="flex flex-row items-center gap-2.5">
+            <div className="flex flex-row items-center gap-5">
               <Link href="/swap">
                 <p className="text-sm">My Swaps</p>
               </Link>
